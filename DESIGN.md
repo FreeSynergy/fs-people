@@ -21,7 +21,7 @@ Version 0.1.0, local only (no remote, never pushed).
 | Same-person proposals (ADR 0019/0029): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-contacts-core --example demo`: import demo contacts, list, search, export vCard | done |
-| Tests | unit + integration + property tests (see below) |
+| Tests | 15: unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` (CRUD, search, vCard, groups, proposals, sensitive handling) |
 
 ## Crates
 
