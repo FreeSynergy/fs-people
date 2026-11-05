@@ -6,7 +6,7 @@ A contact is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envel
 
 ## State
 
-Version 0.1.0, local only (no remote, never pushed).
+Version 0.1.0, local only (no remote, never pushed). Built on fs-store 0.2 (path dependency).
 
 | Area | State |
 |---|---|
@@ -14,14 +14,16 @@ Version 0.1.0, local only (no remote, never pushed).
 | Validation (RFC 9553: `@type`, `version` "1.0", `uid`, `kind` enum or `<domain>:<value>`, UTC date-times, required members of sub-objects, `members` only for groups) | done |
 | Repository `ContactRepo` over `Arc<dyn Store>`: create / update / delete / get / get_by_uid / list / search | done |
 | Envelope derivation: type `Profile`, `name` (ADR 0032: `name.full`, else components, nickname, org, e-mail, uid), `context=contacts`, IRI `https://<instance>/contacts/<id>`, `sensitive` from the card | done |
-| Index fields: `uid`, `kind`, `name_sort`, `email` (lowercase), `phone` (E.164-ish), `org` (lowercase), `member`, `describes` | done |
-| Search by name / nickname / e-mail / phone / organisation (substring, case-insensitive) | done, **scans** the Profile list in Rust (store has no FTS / LIKE yet) |
+| Index fields: `uid`, `kind`, `name_sort`, `email` (lowercase), `phone` (E.164-ish), `nickname`, `org` (lowercase), `member` | done; `describes` moved to the envelope (fs-store 0.2) |
+| Envelope `describes` (AS2 `Profile.describes`) from the vendor property `freesynergy.net:describes`; `find_by_describes` | done |
+| Search by name / nickname / e-mail / phone / organisation (substring, case-insensitive) | done **in the store**: one query with an OR-group of `Op::Contains` (name, `name_sort`, nickname, e-mail, org, phone digits); Unicode case-insensitive, `%` `_` literal |
+| Listing / ordering | `list` ordered by the `name_sort` index ("surname, given") case-insensitively, limit/offset in the store (no Rust sort) |
 | vCard 4.0 import/export via `calcard` (also reads 2.1/3.0); original kept per card (`text/vcard`, ADR 0030); re-import skips known `uid`s | done |
 | Groups / folders: `kind: group` + `members` (ADR 0037); add/remove member, resolve members, groups of a card | done |
 | Same-person proposals (ADR 0019/0029): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-contacts-core --example demo`: import demo contacts, list, search, export vCard | done |
-| Tests | 15: unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` (CRUD, search, vCard, groups, proposals, sensitive handling) |
+| Tests | 18 (3 unit + 15 integration; 3 new for store-side ordering, search and `describes`): unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` (CRUD, search, vCard, groups, proposals, sensitive handling) |
 
 ## Crates
 
@@ -47,13 +49,16 @@ Version 0.1.0, local only (no remote, never pushed).
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
 
-## Needed from fs-store (not changed here)
+## fs-store 0.2 – what is used, what is still missing
 
-1. **Case-insensitive ordering** (`Order::NameAsc` is bytewise: "NLnet" sorts before "Nextcloud"). The repo sorts by `name_sort` itself and pages in Rust.
-2. **Substring / full-text search** over name and index fields. Today `search` loads all Profiles and filters in Rust; fine for address books of some thousands.
-3. **Envelope `describes`** (AS2 `Profile.describes`). Today it is the vendor property `freesynergy.net:describes` in the card plus the index field `describes`.
-4. **Index lookups with `OR` / prefix** (e.g. several e-mails in one query) would remove the per-key loops in the proposal finder.
-5. Both `Relationship` queries need two index lookups (`subject`, `object`) because index keys are exact-match; a "any of these keys" filter would do it in one.
+Used: `order_by_index("name_sort")` (case-insensitive list order and paging), `Cond`/`Op::Contains` OR-group (search), `Cond::Describes`
+and envelope `describes`, OR-group of two `Eq` conditions for the `Relationship` lookup (one query instead of two).
+
+Still wanted:
+
+1. **Tokenised full-text search / ranking** (substring only today).
+2. The proposal finder still lists all non-group Profiles and groups by e-mail/phone in Rust; a "values shared by more than one object" query (`GROUP BY` on `index_fields`) would move that into the store.
+3. Locale collation (CLDR) for ordering; the store orders by code point of the lowercased NFC key.
 
 ## Open points
 

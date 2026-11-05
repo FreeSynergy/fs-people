@@ -3,12 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use fs_store::{Blob, Envelope, ObjectId, Order, Query, Store, StoredObject};
+use fs_store::{Blob, Cond, Envelope, ObjectId, Op, Query, Store, StoredObject};
 use serde_json::{Value, json};
 
 use crate::card::Card;
 use crate::error::{Error, Result};
-use crate::index::{fold, index_fields, normalise_email, normalise_phone};
+use crate::index::{index_fields, normalise_email, normalise_phone};
 use crate::now_utc;
 use crate::validate::validate;
 use crate::vcard;
@@ -110,6 +110,7 @@ impl ContactRepo {
             }
         };
         env.name = card.display_name(); // ADR 0032: derived, never typed separately
+        env.describes = card.describes().map(str::to_string); // AS2 Profile.describes (fs-store 0.2)
         env.sensitive = card.sensitive_categories(); // ADR 0029
         let mut o = StoredObject::new(env, CONTENT_TYPE, card.to_value());
         o.index = index_fields(card);
@@ -177,21 +178,22 @@ impl ContactRepo {
 
     // ---- list / search ---------------------------------------------------------------------
 
+    /// Profiles ordered case-insensitively by `name_sort` ("surname, given"); filtering, ordering and
+    /// paging are done by the store.
     pub async fn list(&self, filter: &ListFilter) -> Result<Vec<StoredObject>> {
-        let mut q = Query::new().of_type(PROFILE_TYPE).in_context(CONTEXT).ordered(Order::NameAsc);
+        let mut q = Query::new().of_type(PROFILE_TYPE).in_context(CONTEXT).order_by_index("name_sort");
         if let Some(k) = &filter.kind {
             q = q.with_index("kind", k.clone());
         }
-        // The store orders names bytewise ("NLnet" < "Nextcloud"); sort case-insensitively by the
-        // extracted `name_sort` here and page afterwards (DESIGN.md: wanted in fs-store).
-        let mut all = self.store.query(&q).await?;
-        let key = |o: &StoredObject| o.index.get("name_sort").and_then(|v| v.first().cloned()).unwrap_or_else(|| fold(&o.envelope.name));
-        all.sort_by_cached_key(|o| (key(o), o.envelope.id));
-        let it = all.into_iter().skip(filter.offset);
-        Ok(match filter.limit {
-            Some(n) => it.take(n).collect(),
-            None => it.collect(),
-        })
+        q.offset = filter.offset;
+        q.limit = filter.limit;
+        Ok(self.store.query(&q).await?)
+    }
+
+    /// Profiles whose card describes this actor IRI / DID (envelope `describes`).
+    pub async fn find_by_describes(&self, iri: &str) -> Result<Vec<StoredObject>> {
+        let q = Query::new().of_type(PROFILE_TYPE).and(Cond::Describes { op: Op::Eq, value: iri.into() });
+        Ok(self.store.query(&q).await?)
     }
 
     /// Exact lookup by (normalised) e-mail address.
@@ -210,33 +212,32 @@ impl ContactRepo {
         Ok(self.store.query(&q).await?)
     }
 
-    /// Case-insensitive substring search over name, nicknames, e-mail, phone (digits) and
-    /// organisation. The store has no full-text search yet, so this scans the Profile list
-    /// (fine for address books; see DESIGN.md).
+    /// Case-insensitive (Unicode-normalised) substring search over name, nicknames, e-mail, phone
+    /// (digits) and organisation, evaluated by the store (`Op::Contains` over an OR-group). Result
+    /// order as in [`ContactRepo::list`].
     pub async fn search(&self, term: &str) -> Result<Vec<StoredObject>> {
-        let t = fold(term);
-        if t.is_empty() {
+        let term = term.trim();
+        if term.is_empty() {
             return self.list(&ListFilter::default()).await;
         }
-        let t_email = normalise_email(term);
+        let has = |key: &str, value: String| Cond::Index { key: key.into(), op: Op::Contains, value };
+        let mut q = Query::new()
+            .of_type(PROFILE_TYPE)
+            .in_context(CONTEXT)
+            .order_by_index("name_sort")
+            .or(Cond::Name { op: Op::Contains, value: term.into() })
+            .or(has("name_sort", term.into()))
+            .or(has("nickname", term.into()))
+            .or(has("email", normalise_email(term)))
+            .or(has("org", term.into()));
+        // Digits only count as a phone search when there are enough of them to mean something.
         let t_phone = normalise_phone(term);
-        let phone_needle = t_phone.trim_start_matches('+').to_string();
-        let mut hits = vec![];
-        for o in self.list(&ListFilter::default()).await? {
-            let card = card_of(&o)?;
-            let name_hit = fold(&card.display_name()).contains(&t)
-                || o.index.get("name_sort").is_some_and(|v| v.iter().any(|s| s.contains(&t)))
-                || card.nicknames.values().any(|n| fold(&n.name).contains(&t));
-            let email_hit = card.emails.values().any(|e| normalise_email(&e.address).contains(&t_email));
-            let min_digits = if t_phone.starts_with('+') { 2 } else { 3 };
-            let phone_hit = phone_needle.len() >= min_digits
-                && card.phones.values().any(|p| normalise_phone(&p.number).trim_start_matches('+').contains(&phone_needle));
-            let org_hit = card.organizations.values().any(|org| org.name.as_deref().is_some_and(|n| fold(n).contains(&t)));
-            if name_hit || email_hit || phone_hit || org_hit {
-                hits.push(o);
-            }
+        let phone_needle = t_phone.trim_start_matches('+');
+        let min_digits = if t_phone.starts_with('+') { 2 } else { 3 };
+        if phone_needle.len() >= min_digits {
+            q = q.or(has("phone", phone_needle.to_string()));
         }
-        Ok(hits)
+        Ok(self.store.query(&q).await?)
     }
 
     // ---- import / export -------------------------------------------------------------------
@@ -443,12 +444,9 @@ impl ContactRepo {
     }
 
     async fn relationships_of(&self, id: ObjectId) -> Result<Vec<StoredObject>> {
-        let mut out = vec![];
-        for key in ["subject", "object"] {
-            let q = Query::new().of_type(RELATIONSHIP_TYPE).in_context(CONTEXT).with_index(key, id.to_string());
-            out.extend(self.store.query(&q).await?);
-        }
-        Ok(out)
+        let is = |key: &str| Cond::Index { key: key.into(), op: Op::Eq, value: id.to_string() };
+        let q = Query::new().of_type(RELATIONSHIP_TYPE).in_context(CONTEXT).or(is("subject")).or(is("object"));
+        Ok(self.store.query(&q).await?)
     }
 
     async fn linked_pairs(&self) -> Result<BTreeSet<(ObjectId, ObjectId)>> {

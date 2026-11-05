@@ -319,3 +319,58 @@ async fn sensitive_card_needs_encrypted_store() {
     assert!(matches!(r.create(c).await, Err(Error::Store(fs_store::Error::EncryptionRequired(_)))));
     std::fs::remove_dir_all(dir).ok();
 }
+
+#[tokio::test]
+async fn list_is_case_insensitive_unicode_ordered_and_paged_by_the_store() {
+    let r = repo().await;
+    for n in ["NLnet", "Nextcloud", "zebra", "Ärger", "apple"] {
+        r.create(Card::individual(n)).await.unwrap();
+    }
+    let names = |v: Vec<fs_store::StoredObject>| v.into_iter().map(|o| o.envelope.name).collect::<Vec<_>>();
+    let all = names(r.list(&ListFilter::default()).await.unwrap());
+    assert_eq!(all, ["apple", "Nextcloud", "NLnet", "zebra", "Ärger"]);
+    let page = names(r.list(&ListFilter { limit: Some(2), offset: 1, ..Default::default() }).await.unwrap());
+    assert_eq!(page, ["Nextcloud", "NLnet"]);
+}
+
+#[tokio::test]
+async fn search_runs_in_the_store_with_unicode_nicknames_and_literal_wildcards() {
+    let r = repo().await;
+    let mut a = person("Émilie Dupont", "emilie@Example.org");
+    a.add_phone("+49 30 123456");
+    a.add_organization("Müller & Söhne");
+    a.nicknames.insert("n1".into(), serde_json::from_value(json!({"name": "Mimi"})).unwrap());
+    r.create(a).await.unwrap();
+    r.create(person("50% Rabatt", "rabatt@example.org")).await.unwrap();
+    r.create(person("5000 Rabatt", "other@example.org")).await.unwrap();
+    let n = |v: Vec<fs_store::StoredObject>| v.len();
+    assert_eq!(n(r.search("ÉMILIE").await.unwrap()), 1);
+    assert_eq!(n(r.search("e\u{301}milie").await.unwrap()), 1, "decomposed input");
+    assert_eq!(n(r.search("mimi").await.unwrap()), 1, "nickname");
+    assert_eq!(n(r.search("SÖHNE").await.unwrap()), 1, "organisation, non-ASCII");
+    assert_eq!(n(r.search("EMILIE@example").await.unwrap()), 1);
+    assert_eq!(n(r.search("30 123").await.unwrap()), 1, "phone digits");
+    assert_eq!(n(r.search("%").await.unwrap()), 1, "% is a literal");
+    assert_eq!(n(r.search("50%").await.unwrap()), 1);
+    assert_eq!(n(r.search("_").await.unwrap()), 0, "_ is a literal");
+    assert_eq!(n(r.search("example.org").await.unwrap()), 3);
+    assert_eq!(n(r.search("  ").await.unwrap()), 3, "blank = everything");
+}
+
+#[tokio::test]
+async fn describes_is_an_envelope_field() {
+    let r = repo().await;
+    let mut c = person("Ada", "ada@example.org");
+    c.set_vendor("freesynergy.net:describes", json!("did:example:ada"));
+    let o = r.create(c).await.unwrap();
+    assert_eq!(o.envelope.describes.as_deref(), Some("did:example:ada"));
+    assert!(!o.index.contains_key("describes"));
+    assert_eq!(r.find_by_describes("did:example:ada").await.unwrap().len(), 1);
+    assert!(r.find_by_describes("did:example:other").await.unwrap().is_empty());
+    // update follows the card
+    let mut c = r.get_card(o.envelope.id).await.unwrap().unwrap();
+    c.set_vendor("freesynergy.net:describes", json!("did:example:ada2"));
+    let o = r.update(o.envelope.id, c).await.unwrap();
+    assert_eq!(o.envelope.describes.as_deref(), Some("did:example:ada2"));
+    assert!(r.find_by_describes("did:example:ada").await.unwrap().is_empty());
+}

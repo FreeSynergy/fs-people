@@ -37,7 +37,7 @@ pub fn fold(s: &str) -> String {
     s.trim().to_lowercase()
 }
 
-/// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `org`, `member`, `describes`.
+/// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `nickname`, `org`, `member`. (`describes` is an envelope field since fs-store 0.2.)
 pub fn index_fields(card: &Card) -> IndexFields {
     let mut f = IndexFields::new();
     let mut add = |k: &str, v: String| {
@@ -57,6 +57,9 @@ pub fn index_fields(card: &Card) -> IndexFields {
     for p in card.phones.values() {
         add("phone", normalise_phone(&p.number));
     }
+    for n in card.nicknames.values() {
+        add("nickname", fold(&n.name));
+    }
     for o in card.organizations.values() {
         if let Some(n) = &o.name {
             add("org", fold(n));
@@ -64,9 +67,6 @@ pub fn index_fields(card: &Card) -> IndexFields {
     }
     for uid in card.members.keys() {
         add("member", uid.clone());
-    }
-    if let Some(d) = card.describes() {
-        add("describes", d.to_string());
     }
     f
 }
