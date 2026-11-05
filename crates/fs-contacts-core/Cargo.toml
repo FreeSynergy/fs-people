@@ -1,0 +1,21 @@
+[package]
+name = "fs-contacts-core"
+description = "Program core of FreeSynergy contacts: JSContact cards over fs-store, vCard import/export, same-person proposals"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+fs-store = { path = "/srv/FreeSynergy/fs-store/crates/fs-store" }
+# Last MIT/Apache version before Stalwart moved later releases to AGPL: pinned exactly (see DESIGN.md).
+calcard = "=0.3.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+thiserror = "2"
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+proptest = "1"
