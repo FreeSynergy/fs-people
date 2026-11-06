@@ -80,25 +80,41 @@ impl PeopleRepo {
         self.get(id).await?.map(|o| card_of(&o)).transpose()
     }
 
-    /// Lookup by the card's `uid`, in any spelling of the same identity.
+    /// Lookup by the card's `uid`, in any spelling of the same identity. Only the `uid` counts: a card
+    /// whose object id happens to equal `uid`, with another `uid` of its own, is not found here, though
+    /// `create` still refuses to overwrite it. Cards stored before the index `uid_key` existed are
+    /// found by a search over `uid`, whatever their case.
     pub async fn get_by_uid(&self, uid: &str) -> Result<Option<StoredObject>> {
         let key = normalise_uid(uid);
+        let same = |o: &StoredObject| {
+            o.content
+                .get("uid")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|stored| normalise_uid(stored) == key)
+        };
         if let Ok(id) = key.parse::<ObjectId>()
-            && let Some(found) = self.get(id).await?
+            && let Some(found) = self.get(id).await?.filter(same)
         {
             return Ok(Some(found));
         }
-        let is = |index: &str, value: &str| Cond::Index {
+        let is = |index: &str, op: Op, value: &str| Cond::Index {
             key: index.into(),
-            op: Op::Eq,
+            op,
             value: value.into(),
         };
-        let q = Query::new()
+        let mut q = Query::new()
             .of_type(PROFILE_TYPE)
-            .or(is("uid_key", &key))
-            .or(is("uid", uid))
-            .limit(1);
-        Ok(self.reads.query(&q).await?.into_iter().next())
+            .or(is("uid_key", Op::Eq, &key))
+            .or(is("uid", Op::Eq, uid));
+        if key.len() == 36 && key.as_bytes()[8] == b'-' {
+            // Older cards: the same UUID in another case, with or without hyphens or `urn:uuid:`.
+            q = q.or(is("uid", Op::Contains, &key)).or(is(
+                "uid",
+                Op::Contains,
+                &key.replace('-', ""),
+            ));
+        }
+        Ok(self.reads.query(&q).await?.into_iter().find(same))
     }
 
     /// Replace the card of `id`. The `uid` cannot change; `updated` is set to now.
@@ -129,9 +145,20 @@ impl PeopleRepo {
             self.objects.delete(id, &self.actor).await?;
             self.feed.notify(&PersonChange::Deleted(id));
         }
+        let cleaned = self.remove_what_belongs_to(id, card_there).await;
+        match cleaned {
+            Err(e) if card_there && !matches!(e, Error::NotFound(_)) => {
+                Err(Error::PartlyDeleted(id, e.to_string()))
+            }
+            other => other,
+        }
+    }
+
+    /// The links and roles of `id`. `NotFound` if there was neither a card nor anything of this.
+    async fn remove_what_belongs_to(&self, id: ObjectId, card_was_there: bool) -> Result<()> {
         let links = self.relationships_of(id).await?;
         let roles = self.roles_of(id).await?;
-        if !card_there && links.is_empty() && roles.is_empty() {
+        if !card_was_there && links.is_empty() && roles.is_empty() {
             return Err(Error::NotFound(id));
         }
         for link in links {

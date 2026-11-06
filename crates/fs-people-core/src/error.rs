@@ -45,6 +45,12 @@ pub enum Error {
     /// JSON could not be read or written.
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
+    /// The card is gone, but links or roles that belonged to it could not all be removed. Deleting
+    /// it again removes the rest.
+    #[error(
+        "the person is deleted, but links or roles that belonged to them remain ({1}); delete again to remove them"
+    )]
+    PartlyDeleted(ObjectId, String),
     /// ADR 0029: sensitive cards are never linked.
     #[error("person {0} carries sensitive categories and must not be linked (ADR 0029)")]
     Sensitive(ObjectId),

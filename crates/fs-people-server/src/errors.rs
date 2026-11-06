@@ -47,6 +47,9 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
         Error::Stored(_) | Error::VCard(_) | Error::Store(StoreError::Serde(_)) => {
             Problem::new(STORED_DATA, "Stored data cannot be read", text, 500).into_error()
         }
-        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => failed(text),
+        // The message says the person went and what stayed, which a plain failure would not.
+        Error::PartlyDeleted(..) | Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => {
+            failed(text)
+        }
     }
 }

@@ -91,7 +91,11 @@ async fn item_14_a_refused_delete_of_the_card_leaves_links_and_roles_in_place() 
     r.confirm_same_person(a, b).await.unwrap();
     r.mark_ai(a).await.unwrap();
     failing.fail_cards.store(true, Ordering::Relaxed);
-    assert!(r.delete(a).await.is_err());
+    let said = r.delete(a).await.unwrap_err();
+    assert!(
+        matches!(said, Error::Store(_)),
+        "nothing happened, so no partial error: {said}"
+    );
     assert!(r.get(a).await.unwrap().is_some());
     assert_eq!(
         r.linked_to(a).await.unwrap(),
@@ -118,7 +122,12 @@ async fn item_14_a_failed_clean_up_is_said_and_a_second_delete_finishes_it() {
         .id;
     r.confirm_same_person(a, b).await.unwrap();
     failing.fail_others.store(true, Ordering::Relaxed);
-    assert!(r.delete(a).await.is_err(), "the left-overs are reported");
+    let said = r.delete(a).await.unwrap_err();
+    assert!(
+        matches!(said, Error::PartlyDeleted(id, _) if id == a),
+        "{said}"
+    );
+    assert!(said.to_string().contains("the person is deleted"), "{said}");
     assert!(r.get(a).await.unwrap().is_none());
     failing.fail_others.store(false, Ordering::Relaxed);
     r.delete(a).await.unwrap();
