@@ -1,0 +1,81 @@
+//! The command line.
+//!
+//! Pattern: Builder-like parser — plain `std::env::args`, no extra crate for five options.
+
+use std::path::PathBuf;
+
+/// What was asked for on the command line.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Args {
+    /// Store file; `None` = in memory, gone when the program ends.
+    pub store: Option<PathBuf>,
+    /// A `.vcf` file to import before anything else.
+    pub import: Option<PathBuf>,
+    /// Write everyone to this vCard file; no window opens then.
+    pub export: Option<PathBuf>,
+    /// Draw a picture to this file instead of opening a window.
+    pub snapshot: Option<PathBuf>,
+    /// Size of the window or picture.
+    pub size: (u32, u32),
+    /// `--help` was given.
+    pub help: bool,
+}
+
+impl Default for Args {
+    fn default() -> Self {
+        Self {
+            store: None,
+            import: None,
+            export: None,
+            snapshot: None,
+            size: (1200, 800),
+            help: false,
+        }
+    }
+}
+
+/// Parse `args` (without the program name).
+///
+/// # Errors
+/// A message for the person: an unknown option, a missing value or a bad size.
+pub fn parse(args: &[String]) -> Result<Args, String> {
+    let mut out = Args::default();
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let mut value = |name: &str| {
+            it.next()
+                .cloned()
+                .ok_or_else(|| format!("{name} needs a value"))
+        };
+        match arg.as_str() {
+            "--store" => out.store = Some(PathBuf::from(value("--store")?)),
+            "--import" => out.import = Some(PathBuf::from(value("--import")?)),
+            "--export" => out.export = Some(PathBuf::from(value("--export")?)),
+            "--snapshot" => out.snapshot = Some(PathBuf::from(value("--snapshot")?)),
+            "--size" => out.size = size(&value("--size")?)?,
+            "-h" | "--help" => out.help = true,
+            other => return Err(format!("unknown option {other}")),
+        }
+    }
+    Ok(out)
+}
+
+fn size(text: &str) -> Result<(u32, u32), String> {
+    let bad = || format!("--size wants WIDTHxHEIGHT, not {text}");
+    let (w, h) = text.split_once('x').ok_or_else(bad)?;
+    let (w, h): (u32, u32) = (w.parse().map_err(|_| bad())?, h.parse().map_err(|_| bad())?);
+    if w == 0 || h == 0 {
+        return Err(bad());
+    }
+    Ok((w, h))
+}
+
+/// The help text.
+pub const HELP: &str = "fs-people-app: the people program
+
+  --store <file>     keep the people in this store file (default: in memory, gone at the end)
+  --import <file>    import a vCard file first; people already known are skipped, never replaced
+  --export <file>    write everyone to a new vCard file and stop; an existing file is not replaced,
+                     people marked sensitive are left out and named
+  --snapshot <png>   draw a picture instead of opening a window
+  --size <WxH>       window or picture size (default 1200x800)";
