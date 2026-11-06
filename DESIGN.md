@@ -37,7 +37,7 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | A write of the server runs to its end, also if the client goes away (`run_to_end`, `fs-interfaces` branch `rpc-side`, **needs the tag**: until the pin moves the branch builds only with the `[patch]` below) | done |
 | Numbers stay exact in `details`, unknown card properties and role `extra` (`serde_json` feature `arbitrary_precision`; JSON is read through its text, since `from_value` refuses a long number into `flatten` extras; only the form of an exponent is normalised, `1e400` becomes `1e+400`) | done |
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
-| Tests | 52 in the core, 30 for the server: over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
+| Tests | 84 in the core, 45 for the server: over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Structure and pattern map (ADR 0043)
