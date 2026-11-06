@@ -57,6 +57,17 @@ impl Card {
         found
     }
 
+    /// Every marking on the card that is not a list of category names.
+    pub(super) fn unclear_markings(&self) -> Vec<Value> {
+        let mut found = Vec::new();
+        visit_markings(&self.to_value(), "", &mut |_, marking| {
+            if !is_clear(marking) {
+                found.push(marking.clone());
+            }
+        });
+        found
+    }
+
     /// Where the card carries a marking that is not a list of category names.
     pub fn unclear_sensitive_paths(&self) -> Vec<String> {
         let mut paths = Vec::new();

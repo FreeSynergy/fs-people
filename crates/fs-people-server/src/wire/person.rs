@@ -15,6 +15,7 @@ use fs_interfaces::rpc::{
     DEFAULT_PAGE_SIZE, Page, check_answer, check_intake, envelope_weight, invalid_request,
     write_envelope, write_object_id,
 };
+use fs_people_core::validate::check_exact_numbers;
 use fs_people_core::{Card, ListFilter, MatchKind, SameAsProposal};
 use fs_store::{ObjectId, StoredObject};
 
@@ -56,7 +57,9 @@ pub(crate) fn write_person(mut out: person::Builder<'_>, o: &StoredObject) {
 /// Read the JSContact text of a request.
 pub(crate) fn read_card(text: capnp::text::Reader<'_>) -> capnp::Result<Card> {
     let text = intake(text, "jscontact")?;
-    serde_json::from_str(text).map_err(|e| invalid_request(e.to_string()))
+    let card = serde_json::from_str(text).map_err(|e| invalid_request(e.to_string()))?;
+    check_exact_numbers(text).map_err(|e| invalid_request(e.to_string()))?;
+    Ok(card)
 }
 
 /// Read a filter: empty members are no restriction.

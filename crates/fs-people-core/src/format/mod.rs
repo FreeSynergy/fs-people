@@ -8,5 +8,5 @@ mod traits;
 mod vcard;
 
 pub use jscontact::JsContactFormat;
-pub use traits::{Exporter, ImportedCard, Importer};
+pub use traits::{Exporter, ImportItems, ImportedCard, Importer};
 pub use vcard::VCardFormat;

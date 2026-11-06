@@ -9,5 +9,5 @@ mod split;
 mod uid;
 
 pub use export::card_to_vcard;
-pub use import::{VCARD_MEDIA_TYPE, card_from_vcard, import_vcards};
+pub use import::{VCARD_MEDIA_TYPE, card_from_vcard, each_vcard, import_vcards};
 pub use split::split_vcards;

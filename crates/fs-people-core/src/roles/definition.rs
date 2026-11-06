@@ -93,6 +93,8 @@ impl RoleDefinition {
         require(!self.id.trim().is_empty(), "/id", "required");
         require(!self.names.is_empty(), "/names", "at least one name");
         require(!self.owner.trim().is_empty(), "/owner", "required");
+        let kind_named = self.card_kind.as_ref().is_none_or(|k| !k.trim().is_empty());
+        require(kind_named, "/cardKind", "leave it out, or name a kind");
         if issues.is_empty() {
             Ok(())
         } else {

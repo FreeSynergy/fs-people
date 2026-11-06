@@ -8,6 +8,7 @@ use std::sync::{Arc, RwLock};
 
 use super::definition::RoleDefinition;
 use crate::error::{Error, Result};
+use crate::validate::check_exact_numbers;
 
 /// What this program ships. Data, not code.
 const KNOWN: &str = include_str!("known.json");
@@ -59,6 +60,7 @@ impl RoleRegistry {
 }
 
 fn parse(json: &str) -> Result<Definitions> {
+    check_exact_numbers(json)?;
     let list: Vec<RoleDefinition> = serde_json::from_str(json)?;
     let mut map = BTreeMap::new();
     for def in list {

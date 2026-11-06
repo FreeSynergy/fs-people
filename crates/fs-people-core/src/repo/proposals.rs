@@ -4,6 +4,8 @@
 //! sensitive cards, no already linked pairs) and delegates "who looks alike" to the injected
 //! `MatchStrategy`.
 
+use fs_store::ObjectId;
+
 use super::envelope::card_of;
 use super::handle::PeopleRepo;
 use super::types::ListFilter;
@@ -21,7 +23,8 @@ impl PeopleRepo {
         let linked = self.linked_pairs().await?;
         let mut candidates = vec![];
         for o in self.list(&ListFilter::default()).await? {
-            let card = card_of(&o)?;
+            // One card that does not read blocks nobody: it is not proposed, `unreadable_cards` names it.
+            let Ok(card) = card_of(&o) else { continue };
             if card.is_group() || card.is_sensitive() || !o.envelope.sensitive.is_empty() {
                 continue;
             }
@@ -36,5 +39,17 @@ impl PeopleRepo {
         let mut proposals = self.matcher.propose(&candidates);
         proposals.retain(|p| !linked.contains(&(p.a, p.b)));
         Ok(proposals)
+    }
+
+    /// The cards the store holds that do not read as a card, and why: left out of proposals, and
+    /// the contract has no place for them yet (`DESIGN.md`).
+    pub async fn unreadable_cards(&self) -> Result<Vec<(ObjectId, String)>> {
+        let mut out = vec![];
+        for o in self.list(&ListFilter::default()).await? {
+            if let Err(e) = card_of(&o) {
+                out.push((o.envelope.id, e.to_string()));
+            }
+        }
+        Ok(out)
     }
 }

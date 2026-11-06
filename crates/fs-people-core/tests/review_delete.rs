@@ -137,3 +137,29 @@ async fn item_14_a_failed_clean_up_is_said_and_a_second_delete_finishes_it() {
         "nothing left to do"
     );
 }
+
+#[tokio::test]
+async fn a_failed_card_delete_after_a_list_changed_says_so() {
+    let (r, failing) = with_failing_store().await;
+    let a = r
+        .create(person("Ada", "a@x.org"))
+        .await
+        .unwrap()
+        .envelope
+        .id;
+    let list = r.create_group("L").await.unwrap().envelope.id;
+    r.add_member(list, a).await.unwrap();
+    // The list is a card too; only the delete of the person can fail here.
+    failing.fail_cards.store(true, Ordering::Relaxed);
+    let said = r.delete(a).await.unwrap_err();
+    assert!(
+        matches!(said, Error::PartlyDeleted(id, _) if id == a),
+        "{said}"
+    );
+    assert!(said.to_string().contains("off 1 lists"), "{said}");
+    assert!(said.to_string().contains("delete again"), "{said}");
+    assert!(r.get(a).await.unwrap().is_some());
+    failing.fail_cards.store(false, Ordering::Relaxed);
+    r.delete(a).await.unwrap();
+    assert!(r.get(a).await.unwrap().is_none());
+}

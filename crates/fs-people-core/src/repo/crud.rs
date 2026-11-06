@@ -60,6 +60,16 @@ impl PeopleRepo {
                 card.uid
             )));
         }
+        // What a delete that stopped halfway left behind must not pass to a new card of that id.
+        let uid_is_id = normalise_uid(&card.uid).parse::<ObjectId>().is_ok();
+        if uid_is_id
+            && (!self.relationships_of(id).await?.is_empty()
+                || !self.roles_of(id).await?.is_empty())
+        {
+            return Err(Error::Conflict(format!(
+                "links or roles of an earlier {id} remain; delete it again first"
+            )));
+        }
         self.objects.put(obj, &self.actor).await?;
         let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;
         self.feed.notify(&PersonChange::Created(id));
@@ -117,7 +127,9 @@ impl PeopleRepo {
         Ok(self.reads.query(&q).await?.into_iter().find(same))
     }
 
-    /// Replace the card of `id`. The `uid` cannot change; `updated` is set to now.
+    /// Replace the card of `id`. The `uid` cannot change; `updated` is set to now. An edit never takes
+    /// a sensitive marking away (only an unclear one can be replaced by named categories), and a
+    /// card that is now sensitive loses its same-person links.
     pub async fn update(&self, id: ObjectId, mut card: Card) -> Result<StoredObject> {
         let old = self.get(id).await?.ok_or(Error::NotFound(id))?;
         let old_card = card_of(&old)?;
@@ -127,6 +139,7 @@ impl PeopleRepo {
         if card.kind() != old_card.kind() {
             self.check_kind_against_roles(id, card.kind()).await?;
         }
+        card.keep_marks_of(&old_card);
         card.created = card.created.or(old_card.created);
         card.updated = Some(now_utc());
         validate(&card)?;
@@ -135,42 +148,12 @@ impl PeopleRepo {
         self.objects.put(obj, &self.actor).await?;
         let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;
         self.feed.notify(&PersonChange::Updated(id));
-        Ok(stored)
-    }
-
-    /// Delete a card (undoable through the store). It leaves every list, and its role assignments
-    /// and the same-person links that mention it are removed too. The store has no transaction over
-    /// several objects, so the
-    /// lists come first, as only the card knows its `uid`; then the card: if either fails the person
-    /// is still there, at most off some lists. If removing the rest then fails, the error says so and
-    /// the same call again removes what is left.
-    pub async fn delete(&self, id: ObjectId) -> Result<()> {
-        let found = self.get_card(id).await?;
-        let card_there = found.is_some();
-        if let Some(card) = found {
-            self.remove_from_all_groups(&card.uid).await?;
-            self.objects.delete(id, &self.actor).await?;
-            self.feed.notify(&PersonChange::Deleted(id));
-        }
-        let cleaned = self.remove_what_belongs_to(id, card_there).await;
-        match cleaned {
-            Err(e) if card_there && !matches!(e, Error::NotFound(_)) => {
-                Err(Error::PartlyDeleted(id, e.to_string()))
+        // ADR 0029: a sensitive card is never linked, also not by a link older than its marking.
+        if card.is_sensitive() {
+            for link in self.relationships_of(id).await? {
+                self.objects.delete(link.envelope.id, &self.actor).await?;
             }
-            other => other,
         }
-    }
-
-    /// The links and roles of `id`. `NotFound` if there was neither a card nor anything of this.
-    async fn remove_what_belongs_to(&self, id: ObjectId, card_was_there: bool) -> Result<()> {
-        let links = self.relationships_of(id).await?;
-        let roles = self.roles_of(id).await?;
-        if !card_was_there && links.is_empty() && roles.is_empty() {
-            return Err(Error::NotFound(id));
-        }
-        for link in links {
-            self.objects.delete(link.envelope.id, &self.actor).await?;
-        }
-        self.delete_assignments_of(id).await
+        Ok(stored)
     }
 }

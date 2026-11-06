@@ -8,6 +8,7 @@ use fs_store::ObjectId;
 use serde_json::Map;
 
 use super::handle::PeopleRepo;
+use super::role_rules::check_kind;
 use crate::error::{Error, Result};
 use crate::roles::{AI_ROLE, RoleAssignment};
 
@@ -28,6 +29,7 @@ impl PeopleRepo {
         let Some(definition) = self.role(AI_ROLE).await? else {
             return Err(Error::Conflict(format!("role {AI_ROLE} is not defined")));
         };
+        check_kind(&definition, AI_KIND)?;
         if card.kind() != AI_KIND {
             self.check_kind_against_roles(person, AI_KIND).await?;
             card.kind = Some(AI_KIND.into());

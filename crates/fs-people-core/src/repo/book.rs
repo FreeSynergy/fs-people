@@ -3,13 +3,15 @@
 //! Pattern: Facade — each trait method forwards to the inherent method of the same name (inherent
 //! methods keep working for callers that do not import the trait). A write first takes its turn:
 //! edits read a card and put it back, the store can yield in between, and two callers at once must not
-//! lose a change (`handle.rs`). The inherent methods compose each other, so the turn is taken here.
+//! lose a change (`handle.rs`). The inherent methods compose each other, so the turn is taken here;
+//! only an import takes it itself, per card.
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
 use fs_store::{ObjectId, StoredObject};
 
 use super::handle::PeopleRepo;
+use super::list_export::ListExport;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
 use crate::error::Result;
@@ -75,11 +77,18 @@ impl People for PeopleRepo {
         PeopleRepo::search(self, term).await
     }
     async fn import(&self, importer: &dyn Importer, text: &str) -> Result<ImportReport> {
-        let _turn = self.writes.lock().await;
         PeopleRepo::import(self, importer, text).await
     }
     async fn export(&self, exporter: &dyn Exporter, id: ObjectId) -> Result<String> {
         PeopleRepo::export(self, exporter, id).await
+    }
+    async fn export_list(
+        &self,
+        exporter: &dyn Exporter,
+        id: ObjectId,
+        released: &[String],
+    ) -> Result<ListExport> {
+        PeopleRepo::export_list(self, exporter, id, released).await
     }
     async fn create_group(&self, name: &str) -> Result<StoredObject> {
         let _turn = self.writes.lock().await;

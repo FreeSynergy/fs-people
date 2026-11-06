@@ -17,6 +17,7 @@ const INVALID: &str = "https://freesynergy.net/problems/people/invalid";
 const SENSITIVE: &str = "https://freesynergy.net/problems/people/sensitive";
 const ENCRYPTION_REQUIRED: &str = "https://freesynergy.net/problems/people/encryption-required";
 const PARTLY_DELETED: &str = "https://freesynergy.net/problems/people/partly-deleted";
+const SENSITIVE_MEMBERS: &str = "https://freesynergy.net/problems/people/sensitive-members";
 const STORED_DATA: &str = "https://freesynergy.net/problems/people/stored-data";
 
 /// A core error as an RPC error.
@@ -33,9 +34,19 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
             Problem::new(CONFLICT, "Conflict", text, 409).into_error()
         }
         // Only text from the request reaches `Json`; stored data arrives as `Stored`.
-        Error::Invalid(_) | Error::Json(_) | Error::Store(StoreError::Invalid(_)) => {
+        Error::Invalid(_)
+        | Error::InexactNumber(_)
+        | Error::Json(_)
+        | Error::Store(StoreError::Invalid(_)) => {
             Problem::new(INVALID, "Against the rules of the contract", text, 422).into_error()
         }
+        Error::SensitiveMembers(_) => Problem::new(
+            SENSITIVE_MEMBERS,
+            "Sensitive members are not taken along",
+            text,
+            403,
+        )
+        .into_error(),
         Error::Sensitive(_) => {
             Problem::new(SENSITIVE, "Sensitive cards are not linked", text, 403).into_error()
         }

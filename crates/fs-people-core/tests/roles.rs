@@ -125,10 +125,10 @@ async fn role_config_is_checked_first_then_swapped() {
     let r = repo().await.with_roles(RoleRegistry::empty());
     assert!(r.roles().await.unwrap().is_empty());
     let bad = json!([{"id": "x", "names": {}, "owner": "o"}]).to_string();
-    assert!(matches!(r.load_role_config(&bad), Err(Error::Invalid(_))));
+    assert!(matches!(r.swap_role_config(&bad), Err(Error::Invalid(_))));
     assert!(r.roles().await.unwrap().is_empty(), "nothing changed");
     let good = json!([{"id": "x", "names": {"en": "X"}, "owner": "o", "scope": "public"}]);
-    r.load_role_config(&good.to_string()).unwrap();
+    r.swap_role_config(&good.to_string()).unwrap();
     assert_eq!(r.role("x").await.unwrap().unwrap().scope, RoleScope::Public);
     // a configured role cannot be removed as if it were your own
     assert!(matches!(

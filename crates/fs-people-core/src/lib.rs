@@ -35,14 +35,14 @@ pub use card::Card;
 pub use clock::now_utc;
 pub use error::{Error, Issue, MAX_CARD_BYTES, Result};
 pub use feed::{PeopleFeed, PersonChange, PersonListener, Subscription};
-pub use format::{Exporter, ImportedCard, Importer, JsContactFormat, VCardFormat};
+pub use format::{Exporter, ImportItems, ImportedCard, Importer, JsContactFormat, VCardFormat};
 pub use matching::{
     Candidate, MatchKind, MatchReason, MatchStrategy, SameAsProposal, SharedContactPoint,
 };
 pub use people::People;
 pub use repo::{
-    CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, RELATIONSHIP_TYPE,
-    ROLE_DEFINITION_TYPE, card_of,
+    CONTENT_TYPE, CONTEXT, ImportReport, ListExport, ListFilter, PROFILE_TYPE, PeopleRepo,
+    RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE, card_of,
 };
 pub use role_book::RoleBook;
 pub use roles::{AI_ROLE, RoleAssignment, RoleDefinition, RoleField, RoleRegistry, RoleScope};

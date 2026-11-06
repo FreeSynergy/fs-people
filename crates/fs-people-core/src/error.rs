@@ -45,12 +45,12 @@ pub enum Error {
     /// JSON could not be read or written.
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
-    /// The card is gone, but links or roles that belonged to it could not all be removed. Deleting
-    /// it again removes the rest.
-    #[error(
-        "the person is deleted, but links or roles that belonged to them remain ({1}); delete again to remove them"
-    )]
+    /// A delete stopped halfway; the text says where. Deleting it again finishes the job.
+    #[error("{1}; delete again to finish it")]
     PartlyDeleted(ObjectId, String),
+    /// Who is on a list and sensitive, not taken along without explicit release (ADR 0029).
+    #[error("sensitive members need an explicit release: {}", .0.join(", "))]
+    SensitiveMembers(Vec<String>),
     /// ADR 0029: sensitive cards are never linked.
     #[error("person {0} carries sensitive categories and must not be linked (ADR 0029)")]
     Sensitive(ObjectId),
@@ -60,6 +60,9 @@ pub enum Error {
     /// Something already stored cannot be read any more; the request is not to blame.
     #[error("stored data: {0}")]
     Stored(String),
+    /// A number that plain JSON handling would change: refused where it comes in.
+    #[error("the number {0} cannot be kept exactly; write it as a string")]
+    InexactNumber(String),
     /// A card too large to come back in one answer of the contract.
     #[error("the card has {0} bytes, at most {MAX_CARD_BYTES} are kept")]
     TooLarge(usize),

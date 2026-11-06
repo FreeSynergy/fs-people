@@ -144,6 +144,13 @@ impl PeopleRepo {
         self.holders(&q).await
     }
 
+    /// The assignments held within the group with this IRI.
+    pub(super) async fn assignments_scoped_to(&self, iri: &str) -> Result<Vec<ObjectId>> {
+        let q = assignments().with_index("scope", iri);
+        let found = self.reads.query(&q).await?;
+        Ok(found.iter().filter_map(read).map(|a| a.id).collect())
+    }
+
     /// Every assignment there is.
     pub(super) async fn all_assignments(&self) -> Result<Vec<RoleAssignment>> {
         let found = self.reads.query(&assignments()).await?;

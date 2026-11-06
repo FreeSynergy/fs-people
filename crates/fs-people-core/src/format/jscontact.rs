@@ -4,9 +4,10 @@
 
 use serde_json::Value;
 
-use super::traits::{Exporter, ImportedCard, Importer};
+use super::traits::{Exporter, ImportItems, ImportedCard, Importer};
 use crate::card::Card;
 use crate::error::Result;
+use crate::validate::inexact_numbers;
 
 /// JSContact JSON (RFC 9553): a single card or an array of cards.
 #[derive(Clone, Copy, Debug, Default)]
@@ -18,21 +19,28 @@ impl Importer for JsContactFormat {
     }
 
     fn import(&self, text: &str) -> Result<Vec<Result<ImportedCard>>> {
+        Ok(self.import_each(text)?.collect())
+    }
+
+    fn import_each<'a>(&'a self, text: &'a str) -> Result<ImportItems<'a>> {
         let items = match serde_json::from_str::<Value>(text)? {
             Value::Array(a) => a,
             other => vec![other],
         };
-        Ok(items
-            .into_iter()
-            .map(|item| {
-                // Through the text, as `from_value` cannot bring a long number into the `flatten` extras.
-                let card = serde_json::from_str::<Card>(&item.to_string())?;
+        // Read from the text: what the parser changed cannot be told afterwards.
+        let mut inexact = inexact_numbers(text).into_iter().peekable();
+        Ok(Box::new(items.into_iter().enumerate().map(
+            move |(i, item)| {
+                if let Some((_, token)) = inexact.next_if(|(at, _)| *at == i) {
+                    return Err(crate::validate::inexact(&token));
+                }
+                let card = serde_json::from_value::<Card>(item)?;
                 Ok(ImportedCard {
                     card,
                     original: None,
                 })
-            })
-            .collect())
+            },
+        )))
     }
 }
 

@@ -9,6 +9,7 @@ use fs_interfaces::people_capnp::{
     RoleScope as Wire, localized, role_assignment, role_definition, role_field,
 };
 use fs_interfaces::rpc::{check_answer, check_intake, invalid_request, write_object_id};
+use fs_people_core::validate::check_exact_numbers;
 use fs_people_core::{RoleAssignment, RoleDefinition, RoleField, RoleScope};
 use serde_json::{Map, Value};
 
@@ -124,8 +125,10 @@ pub(crate) fn read_details(t: capnp::text::Reader<'_>) -> capnp::Result<Map<Stri
         return Ok(Map::new());
     }
     check_intake(text.len())?;
-    serde_json::from_str(text)
-        .map_err(|e| invalid_request(format!("details are no JSON object: {e}")))
+    let details = serde_json::from_str(text)
+        .map_err(|e| invalid_request(format!("details are no JSON object: {e}")))?;
+    check_exact_numbers(text).map_err(|e| invalid_request(e.to_string()))?;
+    Ok(details)
 }
 
 /// Write one assignment.

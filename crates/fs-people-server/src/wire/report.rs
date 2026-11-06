@@ -9,9 +9,10 @@ use fs_people_core::ImportReport;
 
 use super::person::{UUID_BYTES, count, write_ids};
 
-/// What one text costs in a list: the pointer, the text with its end, padded.
+/// What one text costs in a list: the pointer, the text with its end, padded, and the 8 bytes a far
+/// pointer takes where a segment ends, as a large list crosses many.
 fn text_weight(text: &str) -> usize {
-    8 + (text.len() + 8) / 8 * 8
+    16 + (text.len() + 8) / 8 * 8
 }
 
 /// Write as many `items` as fit `budget`, and a last entry saying how many more there were: a small
@@ -41,24 +42,34 @@ fn write_capped<'a>(
     Ok(())
 }
 
-/// Write the report of an import: `created` whole, the rest as far as it fits. The contract has no
-/// place for `unclear` yet, and the cards there were stored, but whoever imports must hear of them:
-/// provisionally they come first in `failed`.
+/// Write the report of an import: what fits, `created` first, and what did not fit counted. The
+/// contract has no place for `unclear` yet, and the cards there were stored, but whoever imports must
+/// hear of them: provisionally they come first in `failed`.
 pub(crate) fn write_report(
     mut out: import_report::Builder<'_>,
     report: &ImportReport,
 ) -> capnp::Result<()> {
-    let created = count(report.created.len())?;
-    write_ids(out.reborrow().init_created(created), &report.created);
-    let rest = MAX_PAGE_BYTES.saturating_sub(report.created.len().saturating_mul(UUID_BYTES)) / 2;
+    // Half for the ids, which come to millions only from a provider that is not this one.
+    let shown = report.created.len().min(MAX_PAGE_BYTES / 2 / UUID_BYTES);
+    write_ids(
+        out.reborrow().init_created(count(shown)?),
+        &report.created[..shown],
+    );
+    let rest = MAX_PAGE_BYTES.saturating_sub(shown.saturating_mul(UUID_BYTES)) / 2;
     let skipped: Vec<&str> = report.skipped.iter().map(String::as_str).collect();
     write_capped(|n| out.reborrow().init_skipped(n), &skipped, rest)?;
-    let unclear: Vec<String> = report
+    let mut notes: Vec<String> = report
         .unclear
         .iter()
         .map(|who| format!("stored, its sensitive marking names no category: {who}"))
         .collect();
-    let failed: Vec<&str> = unclear
+    if shown < report.created.len() {
+        notes.push(format!(
+            "{} more were stored, their ids do not fit this answer",
+            report.created.len() - shown
+        ));
+    }
+    let failed: Vec<&str> = notes
         .iter()
         .chain(&report.failed)
         .map(String::as_str)
@@ -69,7 +80,6 @@ pub(crate) fn write_report(
 #[cfg(test)]
 mod tests {
     use capnp::message::Builder;
-    use fs_interfaces::rpc::MAX_MESSAGE_BYTES;
     use fs_store::ObjectId;
 
     use super::*;
@@ -90,7 +100,7 @@ mod tests {
             .iter()
             .map(|s| s.len())
             .sum();
-        assert!(words < MAX_MESSAGE_BYTES * 3 / 4, "{words} bytes");
+        assert!(words <= MAX_PAGE_BYTES + 1024, "{words} bytes");
         let reader = message
             .get_root_as_reader::<import_report::Reader>()
             .unwrap();
@@ -122,6 +132,26 @@ mod tests {
         assert_eq!(
             last,
             format!("{} more", 3_000_000 - (u64::from(skipped.len()) - 1))
+        );
+    }
+
+    #[test]
+    fn a_report_of_more_ids_than_fit_says_so() {
+        let many = MAX_PAGE_BYTES / 2 / UUID_BYTES + 5;
+        let report = ImportReport {
+            created: vec![ObjectId::new(); many],
+            ..ImportReport::default()
+        };
+        let mut message = Builder::new_default();
+        write_report(message.init_root(), &report).unwrap();
+        let reader = message
+            .get_root_as_reader::<import_report::Reader>()
+            .unwrap();
+        assert_eq!(reader.get_created().unwrap().len() as usize, many - 5);
+        let note = reader.get_failed().unwrap().get(0).unwrap();
+        assert_eq!(
+            note.to_str().unwrap(),
+            "5 more were stored, their ids do not fit this answer"
         );
     }
 

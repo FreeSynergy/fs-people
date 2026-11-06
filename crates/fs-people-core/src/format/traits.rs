@@ -26,7 +26,15 @@ pub trait Importer: Send + Sync {
     /// `Err` and reported by the caller, never silently dropped. `Err` for the whole call means
     /// the text is unusable as a whole.
     fn import(&self, text: &str) -> Result<Vec<Result<ImportedCard>>>;
+
+    /// [`Importer::import`], one item at a time, so a large file does not stand in memory as cards.
+    fn import_each<'a>(&'a self, text: &'a str) -> Result<ImportItems<'a>> {
+        Ok(Box::new(self.import(text)?.into_iter()))
+    }
 }
+
+/// The items of a file, as they are read.
+pub type ImportItems<'a> = Box<dyn Iterator<Item = Result<ImportedCard>> + Send + 'a>;
 
 /// Writes one card as text of one foreign format.
 pub trait Exporter: Send + Sync {

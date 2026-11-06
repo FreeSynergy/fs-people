@@ -37,7 +37,7 @@ pub fn index_fields(card: &Card) -> IndexFields {
         }
     }
     for uid in card.members.keys() {
-        add("member", uid.clone());
+        add("member", normalise_uid(uid));
     }
     f
 }

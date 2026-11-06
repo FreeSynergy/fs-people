@@ -5,6 +5,7 @@
 
 use super::datetime::is_utc_datetime;
 use super::kind::{KINDS, is_valid_kind};
+use super::numbers::has_negative_zero;
 use super::sink::Sink;
 use super::sub_objects;
 use crate::card::Card;
@@ -31,6 +32,9 @@ pub fn validate(card: &Card) -> Result<()> {
 }
 
 fn header(sink: &mut Sink, card: &Card) {
+    if has_negative_zero(&card.to_value()) {
+        sink.bad("", "-0 cannot be kept exactly");
+    }
     if card.type_ != "Card" {
         sink.bad("/@type", "must be \"Card\"");
     }

@@ -13,7 +13,7 @@ use super::envelope::stored_value;
 use super::handle::PeopleRepo;
 use super::role_rules::{check_kind, check_reach};
 use crate::error::{Error, Result};
-use crate::roles::{RoleDefinition, RoleRegistry};
+use crate::roles::{AI_ROLE, RoleDefinition, RoleRegistry};
 
 impl PeopleRepo {
     /// Replace the configured roles: checked first, stored, then swapped at once (ADR 0045). Refused
@@ -31,6 +31,11 @@ impl PeopleRepo {
 
     async fn check_holders_against(&self, next: &BTreeMap<String, RoleDefinition>) -> Result<()> {
         for held in self.all_assignments().await? {
+            // Only what this configuration changes counts: an assignment that fits nothing today,
+            // from before a rule or a role that went, must not block every configuration after it.
+            let Some(now) = self.role(&held.role).await? else {
+                continue;
+            };
             let definition = match next.get(&held.role) {
                 Some(configured) => configured.clone(),
                 None => match self.stored_role(&held.role).await? {
@@ -43,10 +48,16 @@ impl PeopleRepo {
                     }
                 },
             };
-            check_reach(&definition, held.scope.as_deref())
-                .map_err(|e| Error::Conflict(format!("in use: {e}")))?;
+            let scope = held.scope.as_deref();
+            // An AI is marked without a scope, whatever the role says of its reach.
+            if held.role != AI_ROLE && check_reach(&now, scope).is_ok() {
+                check_reach(&definition, scope)
+                    .map_err(|e| Error::Conflict(format!("in use: {e}")))?;
+            }
             if let Some(card) = self.get_card(held.person).await? {
-                check_kind(&definition, card.kind())?;
+                if check_kind(&now, card.kind()).is_ok() {
+                    check_kind(&definition, card.kind())?;
+                }
             }
         }
         Ok(())

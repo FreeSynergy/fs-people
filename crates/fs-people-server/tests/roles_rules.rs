@@ -3,7 +3,8 @@
 mod common;
 
 use common::{
-    CONFLICT, INVALID, NOT_FOUND, create, expect_problem, persons_of, roles_of, uuids, with_server,
+    BAD_REQUEST, CONFLICT, INVALID, NOT_FOUND, create, expect_problem, persons_of, roles_of, uuids,
+    with_server,
 };
 use fs_interfaces::people_capnp::RoleScope;
 use fs_interfaces::rpc::write_uuid;
@@ -32,13 +33,22 @@ async fn what_a_personal_role_and_a_held_one_answer() {
         let mut assign = roles.assign_request();
         write_uuid(assign.get().init_person(), Some(ada));
         assign.get().set_role("coach");
-        assign
-            .get()
-            .set_details(r#"{"n":123456789012345678901234567890}"#);
+        assign.get().set_details(r#"{"n":1.5}"#);
         let answer = assign.send().promise.await.unwrap();
         let held = answer.get().unwrap().get_assignment().unwrap();
-        let details = held.get_details().unwrap().to_str().unwrap();
-        assert_eq!(details, r#"{"n":123456789012345678901234567890}"#);
+        assert_eq!(
+            held.get_details().unwrap().to_str().unwrap(),
+            r#"{"n":1.5}"#
+        );
+
+        let mut too_long = roles.assign_request();
+        write_uuid(too_long.get().init_person(), Some(bob));
+        too_long.get().set_role("coach");
+        too_long
+            .get()
+            .set_details(r#"{"n":123456789012345678901234567890}"#);
+        let detail = expect_problem(too_long.send().promise.await, BAD_REQUEST);
+        assert!(detail.contains("kept exactly"), "{detail}");
 
         let mut again = roles.assign_request();
         write_uuid(again.get().init_person(), Some(ada));

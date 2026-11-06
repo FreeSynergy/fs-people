@@ -57,7 +57,7 @@ impl PeopleRepo {
 
     /// Replace the configured roles in memory: checked first, then swapped at once (ADR 0045). What
     /// shall outlive the process goes through `store_role_config`.
-    pub fn load_role_config(&self, json: &str) -> Result<()> {
+    pub fn swap_role_config(&self, json: &str) -> Result<()> {
         self.registry.load(json)
     }
 
