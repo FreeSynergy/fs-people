@@ -1,4 +1,4 @@
-//! `fs-contacts-core`: program core of FreeSynergy contacts (no GUI).
+//! `fs-people-core`: program core of FreeSynergy contacts (no GUI).
 //!
 //! A contact is a JSContact `Card` (RFC 9553) in an AS2 `Profile` envelope stored through
 //! `fs-store` (ADR 0014, 0019, 0020). Start with the [`ContactBook`] trait; [`ContactRepo`] is

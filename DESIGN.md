@@ -1,6 +1,6 @@
 # fs-contacts – Design
 
-`fs-contacts` is the contacts program of FreeSynergy. This repo holds the **program core** (`crates/fs-contacts-core`, no GUI).
+`fs-contacts` is the contacts program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI).
 A contact is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
 (ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the GUI/workbench crates come later and use this core.
 
@@ -23,7 +23,7 @@ Version 0.1.0 (refactored to ADR 0043), local only (no remote, never pushed). Bu
 | Groups / folders: `kind: group` + `members` (ADR 0037); add/remove member, resolve members, groups of a card | done |
 | Same-person proposals (ADR 0019/0029) as a `MatchStrategy` (default `SharedContactPoint`, swappable with `with_match_strategy`): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
-| Example `cargo run -p fs-contacts-core --example demo`: import demo contacts, list, search, export vCard | done |
+| Example `cargo run -p fs-people-core --example demo`: import demo contacts, list, search, export vCard | done |
 | Tests | 21 (3 unit + 18 integration in `tests/{model,crud,search,vcard,groups,proposals,interfaces}.rs`; the 18 pre-refactor tests are unchanged in behaviour, 3 new ones cover the trait seams): unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 

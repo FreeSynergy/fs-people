@@ -3,7 +3,7 @@
 mod common;
 
 use common::repo;
-use fs_contacts_core::vcard;
+use fs_people_core::vcard;
 
 #[tokio::test]
 async fn vcard_import_keeps_original_and_exports() {

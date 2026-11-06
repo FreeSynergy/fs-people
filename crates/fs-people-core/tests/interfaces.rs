@@ -6,7 +6,7 @@ mod common;
 use std::sync::Arc;
 
 use common::{ME, person, repo, setup};
-use fs_contacts_core::{
+use fs_people_core::{
     Candidate, Card, ContactBook, ContactRepo, Exporter, ImportedCard, Importer, JsContactFormat,
     MatchKind, MatchReason, MatchStrategy, Result, SameAsProposal, VCardFormat,
 };

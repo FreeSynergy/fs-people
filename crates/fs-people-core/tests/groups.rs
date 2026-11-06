@@ -3,7 +3,7 @@
 mod common;
 
 use common::{person, repo};
-use fs_contacts_core::{Error, ListFilter};
+use fs_people_core::{Error, ListFilter};
 
 #[tokio::test]
 async fn groups_hold_members() {

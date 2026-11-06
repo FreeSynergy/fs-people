@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use fs_contacts_core::{Card, ContactRepo};
+use fs_people_core::{Card, ContactRepo};
 use fs_store::{Store, TursoStore};
 
 pub const ME: &str = "https://local.invalid/users/owner";

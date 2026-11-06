@@ -3,7 +3,7 @@
 mod common;
 
 use common::{DEMO, person, repo};
-use fs_contacts_core::{Card, ListFilter};
+use fs_people_core::{Card, ListFilter};
 use serde_json::json;
 
 #[tokio::test]

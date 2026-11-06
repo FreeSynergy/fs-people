@@ -1,10 +1,10 @@
 //! Import the demo contacts, list, search, export one as vCard, show same-person proposals.
 //!
-//! cargo run -p fs-contacts-core --example demo -- [contacts.json]
+//! cargo run -p fs-people-core --example demo -- [contacts.json]
 
 use std::sync::Arc;
 
-use fs_contacts_core::{ContactBook, ContactRepo, ListFilter};
+use fs_people_core::{ContactBook, ContactRepo, ListFilter};
 use fs_store::{Store, TursoStore};
 
 const DEMO: &str = "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.json";

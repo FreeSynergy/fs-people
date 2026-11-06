@@ -5,7 +5,7 @@ mod common;
 use std::sync::Arc;
 
 use common::{ME, person, repo, setup};
-use fs_contacts_core::{ContactRepo, Error, MatchKind, MatchReason};
+use fs_people_core::{ContactRepo, Error, MatchKind, MatchReason};
 use fs_store::{ObjectId, Store, TursoStore};
 use serde_json::json;
 

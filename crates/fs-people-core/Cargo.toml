@@ -1,5 +1,5 @@
 [package]
-name = "fs-contacts-core"
+name = "fs-people-core"
 description = "Program core of FreeSynergy contacts: JSContact cards over fs-store, vCard import/export, same-person proposals"
 version.workspace = true
 edition.workspace = true
@@ -7,7 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fs-store = { path = "/srv/FreeSynergy/fs-store/crates/fs-store" }
+fs-store = { git = "https://github.com/FreeSynergy/fs-store", tag = "v0.2.0" }
 # Last MIT/Apache version before Stalwart moved later releases to AGPL: pinned exactly (see DESIGN.md).
 calcard = "=0.3.14"
 serde = { version = "1", features = ["derive"] }
