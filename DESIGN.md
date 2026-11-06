@@ -43,16 +43,19 @@ Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default in m
 | List (a page of 200 with a Show more button), search, read as sections, marks for an AI and for sensitive data (ADR 0029, 0054), roles read only | done |
 | Create and edit name, e-mails, phones, organisation; delete with a second press | done |
 | Editing keeps everything else: the form goes onto the card as stored now, and only fields that differ from what the form started with are written, each to the entry its key names. Proved in `tests/keeps.rs` by comparing the whole card as JSON | done |
-| vCard import at start; a store refusing a sensitive card is shown as a problem in the status line and on stderr | done |
-| vCard export of everyone with `--export`, then the program stops (with `--snapshot` it draws as well) | done |
+| vCard import at start; a store refusing a sensitive card is shown as a problem in the status line and on stderr. On this core the import stops there and the people before it are in; `people-core-fixes` makes it one failure among the rest, and the same code then reports it under `failed`. `ImportReport::unclear` of that branch is not shown yet | done, follows the core |
+| vCard export of everyone with `--export`, written through a temporary file beside the target and never over an existing one, then the program stops (with `--snapshot` it draws as well). `--export-sensitive <uid>`, repeatable, releases one named person marked sensitive; naming nobody writes nothing | done |
+| Marks: someone sensitive is marked in the list, in search, in the compact variant and in the form, and is opened only when chosen (ADR 0029 point 4) | done |
 | Windows | `launch` is wired, never opened by tests; `AppWidget::build` and `picture` are drawn offscreen and compared |
 
 Decisions (provisional, easy to reverse):
 
-* **A changed name replaces the name's parts** (`components`, `isOrdered`, `defaultSeparator`): left in place they would keep the old name in sorting, search and vCard `N`. `name.extra` stays, also a `sortAs` in it, which may then be out of date. An unchanged name stays as it is.
-* **An emptied field removes that value;** an organisation with `units` only loses its name. A removed e-mail's id may be taken by one added in the same edit.
+* **A changed name replaces the name's parts** (`components`, `isOrdered`, `defaultSeparator`): left in place they would keep the old name in sorting, search and vCard `N`. `name.extra` stays, also a `sortAs` in it, which may then be out of date. An unchanged name stays as it is. An emptied name loses `sortAs` and the phonetic members with it; a name holding anything else unknown can be replaced but not emptied, and the form says what it holds.
+* **An edit never reduces a card's sensitive categories:** what the removed part carried moves to card level.
+* **One rule for an empty card:** Save and Create both refuse a card left with no name, nickname, e-mail, phone or organisation.
+* **An emptied field removes that value;** an organisation with `units` only loses its name. Additions come before removals, so an id freed by an edit is not given to something added by it, and a title lets go of an organisation that went.
 * **Conflict:** a revision is the store's `updated` plus a fingerprint of the content. Compare and write are not atomic, because `People::update` takes no revision: **wanted from the core: compare-and-set**. After a conflict the second Save writes only the fields the person changed, onto the other's version.
-* **`--export` leaves out people marked sensitive and names them** (ADR 0029: they leave the device only by explicit release, and there is no way yet to give it). It never replaces a file, and it stops without a window, so it works in a script.
+* **`--export` leaves out people marked sensitive and names them with their `uid`** (ADR 0029: they leave the device only by explicit release, which is `--export-sensitive <uid>`, one person at a time). A marking in any form counts, also one with no category we can read. It never replaces a file, and it stops without a window, so it works in a script.
 * **`--import` skips known `uid`s** (the core's rule); a file that cannot be read or holds no vCard ends the program with an error rather than opening without the people.
 * The actor is a fixed `https://localhost/actors/owner`: there is no sign-in yet.
 
@@ -62,7 +65,7 @@ Wanted from the core:
 
 * `People::search` has no paging: the whole result is read for every page of the list.
 * `People::list` reports no total, so the list shows Show more instead of a scrollbar over everyone.
-* `import` stops at the first store error and loses the report of the people before it (they are stored; the summary cannot count them).
+* `import` stops at the first store error and loses the report of the people before it (they are stored; the summary cannot count them). Fixed on `origin/server`, not on main yet.
 * `export_vcard` keeps `VERSION:3.0` for a card imported from vCard 3.0 (seen in a real export), while its documentation says 4.0.
 
 ## Structure and pattern map (ADR 0043)

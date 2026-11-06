@@ -145,9 +145,9 @@ fn deleting_takes_two_presses_and_takes_the_roles_along() {
     w.runtime.block_on(w.repo.mark_ai(id)).unwrap();
     let mut s = w.state();
     assert_eq!(s.selected(), Some(ada.as_str()));
-    s.delete();
+    s.ask_delete();
     assert_eq!(names(&w, "").len(), 2, "only asked");
-    s.delete();
+    s.confirm_delete();
     assert_eq!(names(&w, ""), ["Bob"]);
     assert!(w.runtime.block_on(w.repo.roles_of(id)).unwrap().is_empty());
     assert!(matches!(s.shown(), Shown::Person { sheet, .. } if sheet.title == "Bob"));
@@ -172,4 +172,59 @@ fn the_capabilities_of_the_provider_decide_what_is_offered() {
     let w = World::in_memory();
     let can = w.adapter.capabilities();
     assert!(can.edit && can.create && can.delete);
+}
+
+fn secret(name: &str) -> Card {
+    let mut card = person(name, "s@x.org");
+    card.mark_sensitive(["pd:HealthRecord"]);
+    card
+}
+
+#[test]
+fn someone_sensitive_is_marked_in_the_list_in_search_and_in_the_form_and_not_opened_alone() {
+    let w = World::in_memory();
+    let key = w.add(secret("Aaron Secret"));
+    w.add(person("Zoe Open", "z@x.org"));
+    let mut s = w.state();
+    assert_eq!(s.rows()[0].cells[0], "Aaron Secret");
+    assert_eq!(s.rows()[0].marks, ["Sensitive"]);
+    assert!(s.rows()[1].marks.is_empty());
+    assert_eq!(
+        s.selected(),
+        None,
+        "first in the list, and not opened until chosen"
+    );
+    s.search("Aaron");
+    assert_eq!(s.rows()[0].marks, ["Sensitive"], "in a search as well");
+    s.select(&key);
+    assert_eq!(s.selected(), Some(key.as_str()), "chosen, so shown");
+    s.begin_edit();
+    assert_eq!(
+        s.editing().unwrap().draft.marks,
+        ["Sensitive: pd:HealthRecord"],
+        "the form keeps showing it"
+    );
+    let compact = fs_components_workbenches::people::PeopleState::new(
+        w.adapter.clone(),
+        fs_people_app::labels(),
+        fs_components_workbenches::people::Variant::Compact,
+    );
+    assert_eq!(
+        compact.rows()[0].marks,
+        ["Sensitive"],
+        "in the compact variant"
+    );
+    assert_eq!(compact.selected(), None);
+}
+
+#[test]
+fn after_a_delete_someone_sensitive_is_not_opened_alone() {
+    let w = World::in_memory();
+    w.add(person("Ada Open", "a@x.org"));
+    w.add(secret("Bob Secret"));
+    let mut s = w.state();
+    s.ask_delete();
+    s.confirm_delete();
+    assert_eq!(s.rows()[0].cells[0], "Bob Secret");
+    assert_eq!(s.selected(), None);
 }

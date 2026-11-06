@@ -19,9 +19,12 @@ use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
 use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
+use crate::words::field;
+
 use super::apply::apply_draft;
 use super::draft::{blank_draft, draft_of};
-use super::sheet::{first_email, sheet_of};
+use super::marks::is_marked;
+use super::sheet::{first_email, sensitive_mark, sheet_of};
 
 /// The contract of the people program, for the workbench. Do not call it from inside the runtime:
 /// it blocks the calling thread until the core has answered.
@@ -116,10 +119,15 @@ impl PeopleSource for PeopleAdapter {
                     .ok()
                     .as_ref()
                     .map_or_else(String::new, first_email);
-                PersonRow::new(
+                let row = PersonRow::new(
                     object.envelope.id.to_string(),
                     vec![object.envelope.name.clone(), mail],
-                )
+                );
+                if is_marked(object) {
+                    row.guarded(field::SENSITIVE_ROW)
+                } else {
+                    row
+                }
             })
             .collect())
     }
@@ -134,7 +142,9 @@ impl PeopleSource for PeopleAdapter {
     fn draft(&self, key: &str) -> Result<PersonDraft, SourceError> {
         let object = self.stored(id_of(key)?)?;
         let card = card_of(&object).map_err(|e| reason(&e))?;
-        Ok(draft_of(&card, Some(revision_of(&object))))
+        let mut draft = draft_of(&card, Some(revision_of(&object)));
+        draft.marks.extend(sensitive_mark(&card, &object));
+        Ok(draft)
     }
 
     fn blank(&self) -> Result<PersonDraft, SourceError> {

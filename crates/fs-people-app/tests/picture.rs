@@ -29,6 +29,16 @@ fn out(name: &str) -> PathBuf {
     dir.join(name)
 }
 
+/// The picture's bytes; it stays only where `FS_COMP_SHOTS` asks for it.
+fn read_and_clear(path: &PathBuf) -> Vec<u8> {
+    let bytes = std::fs::read(path).unwrap();
+    if std::env::var_os("FS_COMP_SHOTS").is_none() {
+        std::fs::remove_file(path).unwrap();
+        let _ = std::fs::remove_dir(path.parent().unwrap());
+    }
+    bytes
+}
+
 fn world() -> World {
     let w = World::in_memory();
     let mut ada = person("Ada Lovelace", "ada@x.org");
@@ -67,7 +77,7 @@ fn the_program_draws_through_picture_and_through_the_live_build_alike() {
         &live,
     )
     .unwrap();
-    let (a, b) = (std::fs::read(&once).unwrap(), std::fs::read(&live).unwrap());
+    let (a, b) = (read_and_clear(&once), read_and_clear(&live));
     assert!(!a.is_empty() && !b.is_empty());
     assert_eq!(a, b, "the window's path draws what the picture draws");
 }
@@ -89,10 +99,7 @@ fn a_problem_reaches_the_status_line_of_the_picture() {
     )));
     let problem = out("people-problem.png");
     app.picture(800, 500, &problem).unwrap();
-    assert_ne!(
-        std::fs::read(&plain).unwrap(),
-        std::fs::read(&problem).unwrap()
-    );
+    assert_ne!(read_and_clear(&plain), read_and_clear(&problem));
 }
 
 #[test]
@@ -112,8 +119,5 @@ fn the_marks_of_an_ai_and_of_sensitive_data_are_drawn() {
     widget.with_state(|s| s.select(&secret));
     let marked = out("people-sensitive.png");
     draw(&marked).unwrap();
-    assert_ne!(
-        std::fs::read(&plain).unwrap(),
-        std::fs::read(&marked).unwrap()
-    );
+    assert_ne!(read_and_clear(&plain), read_and_clear(&marked));
 }

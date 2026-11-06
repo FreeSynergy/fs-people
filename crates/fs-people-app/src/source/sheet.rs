@@ -47,18 +47,21 @@ pub(super) fn sheet_of(
     if is_ai {
         sheet.marks.push(field::AI.to_string());
     }
-    if is_marked(object) {
+    sheet.marks.extend(sensitive_mark(card, object));
+    sheet
+}
+
+/// The marking of someone sensitive, with the categories; `None` for everyone else (ADR 0029).
+pub(super) fn sensitive_mark(card: &Card, object: &StoredObject) -> Option<String> {
+    is_marked(object).then(|| {
         let categories = card.sensitive_categories().join(", ");
         let categories = if categories.is_empty() {
             field::UNCLEAR
         } else {
             categories.as_str()
         };
-        sheet
-            .marks
-            .push(field::SENSITIVE.replacen("{}", categories, 1));
-    }
-    sheet
+        field::SENSITIVE.replacen("{}", categories, 1)
+    })
 }
 
 fn contact(card: &Card) -> PersonSection {
