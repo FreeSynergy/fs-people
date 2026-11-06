@@ -81,7 +81,14 @@ fn is_exact(token: &str) -> bool {
         return false;
     };
     let negative_zero = value == 0.0 && token.starts_with('-');
-    !negative_zero && decimal(token) == decimal(&format!("{value:e}"))
+    if negative_zero {
+        return false;
+    }
+    // A double can have two equally short spellings. Rust's printer and `serde_json` (like Python and
+    // JavaScript) may pick different ones, and what we answer has to be accepted when sent back.
+    let wanted = decimal(token);
+    wanted == decimal(&format!("{value:e}"))
+        || serde_json::to_string(&value).is_ok_and(|printed| wanted == decimal(&printed))
 }
 
 /// Digits without outer zeros and the power of ten they are to be multiplied by.

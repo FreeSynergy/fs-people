@@ -47,6 +47,33 @@ async fn a_number_that_would_change_does_not_come_in() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn a_double_with_two_shortest_spellings_comes_in_and_can_be_sent_back() {
+    with_store(|root, _| async move {
+        let persons = persons_of(&root).await;
+        // The same double 1.10007476806640625; Rust and serde_json print different digits.
+        for (uid, number) in [("a", "1.1000747680664062"), ("b", "1.1000747680664063")] {
+            let mut create = persons.create_request();
+            create
+                .get()
+                .set_jscontact(with_number(uid, number).as_str());
+            let answer = create.send().promise.await.unwrap();
+            let person = answer.get().unwrap().get_person().unwrap();
+            let id = common::id_of(person);
+            let back = person.get_jscontact().unwrap().to_string().unwrap();
+            let mut update = persons.update_request();
+            write_uuid(update.get().init_id(), Some(id));
+            update.get().set_jscontact(back.as_str());
+            update
+                .send()
+                .promise
+                .await
+                .expect("its own answer is accepted");
+        }
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn a_negative_zero_an_older_card_holds_can_be_sent_back() {
     with_store(|root, store| async move {
         let persons = persons_of(&root).await;
