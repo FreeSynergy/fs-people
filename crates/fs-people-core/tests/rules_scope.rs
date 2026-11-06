@@ -161,3 +161,18 @@ async fn details_are_not_dropped_and_an_unknown_role_is_not_found() {
         Err(Error::UnknownRole(_))
     ));
 }
+
+#[tokio::test]
+async fn an_ai_marked_under_a_public_role_does_not_block_a_group_configuration() {
+    let r = repo().await;
+    let a = r
+        .create(person("Ada", "a@x.org"))
+        .await
+        .unwrap()
+        .envelope
+        .id;
+    r.mark_ai(a).await.unwrap();
+    let group = json!([{"id": "ai", "names": {"en": "AI"}, "owner": "o", "scope": "group", "cardKind": "application"}]);
+    r.store_role_config(&group.to_string()).await.unwrap();
+    assert!(r.is_ai(a).await.unwrap());
+}
