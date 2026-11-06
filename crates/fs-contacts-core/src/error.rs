@@ -1,11 +1,16 @@
 //! Error type of the contacts core.
+//!
+//! Pattern: none (plain error enum via `thiserror`) — one `Error` for every public operation,
+//! with `From` conversions for the store and JSON layers.
 
 use fs_store::ObjectId;
 
 /// One validation problem, with a JSON-pointer-like path into the card.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Issue {
+    /// JSON-pointer-like path, e.g. `/emails/e1`.
     pub path: String,
+    /// What is wrong.
     pub message: String,
 }
 
@@ -15,23 +20,31 @@ impl std::fmt::Display for Issue {
     }
 }
 
+/// Result of every fallible operation of this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Everything that can go wrong in the contacts core.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The object store failed.
     #[error("object store: {0}")]
     Store(#[from] fs_store::Error),
-    #[error("card violates RFC 9553: {}", .0.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("; "))]
+    /// The card violates RFC 9553 (all problems listed).
+    #[error("card violates RFC 9553: {}", .0.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))]
     Invalid(Vec<Issue>),
+    /// No contact with this id.
     #[error("contact {0} not found")]
     NotFound(ObjectId),
+    /// vCard text could not be read or written.
     #[error("vCard: {0}")]
     VCard(String),
+    /// JSON could not be read or written.
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
     /// ADR 0029: sensitive cards are never linked.
     #[error("contact {0} carries sensitive categories and must not be linked (ADR 0029)")]
     Sensitive(ObjectId),
+    /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
     #[error("{0}")]
     Conflict(String),
 }

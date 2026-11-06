@@ -1,8 +1,7 @@
-//! Extracted index fields (ADR 0020) and normalisation.
-
-use fs_store::IndexFields;
-
-use crate::card::Card;
+//! Normalisation of e-mail addresses, phone numbers and names for matching.
+//!
+//! Pattern: Strategy (pure functions) — each `normalise_*` is the canonical form used both when
+//! indexing and when querying, so the two sides always agree.
 
 /// E-mail for matching: trimmed, `mailto:` removed, lowercase.
 pub fn normalise_email(s: &str) -> String {
@@ -15,7 +14,10 @@ pub fn normalise_email(s: &str) -> String {
 /// (`;ext=...`, `x123`) are cut off. Empty if there are no digits.
 pub fn normalise_phone(s: &str) -> String {
     let t = s.trim();
-    let t = t.strip_prefix("tel:").or_else(|| t.strip_prefix("TEL:")).unwrap_or(t);
+    let t = t
+        .strip_prefix("tel:")
+        .or_else(|| t.strip_prefix("TEL:"))
+        .unwrap_or(t);
     let t = t.split(';').next().unwrap_or(t);
     let t = t.split(['x', 'X']).next().unwrap_or(t);
     let plus = t.trim_start().starts_with('+');
@@ -37,51 +39,6 @@ pub fn fold(s: &str) -> String {
     s.trim().to_lowercase()
 }
 
-/// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `nickname`, `org`, `member`. (`describes` is an envelope field since fs-store 0.2.)
-pub fn index_fields(card: &Card) -> IndexFields {
-    let mut f = IndexFields::new();
-    let mut add = |k: &str, v: String| {
-        if !v.is_empty() {
-            let e = f.entry(k.to_string()).or_default();
-            if !e.contains(&v) {
-                e.push(v);
-            }
-        }
-    };
-    add("uid", card.uid.clone());
-    add("kind", card.kind().to_string());
-    add("name_sort", sort_key(card));
-    for e in card.emails.values() {
-        add("email", normalise_email(&e.address));
-    }
-    for p in card.phones.values() {
-        add("phone", normalise_phone(&p.number));
-    }
-    for n in card.nicknames.values() {
-        add("nickname", fold(&n.name));
-    }
-    for o in card.organizations.values() {
-        if let Some(n) = &o.name {
-            add("org", fold(n));
-        }
-    }
-    for uid in card.members.keys() {
-        add("member", uid.clone());
-    }
-    f
-}
-
-/// `surname, given` for ordered person names, otherwise the display name; lowercase.
-fn sort_key(card: &Card) -> String {
-    if let Some(n) = &card.name {
-        let get = |k: &str| n.components.iter().find(|c| c.kind == k).map(|c| c.value.trim());
-        if let (Some(sur), given) = (get("surname"), get("given")) {
-            return fold(&format!("{sur}, {}", given.unwrap_or("")));
-        }
-    }
-    fold(&card.display_name())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,7 +46,10 @@ mod tests {
 
     #[test]
     fn email() {
-        assert_eq!(normalise_email("  MailTo:Ada@Example.ORG "), "ada@example.org");
+        assert_eq!(
+            normalise_email("  MailTo:Ada@Example.ORG "),
+            "ada@example.org"
+        );
     }
 
     #[test]
