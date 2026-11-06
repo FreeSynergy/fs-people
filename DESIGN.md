@@ -1,12 +1,12 @@
 # fs-people – Design
 
-`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI) and its **server** (`crates/fs-people-server`).
+`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI), its **server** (`crates/fs-people-server`) and its frontend (`crates/fs-people-app`).
 A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
-(ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the GUI/workbench crates come later and use this core.
+(ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the work surface is the workbench `people` in `fs-components`, which knows neither this core nor its types; `fs-people-app` connects the two.
 
 ## State
 
-Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.22.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
+Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.32.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
 
 | Area | State |
 |---|---|
@@ -34,11 +34,49 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | `list`: kind, role and term combine with AND (`ListFilter`) | done |
 | Writes through the traits take turns (`writes` in `PeopleRepo`), so a read-modify-write is not lost when the backend yields; the inherent methods do not, and compose each other | done |
 | Limits: a card is at most `MAX_CARD_BYTES` as JSON (also after small edits), every stored text passes `check_intake`, every answer without a cursor `check_answer`; the report of an import keeps `created` whole and cuts `skipped` and `failed` to fit, with a last entry "N more" | done |
-| A write of the server runs to its end, also if the client goes away (`run_to_end`, `fs-interfaces` branch `rpc-side`, **needs the tag**: until the pin moves the branch builds only with the `[patch]` below) | done |
+| A write of the server runs to its end, also if the client goes away (`run_to_end`) | done |
 | Numbers: what plain `serde_json` cannot keep exactly is refused at intake with a clear 422 (an integer beyond `i64` / `u64`, a float whose value does not come back, `-0`): cards, `details`, a role configuration when stored (not when restored, so a stored one cannot stop a start); in an import, per item in `failed`, also one that no parser reads such as `1e400`. A `-0` an older card already holds blocks no edit. `validate/numbers.rs` reads the text, as the parser changes the number. `serde_json` has `float_roundtrip`, without which the parser can be one step off a double (6 % of random ones). The feature `arbitrary_precision` was tried and removed: features unify across the build, it broke vCard export and undo, and other readers could not read the result | done |
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
-| Tests | 109 in the core, 49 for the server: over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
+| Tests | 109 in the core, 49 for the server (the app has its own: `crates/fs-people-app/tests`): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
+
+## Frontend `fs-people-app` (first version, provisional)
+
+Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default in memory), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
+
+**In process, not RPC (provisional, do not forget):** `PeopleAdapter` holds `Arc<dyn People>` and `Arc<dyn RoleBook>` in the same process and drives them with a tokio handle, blocking the interface thread like `fs-wiki-app`. When the Cap'n Proto server of `people.capnp` exists, the adapter must call it instead. Until then the program opens the store itself, and the workbench's calls freeze the window for as long as the store takes.
+
+| Area | State |
+|---|---|
+| List (a page of 200 with a Show more button), search, read as sections, marks for an AI and for sensitive data (ADR 0029, 0054), roles read only | done |
+| Create and edit name, e-mails, phones, organisation; delete with a second press | done |
+| Editing keeps everything else: the form goes onto the card as stored now, and only fields that differ from what the form started with are written, each to the entry its key names. Proved in `tests/keeps.rs` by comparing the whole card as JSON | done |
+| vCard import at start; a store refusing a sensitive card is shown as a problem in the status line and on stderr. On this core the import stops there and the people before it are in; `people-core-fixes` makes it one failure among the rest, and the same code then reports it under `failed`. `ImportReport::unclear` of that branch is not shown yet | done, follows the core |
+| vCard export of everyone with `--export`, written through a short-named temporary file beside the target, synced, then linked into place, never over an existing one (without hard links it is copied, and a failed copy removes what it made), then the program stops (with `--snapshot` it draws as well). `--export-sensitive <uid>`, repeatable, releases one named person marked sensitive; naming nobody writes nothing | done |
+| Marks: someone sensitive is marked in the list, in search, in the compact variant and in the form, and is opened only when chosen (ADR 0029 point 4) | done |
+| Windows | `launch` is wired, never opened by tests; `AppWidget::build` and `picture` are drawn offscreen and compared |
+
+Decisions (provisional, easy to reverse):
+
+* **A changed name replaces the name's parts** (`components`, `isOrdered`, `defaultSeparator`): left in place they would keep the old name in sorting, search and vCard `N`. `name.extra` stays, also a `sortAs` in it, which may then be out of date. An unchanged name stays as it is. An emptied name loses `sortAs` and the phonetic members with it; a name holding anything else unknown can be replaced but not emptied, and the form says what it holds.
+* **An edit never reduces a card's sensitive marking:** what the removed part carried moves to card level, a marking that names no category as it came, so it stays unclear and no category is invented. Beside named categories it stays as a non-string member of the list. Whether someone is marked is decided by the property, never by text: a note that mentions it marks nobody. `source/marks.rs` walks the card itself because main's core only knows categories; with `people-core-fixes` merged it becomes `Card::is_sensitive`.
+* **One rule for an empty card:** Save and Create both refuse a card left with no name, nickname, e-mail, phone or organisation with a name (units alone would only show the `uid`).
+* **An emptied field removes that value;** an organisation with `units` only loses its name. Additions come before removals, so an id freed by an edit is not given to something added by it, and a title lets go of an organisation that went.
+* **Conflict:** a revision is the store's `updated` plus a fingerprint of the content. Compare and write are not atomic, because `People::update` takes no revision: **wanted from the core: compare-and-set**. After a conflict the second Save writes only the fields the person changed, onto the other's version.
+* **`--export` leaves out people marked sensitive and names them with their `uid`** (ADR 0029: they leave the device only by explicit release, which is `--export-sensitive <uid>`, one person at a time). A marking in any form counts, also one with no category we can read. It never replaces a file, and it stops without a window, so it works in a script.
+* **`--import` skips known `uid`s** (the core's rule); a file that cannot be read or holds no vCard ends the program with an error rather than opening without the people.
+* The actor is a fixed `https://localhost/actors/owner`: there is no sign-in yet.
+
+Unsupported in this version (nothing in the interface pretends otherwise): groups and their members (a group card is listed and read, `members` named as kept), relations (`relatedTo` kept, not shown), same-person proposals and links, assigning roles or marking an AI, editing anything else (nicknames, titles, addresses, links, notes, keywords), setting the sensitive marking, field-level release of sensitive data, a file dialog for import and export, undo, live updates (`person.subscribe`), a draft surviving a closed window, an encrypted store.
+
+To do when `people-core-fixes` reaches main: show `ImportReport::unclear` in the import summary (`transfer.rs`); answer `PeopleSource::delete` with `Ok(Some(remark))` for the core's `PartlyDeleted`, so the screen says the person went and what stayed; replace the walk in `source/marks.rs`.
+
+Wanted from the core:
+
+* `People::search` has no paging: the whole result is read for every page of the list.
+* `People::list` reports no total, so the list shows Show more instead of a scrollbar over everyone.
+* `import` stops at the first store error and loses the report of the people before it (they are stored; the summary cannot count them). Fixed on `origin/server`, not on main yet.
+* `export_vcard` keeps `VERSION:3.0` for a card imported from vCard 3.0 (seen in a real export), while its documentation says 4.0.
 
 ## Structure and pattern map (ADR 0043)
 
@@ -91,10 +129,11 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.22.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
+* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.32.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
+* `fs-components-app`, `fs-components-workbenches` (frontend only; git `rev`, provisional until a tag exists).
 * `serde`, `serde_json`, `chrono` (timestamps), `thiserror`, `async-trait` (MIT OR Apache-2.0, already used by fs-store); dev: `tokio`, `proptest`.
 * All transitive licences are MIT / Apache-2.0 / BSD / ISC / Unicode-3.0 / Unlicense (a few have an LGPL *alternative*, never required).
 
@@ -124,10 +163,6 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Groups** are normal cards of `kind: group`; `members` maps member `uid` -> `true` (RFC 9553). Folder = group = mailing list (ADR 0037).
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
-
-## Building before the tag
-
-`run_to_end`, `ServerOptions.instance` (branch `rpc-side` of `fs-interfaces`) and `exportText.released` / `withheld`, `ImportReport.unclear` (branch `people-export`) are not on a tag yet; the pin stays `v0.22.0` in Git. Until it moves, the branch builds only with both manifests pointing at a local copy (`path`), never committed. A `[patch]` is not stable here: it is another 0.x, and `Cargo.lock` flips between the two.
 
 ## Open points of the `people` interface
 

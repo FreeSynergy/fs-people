@@ -83,11 +83,29 @@ async fn a_delete_finishes_after_its_client_went_away() {
         drop(call);
         drop(persons);
         drop(first);
-        tokio::time::sleep(PAUSE * 40).await;
 
         let second = connect::<people::Client>(&path).await.unwrap();
         let persons = persons_of(&second.client).await;
         let roles = roles_of(&second.client).await;
+        // However busy the machine: it gets there, where without `run_to_end` it stops for good.
+        for _ in 0..500 {
+            let mut linked = persons.linked_to_request();
+            write_uuid(linked.get().init_id(), Some(b));
+            let answer = linked.send().promise.await.unwrap();
+            if uuids(answer.get().unwrap().get_ids().unwrap()).is_empty() {
+                break;
+            }
+            tokio::time::sleep(PAUSE * 4).await;
+        }
+        for _ in 0..500 {
+            let mut of = roles.roles_of_request();
+            write_uuid(of.get().init_person(), Some(a));
+            let answer = of.send().promise.await.unwrap();
+            if answer.get().unwrap().get_items().unwrap().is_empty() {
+                break;
+            }
+            tokio::time::sleep(PAUSE * 4).await;
+        }
         let mut get = persons.get_request();
         write_uuid(get.get().init_id(), Some(a));
         let answer = get.send().promise.await.unwrap();
@@ -132,13 +150,21 @@ async fn an_import_finishes_after_its_client_went_away() {
         drop(call);
         drop(persons);
         drop(first);
-        tokio::time::sleep(PAUSE * 200).await;
 
+        // However busy the machine: it gets there, where without `run_to_end` it stops for good.
         let second = connect::<people::Client>(&path).await.unwrap();
         let persons = persons_of(&second.client).await;
-        let answer = persons.list_request().send().promise.await.unwrap();
-        let page = answer.get().unwrap().get_page().unwrap();
-        assert_eq!(page.get_items().unwrap().len(), 20);
+        let mut stored = 0;
+        for _ in 0..500 {
+            let answer = persons.list_request().send().promise.await.unwrap();
+            let page = answer.get().unwrap().get_page().unwrap();
+            stored = page.get_items().unwrap().len();
+            if stored == 20 {
+                break;
+            }
+            tokio::time::sleep(PAUSE * 4).await;
+        }
+        assert_eq!(stored, 20);
     })
     .await;
 }
