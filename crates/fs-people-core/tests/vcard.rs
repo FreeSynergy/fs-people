@@ -77,7 +77,11 @@ async fn vcard_import_keeps_original_and_exports() {
 
 #[test]
 fn vcard_garbage_is_reported_not_panicking() {
-    assert!(vcard::import_vcards("hello world").is_empty());
+    let lost = vcard::import_vcards("hello world");
+    assert!(matches!(
+        lost.as_slice(),
+        [Err(fs_people_core::Error::VCard(_))]
+    ));
     let r = vcard::import_vcards("BEGIN:VCARD\nVERSION:4.0\nEND:VCARD\n");
     // no FN / name: still a card (uid generated) or a clean error, never a panic
     assert_eq!(r.len(), 1);

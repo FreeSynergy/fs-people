@@ -6,7 +6,7 @@
 use calcard::vcard::VCard;
 use fs_store::Blob;
 
-use super::split::split_vcards;
+use super::split::scan;
 use super::uid::uid_from_text;
 use crate::card::Card;
 use crate::error::{Error, Result};
@@ -34,9 +34,11 @@ pub fn card_from_vcard(vcard_text: &str) -> Result<Card> {
     Ok(card)
 }
 
-/// Import every vCard in `text`. Blocks that fail to convert are reported, not silently dropped.
+/// Import every vCard in `text`. Blocks that fail to convert and lines outside any complete block
+/// are reported, not silently dropped.
 pub fn import_vcards(text: &str) -> Vec<Result<ImportedCard>> {
-    split_vcards(text)
+    let (blocks, lost) = scan(text);
+    let mut out: Vec<Result<ImportedCard>> = blocks
         .into_iter()
         .map(|block| {
             let card = card_from_vcard(block)?;
@@ -49,5 +51,11 @@ pub fn import_vcards(text: &str) -> Vec<Result<ImportedCard>> {
                 original: Some(original),
             })
         })
-        .collect()
+        .collect();
+    if lost > 0 {
+        out.push(Err(Error::VCard(format!(
+            "{lost} lines are outside any complete vCard and were not read"
+        ))));
+    }
+    out
 }

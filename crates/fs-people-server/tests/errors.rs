@@ -2,11 +2,14 @@
 
 mod common;
 
-use common::{CLUB, card, create, persons_of, problem_of, roles_of, unknown_id, with_server};
+use common::{
+    BAD_REQUEST, CLUB, CONFLICT, INVALID, ME, NOT_FOUND, STORED_DATA, card, create, expect_problem,
+    id_of, json_of, persons_of, roles_of, unknown_id, with_server, with_store,
+};
 use fs_interfaces::rpc::write_uuid;
 use fs_people_server::CONTRACT_VERSION;
-
-const PROBLEMS: &str = "https://freesynergy.net/problems/people/";
+use fs_store::{Envelope, StoredObject};
+use serde_json::json;
 
 #[tokio::test(flavor = "current_thread")]
 async fn errors_arrive_typed() {
@@ -19,71 +22,122 @@ async fn errors_arrive_typed() {
         twice
             .get()
             .set_jscontact(card("uid-1", "Again", "a@x.org").as_str());
-        let e = problem_of(twice.send().promise.await);
-        assert_eq!(
-            (e.status, e.problem_type),
-            (409, format!("{PROBLEMS}conflict"))
-        );
+        expect_problem(twice.send().promise.await, CONFLICT);
 
         let mut broken = persons.create_request();
         broken.get().set_jscontact("{ not json");
-        let e = problem_of(broken.send().promise.await);
-        assert_eq!(
-            (e.status, e.problem_type),
-            (422, format!("{PROBLEMS}invalid"))
-        );
+        expect_problem(broken.send().promise.await, BAD_REQUEST);
 
         let mut against_the_rfc = persons.create_request();
         against_the_rfc
             .get()
             .set_jscontact(r#"{"@type":"Card","version":"9","uid":"u"}"#);
-        assert_eq!(problem_of(against_the_rfc.send().promise.await).status, 422);
+        let detail = expect_problem(against_the_rfc.send().promise.await, INVALID);
+        assert!(detail.contains("/version"), "{detail}");
 
         let mut other_uid = persons.update_request();
         write_uuid(other_uid.get().init_id(), Some(id));
         other_uid
             .get()
             .set_jscontact(card("uid-other", "Ada", "a@x.org").as_str());
-        assert_eq!(problem_of(other_uid.send().promise.await).status, 409);
+        expect_problem(other_uid.send().promise.await, CONFLICT);
 
         let mut unknown = persons.delete_request();
         write_uuid(unknown.get().init_id(), Some(unknown_id()));
-        let e = problem_of(unknown.send().promise.await);
-        assert_eq!(
-            (e.status, e.problem_type),
-            (404, format!("{PROBLEMS}not-found"))
-        );
+        expect_problem(unknown.send().promise.await, NOT_FOUND);
 
         let no_id = persons.delete_request();
-        assert_eq!(problem_of(no_id.send().promise.await).status, 422);
+        expect_problem(no_id.send().promise.await, BAD_REQUEST);
 
         let mut bad_cursor = persons.list_request();
         bad_cursor.get().init_cursor().set_opaque(&[9, 9]);
-        assert_eq!(problem_of(bad_cursor.send().promise.await).status, 422);
+        expect_problem(bad_cursor.send().promise.await, BAD_REQUEST);
 
         let mut unknown_role = roles.assign_request();
         write_uuid(unknown_role.get().init_person(), Some(id));
         unknown_role.get().set_role("wizard");
-        assert_eq!(problem_of(unknown_role.send().promise.await).status, 409);
+        expect_problem(unknown_role.send().promise.await, CONFLICT);
 
         let mut not_an_object = roles.assign_request();
         write_uuid(not_an_object.get().init_person(), Some(id));
         not_an_object.get().set_role("ai");
         not_an_object.get().set_details("[1]");
-        assert_eq!(problem_of(not_an_object.send().promise.await).status, 422);
+        expect_problem(not_an_object.send().promise.await, BAD_REQUEST);
 
         let mut not_an_iri = roles.assign_request();
         write_uuid(not_an_iri.get().init_person(), Some(id));
         not_an_iri.get().set_role("member");
         not_an_iri.get().set_scope("personal");
-        assert_eq!(problem_of(not_an_iri.send().promise.await).status, 422);
+        expect_problem(not_an_iri.send().promise.await, INVALID);
 
         let mut foreign_fields = roles.assign_request();
         write_uuid(foreign_fields.get().init_person(), Some(id));
         foreign_fields.get().set_role("member");
         foreign_fields.get().set_scope(CLUB);
         foreign_fields.get().set_details(r#"{"a":1}"#);
-        assert_eq!(problem_of(foreign_fields.send().promise.await).status, 422);
+        expect_problem(foreign_fields.send().promise.await, INVALID);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn an_empty_value_is_a_malformed_request() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let roles = roles_of(&root).await;
+        let id = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+        let by_uid = persons.get_by_uid_request();
+        expect_problem(by_uid.send().promise.await, BAD_REQUEST);
+        let email = persons.find_by_email_request();
+        expect_problem(email.send().promise.await, BAD_REQUEST);
+        let phone = persons.find_by_phone_request();
+        expect_problem(phone.send().promise.await, BAD_REQUEST);
+        let iri = persons.find_by_describes_request();
+        expect_problem(iri.send().promise.await, BAD_REQUEST);
+        let name = persons.create_list_request();
+        expect_problem(name.send().promise.await, BAD_REQUEST);
+        let mut relation = persons.relate_request();
+        write_uuid(relation.get().init_id(), Some(id));
+        relation.get().set_other_uid("uid-2");
+        expect_problem(relation.send().promise.await, BAD_REQUEST);
+        let mut media_type = persons.export_text_request();
+        write_uuid(media_type.get().init_id(), Some(id));
+        expect_problem(media_type.send().promise.await, BAD_REQUEST);
+        let role = roles.get_request();
+        expect_problem(role.send().promise.await, BAD_REQUEST);
+        let config = roles.load_config_request();
+        expect_problem(config.send().promise.await, BAD_REQUEST);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn broken_stored_data_is_not_the_callers_fault_and_a_panic_ends_nothing() {
+    with_store(|root, store| async move {
+        let persons = persons_of(&root).await;
+        let mut envelope = Envelope::new("Profile", "Broken");
+        envelope.context = Some("people".into());
+        let id = envelope.id;
+        let object = StoredObject::new(envelope, "application/jscontact+json", json!({"uid": 5}));
+        store.put(object, ME).await.unwrap();
+        let mut read = persons.relations_request();
+        write_uuid(read.get().init_id(), Some(id.as_uuid()));
+        expect_problem(read.send().promise.await, STORED_DATA);
+
+        // A value `relatedTo` may hold, which an edit once panicked on and took the connection along.
+        let text = json!({"@type": "Card", "version": "1.0", "uid": "odd", "name": {"full": "Odd"},
+            "relatedTo": {"x": "not an object"}});
+        let mut create = persons.create_request();
+        create.get().set_jscontact(text.to_string().as_str());
+        let answer = create.send().promise.await.unwrap();
+        let odd = id_of(answer.get().unwrap().get_person().unwrap());
+        let mut relate = persons.relate_request();
+        write_uuid(relate.get().init_id(), Some(odd));
+        relate.get().set_other_uid("x");
+        relate.get().set_relation("friend");
+        let answer = relate.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert_eq!(card["relatedTo"]["x"]["relation"]["friend"], true);
     })
     .await;
 }

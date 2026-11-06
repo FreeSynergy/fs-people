@@ -1,5 +1,6 @@
 //! The real program: started, used, stopped and started again; what it holds is still there.
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
@@ -38,7 +39,7 @@ fn terminate(mut child: Child) {
         .status()
         .unwrap();
     assert!(status.success());
-    assert!(child.wait().unwrap().success());
+    assert_eq!(child.wait().unwrap().code(), Some(0));
 }
 
 fn sensitive_card() -> String {
@@ -150,7 +151,9 @@ async fn people_survive_a_restart_and_a_second_start_is_refused() {
             wait_for(&socket).await;
 
             let mut second = start(&socket, &data);
-            assert!(!second.wait().unwrap().success(), "a second server started");
+            assert_eq!(second.wait().unwrap().code(), Some(1), "a second server");
+            let mode = std::fs::metadata(&data).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o700, "people's data for others to read");
             assert!(socket.exists(), "the second start touched the first");
 
             fill(&socket).await;
@@ -163,4 +166,35 @@ async fn people_survive_a_restart_and_a_second_start_is_refused() {
             terminate(again);
         })
         .await;
+}
+
+fn exit_code(args: &[&str], data: Option<&Path>, socket: Option<&Path>) -> Option<i32> {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_fs-people-server"));
+    command
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    if let Some(data) = data {
+        command.arg("--data").arg(data);
+    }
+    if let Some(socket) = socket {
+        command.arg("--socket").arg(socket);
+    }
+    command.status().unwrap().code()
+}
+
+#[test]
+fn the_exit_code_says_what_happened() {
+    assert_eq!(exit_code(&["--help"], None, None), Some(0));
+    assert_eq!(exit_code(&["--nonsense"], None, None), Some(2));
+    assert_eq!(exit_code(&["--socket"], None, None), Some(2));
+
+    // A data directory others can reach is refused, and nothing is put into it.
+    let dir = tempfile::tempdir().unwrap();
+    let open = dir.path().join("open");
+    std::fs::create_dir(&open).unwrap();
+    std::fs::set_permissions(&open, PermissionsExt::from_mode(0o755)).unwrap();
+    let socket = dir.path().join("people.sock");
+    assert_eq!(exit_code(&[], Some(&open), Some(&socket)), Some(1));
+    assert_eq!(std::fs::read_dir(&open).unwrap().count(), 0);
 }

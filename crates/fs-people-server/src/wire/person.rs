@@ -12,25 +12,39 @@ use fs_interfaces::people_capnp::{
     person, person_filter, person_page, relation, same_person_proposal,
 };
 use fs_interfaces::rpc::{
-    DEFAULT_PAGE_SIZE, MAX_PAGE_BYTES, Page, read_object_id, write_envelope, write_object_id,
+    DEFAULT_PAGE_SIZE, Page, check_answer, check_intake, envelope_weight, invalid_request,
+    write_envelope, write_object_id,
 };
 use fs_people_core::{Card, ImportReport, ListFilter, MatchKind, SameAsProposal};
 use fs_store::{ObjectId, StoredObject};
 
-use crate::errors::{invalid, too_large};
+/// Room for one list entry with its pointers; only for the check that an answer fits.
+const UUID_BYTES: usize = 32;
 
 /// A length as the wire counts it.
 pub(crate) fn count(n: usize) -> capnp::Result<u32> {
     u32::try_from(n).map_err(|_| capnp::Error::failed("list too long".into()))
 }
 
-/// Read an id; none or not a valid one is the caller's mistake.
-pub(crate) fn read_id(r: common_capnp::uuid::Reader<'_>) -> capnp::Result<ObjectId> {
-    read_object_id(r).map_err(|e| invalid(e.extra))
+/// A text the request must not leave empty.
+pub(crate) fn required<'a>(t: capnp::text::Reader<'a>, what: &str) -> capnp::Result<&'a str> {
+    let text = t.to_str()?;
+    if text.trim().is_empty() {
+        return Err(invalid_request(format!("{what} is empty")));
+    }
+    Ok(text)
 }
 
+/// A required text that gets stored: it also has to fit an answer later.
+pub(crate) fn intake<'a>(t: capnp::text::Reader<'a>, what: &str) -> capnp::Result<&'a str> {
+    let text = required(t, what)?;
+    check_intake(text.len())?;
+    Ok(text)
+}
+
+/// What one person costs in an answer.
 fn weight(o: &StoredObject) -> usize {
-    o.content.to_string().len()
+    o.content.to_string().len() + envelope_weight(&o.envelope)
 }
 
 /// Write one person.
@@ -41,7 +55,8 @@ pub(crate) fn write_person(mut out: person::Builder<'_>, o: &StoredObject) {
 
 /// Read the JSContact text of a request.
 pub(crate) fn read_card(text: capnp::text::Reader<'_>) -> capnp::Result<Card> {
-    serde_json::from_str(text.to_str()?).map_err(|e| invalid(e.to_string()))
+    let text = intake(text, "jscontact")?;
+    serde_json::from_str(text).map_err(|e| invalid_request(e.to_string()))
 }
 
 /// Read a filter: empty members are no restriction.
@@ -65,8 +80,7 @@ pub(crate) fn write_page(
     cursor: capnp::Result<common_capnp::cursor::Reader<'_>>,
 ) -> capnp::Result<()> {
     let opaque = cursor?.get_opaque()?;
-    let page =
-        Page::of_weighted(all, opaque, DEFAULT_PAGE_SIZE, weight).map_err(|e| invalid(e.extra))?;
+    let page = Page::of_weighted(all, opaque, DEFAULT_PAGE_SIZE, weight)?;
     let mut items = out.reborrow().init_items(count(page.items.len())?);
     for (i, o) in (0u32..).zip(&page.items) {
         write_person(items.reborrow().get(i), o);
@@ -77,13 +91,7 @@ pub(crate) fn write_page(
 
 /// How many people an answer without a cursor will hold. All or nothing: it has no next page.
 pub(crate) fn unpaged(found: &[StoredObject]) -> capnp::Result<u32> {
-    let bytes: usize = found.iter().map(weight).sum();
-    if bytes > MAX_PAGE_BYTES {
-        return Err(too_large(format!(
-            "{} people, {bytes} bytes; the contract has no page for this answer",
-            found.len()
-        )));
-    }
+    check_answer(found.iter().map(weight).sum())?;
     count(found.len())
 }
 
@@ -138,6 +146,32 @@ pub(crate) fn write_relations(
         item.set_uid(uid.as_str());
         item.set_relation(kind.as_str());
     }
+}
+
+/// How many ids an answer will hold, if they fit one.
+pub(crate) fn ids_count(ids: &[ObjectId]) -> capnp::Result<u32> {
+    check_answer(ids.len().saturating_mul(UUID_BYTES))?;
+    count(ids.len())
+}
+
+/// How many relations an answer will hold, if they fit one.
+pub(crate) fn relations_count(relations: &[(String, String)]) -> capnp::Result<u32> {
+    check_answer(
+        relations
+            .iter()
+            .map(|(u, r)| u.len() + r.len() + UUID_BYTES)
+            .sum(),
+    )?;
+    count(relations.len())
+}
+
+/// How many proposals an answer will hold, if they fit one: people sharing one address make many.
+pub(crate) fn proposals_count(proposals: &[SameAsProposal]) -> capnp::Result<u32> {
+    let reasons = |p: &SameAsProposal| -> usize {
+        p.reasons.iter().map(|r| r.value.len() + UUID_BYTES).sum()
+    };
+    check_answer(proposals.iter().map(|p| reasons(p) + 3 * UUID_BYTES).sum())?;
+    count(proposals.len())
 }
 
 /// Write same-person proposals; a reason reads `email:<value>` or `phone:<value>`.

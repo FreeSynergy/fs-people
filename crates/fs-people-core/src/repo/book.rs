@@ -1,25 +1,21 @@
-//! `People` and `RoleBook` implemented by `PeopleRepo`.
+//! `People` implemented by `PeopleRepo`.
 //!
 //! Pattern: Facade — each trait method forwards to the inherent method of the same name (inherent
-//! methods keep working for callers that do not import the trait).
-
-use std::sync::Arc;
+//! methods keep working for callers that do not import the trait). A write first takes its turn:
+//! edits read a card and put it back, the store can yield in between, and two callers at once must not
+//! lose a change (`handle.rs`). The inherent methods compose each other, so the turn is taken here.
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
 use fs_store::{ObjectId, StoredObject};
-use serde_json::{Map, Value};
 
 use super::handle::PeopleRepo;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
 use crate::error::Result;
-use crate::feed::{PeopleFeed, PersonListener, Subscription};
 use crate::format::{Exporter, Importer};
 use crate::matching::SameAsProposal;
 use crate::people::People;
-use crate::role_book::RoleBook;
-use crate::roles::{RoleAssignment, RoleDefinition};
 
 #[async_trait]
 impl People for PeopleRepo {
@@ -27,6 +23,7 @@ impl People for PeopleRepo {
         capabilities()
     }
     async fn relate(&self, id: ObjectId, other_uid: &str, relation: &str) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::relate(self, id, other_uid, relation).await
     }
     async fn unrelate(
@@ -35,12 +32,14 @@ impl People for PeopleRepo {
         other_uid: &str,
         relation: &str,
     ) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::unrelate(self, id, other_uid, relation).await
     }
     async fn relations(&self, id: ObjectId) -> Result<Vec<(String, String)>> {
         PeopleRepo::relations(self, id).await
     }
     async fn create(&self, card: Card) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::create(self, card).await
     }
     async fn get(&self, id: ObjectId) -> Result<Option<StoredObject>> {
@@ -53,9 +52,11 @@ impl People for PeopleRepo {
         PeopleRepo::get_by_uid(self, uid).await
     }
     async fn update(&self, id: ObjectId, card: Card) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::update(self, id, card).await
     }
     async fn delete(&self, id: ObjectId) -> Result<()> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::delete(self, id).await
     }
     async fn list(&self, filter: &ListFilter) -> Result<Vec<StoredObject>> {
@@ -74,18 +75,22 @@ impl People for PeopleRepo {
         PeopleRepo::search(self, term).await
     }
     async fn import(&self, importer: &dyn Importer, text: &str) -> Result<ImportReport> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::import(self, importer, text).await
     }
     async fn export(&self, exporter: &dyn Exporter, id: ObjectId) -> Result<String> {
         PeopleRepo::export(self, exporter, id).await
     }
     async fn create_group(&self, name: &str) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::create_group(self, name).await
     }
     async fn add_member(&self, group: ObjectId, member: ObjectId) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::add_member(self, group, member).await
     }
     async fn remove_member(&self, group: ObjectId, member: ObjectId) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::remove_member(self, group, member).await
     }
     async fn members(&self, group: ObjectId) -> Result<Vec<StoredObject>> {
@@ -98,62 +103,15 @@ impl People for PeopleRepo {
         PeopleRepo::find_same_person_proposals(self).await
     }
     async fn confirm_same_person(&self, a: ObjectId, b: ObjectId) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::confirm_same_person(self, a, b).await
     }
     async fn unlink(&self, relationship: ObjectId) -> Result<()> {
+        let _turn = self.writes.lock().await;
         PeopleRepo::unlink(self, relationship).await
     }
     async fn linked_to(&self, id: ObjectId) -> Result<Vec<ObjectId>> {
         PeopleRepo::linked_to(self, id).await
-    }
-}
-
-#[async_trait]
-impl RoleBook for PeopleRepo {
-    async fn define_role(&self, definition: RoleDefinition) -> Result<()> {
-        PeopleRepo::define_role(self, definition).await
-    }
-    async fn undefine_role(&self, id: &str) -> Result<()> {
-        PeopleRepo::undefine_role(self, id).await
-    }
-    async fn load_role_config(&self, json: &str) -> Result<()> {
-        PeopleRepo::store_role_config(self, json).await
-    }
-    async fn role(&self, id: &str) -> Result<Option<RoleDefinition>> {
-        PeopleRepo::role(self, id).await
-    }
-    async fn roles(&self) -> Result<Vec<RoleDefinition>> {
-        PeopleRepo::roles(self).await
-    }
-    async fn assign_role(
-        &self,
-        person: ObjectId,
-        role: &str,
-        scope: Option<&str>,
-        details: Map<String, Value>,
-    ) -> Result<RoleAssignment> {
-        PeopleRepo::assign_role(self, person, role, scope, details).await
-    }
-    async fn unassign_role(&self, assignment: ObjectId) -> Result<()> {
-        PeopleRepo::unassign_role(self, assignment).await
-    }
-    async fn roles_of(&self, person: ObjectId) -> Result<Vec<RoleAssignment>> {
-        PeopleRepo::roles_of(self, person).await
-    }
-    async fn people_with_role(&self, role: &str, scope: Option<&str>) -> Result<Vec<ObjectId>> {
-        PeopleRepo::people_with_role(self, role, scope).await
-    }
-    async fn mark_ai(&self, person: ObjectId) -> Result<RoleAssignment> {
-        PeopleRepo::mark_ai(self, person).await
-    }
-    async fn is_ai(&self, person: ObjectId) -> Result<bool> {
-        PeopleRepo::is_ai(self, person).await
-    }
-}
-
-impl PeopleFeed for PeopleRepo {
-    fn subscribe(&self, listener: Arc<dyn PersonListener>) -> Result<Subscription> {
-        Ok(self.feed.add(listener))
     }
 }
 

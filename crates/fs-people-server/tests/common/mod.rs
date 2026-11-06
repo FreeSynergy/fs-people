@@ -47,13 +47,22 @@ where
     F: FnOnce(people::Client) -> Fut,
     Fut: Future<Output = ()>,
 {
+    with_store(|root, _| test(root)).await;
+}
+
+/// Like [`with_server`], and the test also reaches the store itself.
+pub async fn with_store<F, Fut>(test: F)
+where
+    F: FnOnce(people::Client, Arc<dyn Store>) -> Fut,
+    Fut: Future<Output = ()>,
+{
     let local = tokio::task::LocalSet::new();
     local
         .run_until(async {
             let store: Arc<dyn Store> = Arc::new(TursoStore::open_in_memory().await.unwrap());
-            let repo = Arc::new(PeopleRepo::new(store, ME));
+            let repo = Arc::new(PeopleRepo::new(store.clone(), ME));
             let root = PeopleServer::new(repo.clone(), repo.clone(), repo).into_client();
-            with_root(root, test).await;
+            with_root(root, |root| test(root, store)).await;
         })
         .await;
 }
@@ -98,6 +107,30 @@ pub fn uuids(
     list: capnp::struct_list::Reader<'_, fs_interfaces::common_capnp::uuid::Owned>,
 ) -> Vec<Uuid> {
     list.iter().map(|u| read_uuid(u).unwrap()).collect()
+}
+
+/// Status and exact type URI of the problems a consumer can tell apart.
+pub type Kind = (u16, &'static str);
+pub const NOT_FOUND: Kind = (404, "https://freesynergy.net/problems/people/not-found");
+pub const CONFLICT: Kind = (409, "https://freesynergy.net/problems/people/conflict");
+pub const INVALID: Kind = (422, "https://freesynergy.net/problems/people/invalid");
+pub const SENSITIVE: Kind = (403, "https://freesynergy.net/problems/people/sensitive");
+pub const STORED_DATA: Kind = (500, "https://freesynergy.net/problems/people/stored-data");
+pub const BAD_REQUEST: Kind = (422, "https://freesynergy.net/problems/invalid-request");
+pub const TOO_LARGE: Kind = (413, "https://freesynergy.net/problems/too-large");
+pub const NOT_POSSIBLE: Kind = (501, "https://freesynergy.net/problems/unsupported");
+
+/// A call that had to fail with exactly this problem; answers its detail.
+#[track_caller]
+pub fn expect_problem<T>(answer: Result<T, capnp::Error>, kind: Kind) -> String {
+    let problem = problem_of(answer);
+    assert_eq!(
+        (problem.status, problem.problem_type.as_str()),
+        kind,
+        "{}",
+        problem.detail
+    );
+    problem.detail
 }
 
 /// The problem of a call that had to fail.

@@ -33,7 +33,7 @@ pub mod vcard;
 
 pub use card::Card;
 pub use clock::now_utc;
-pub use error::{Error, Issue, Result};
+pub use error::{Error, Issue, MAX_CARD_BYTES, Result};
 pub use feed::{PeopleFeed, PersonChange, PersonListener, Subscription};
 pub use format::{Exporter, ImportedCard, Importer, JsContactFormat, VCardFormat};
 pub use matching::{

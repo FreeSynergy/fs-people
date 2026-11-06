@@ -4,11 +4,12 @@
 //! `fs-store` understands (ADR 0020); the envelope `name` is derived, never typed (ADR 0032).
 
 use fs_store::{Blob, Envelope, ObjectId, StoredObject};
+use serde_json::Value;
 
 use super::consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE};
 use super::handle::PeopleRepo;
 use crate::card::Card;
-use crate::error::Result;
+use crate::error::{Error, MAX_CARD_BYTES, Result};
 use crate::index::index_fields;
 
 impl PeopleRepo {
@@ -46,5 +47,19 @@ impl PeopleRepo {
 
 /// Parse the content of a stored Profile.
 pub fn card_of(o: &StoredObject) -> Result<Card> {
-    Ok(serde_json::from_value(o.content.clone())?)
+    stored_value(o.content.clone())
+}
+
+/// Read what the store holds; failing here is the fault of the data, not of the request.
+pub(super) fn stored_value<T: serde::de::DeserializeOwned>(content: Value) -> Result<T> {
+    serde_json::from_value(content).map_err(|e| Error::Stored(e.to_string()))
+}
+
+/// Refuse a card that could no longer come back in one answer.
+pub(super) fn check_size(card: &Card) -> Result<()> {
+    let bytes = card.to_value().to_string().len();
+    if bytes > MAX_CARD_BYTES {
+        return Err(Error::TooLarge(bytes));
+    }
+    Ok(())
 }

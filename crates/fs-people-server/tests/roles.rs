@@ -2,7 +2,9 @@
 
 mod common;
 
-use common::{CLUB, create, persons_of, problem_of, roles_of, uuids, with_server};
+use common::{
+    CLUB, CONFLICT, INVALID, create, expect_problem, persons_of, roles_of, uuids, with_server,
+};
 use fs_interfaces::people_capnp::{RoleScope, roles};
 use fs_interfaces::rpc::{read_uuid, write_uuid};
 use serde_json::json;
@@ -82,9 +84,9 @@ async fn definitions_arrive_as_they_were_defined() {
 
         let mut twice = roles.define_request();
         fill_coach(twice.get().init_definition());
-        assert_eq!(problem_of(twice.send().promise.await).status, 409);
+        expect_problem(twice.send().promise.await, CONFLICT);
         let empty = roles.define_request();
-        assert_eq!(problem_of(empty.send().promise.await).status, 422);
+        expect_problem(empty.send().promise.await, INVALID);
 
         let mut undefine = roles.undefine_request();
         undefine.get().set_id("coach");
@@ -96,7 +98,7 @@ async fn definitions_arrive_as_they_were_defined() {
 
         let mut shipped = roles.undefine_request();
         shipped.get().set_id("member");
-        assert_eq!(problem_of(shipped.send().promise.await).status, 409);
+        expect_problem(shipped.send().promise.await, CONFLICT);
     })
     .await;
 }
@@ -108,10 +110,10 @@ async fn a_configuration_is_checked_then_swapped() {
         let mut bad = roles.load_config_request();
         bad.get()
             .set_json("[{\"id\":\"x\",\"names\":{},\"owner\":\"o\"}]");
-        assert_eq!(problem_of(bad.send().promise.await).status, 422);
+        expect_problem(bad.send().promise.await, INVALID);
         let mut broken = roles.load_config_request();
         broken.get().set_json("no json");
-        assert_eq!(problem_of(broken.send().promise.await).status, 422);
+        expect_problem(broken.send().promise.await, INVALID);
         assert_eq!(all_ids(&roles).await.len(), 4, "nothing changed");
 
         let good = json!([{"id": "x", "names": {"en": "X"}, "owner": "o", "scope": "public"}]);
@@ -153,11 +155,16 @@ async fn assignments_come_and_go() {
         assert_eq!(items.len(), 1);
         assert_eq!(items.get(0).get_role().unwrap().to_str().unwrap(), "member");
         assert_eq!(items.get(0).get_details().unwrap().to_str().unwrap(), "{}");
+        assert_eq!(read_uuid(items.get(0).get_id().unwrap()), Some(id));
+        assert_eq!(read_uuid(items.get(0).get_person().unwrap()), Some(ada));
+        assert_eq!(items.get(0).get_scope().unwrap().to_str().unwrap(), CLUB);
 
         let mut with = roles.people_with_request();
         with.get().set_role("member");
         let answer = with.send().promise.await.unwrap();
-        assert_eq!(uuids(answer.get().unwrap().get_ids().unwrap()).len(), 2);
+        let mut both = vec![ada, bob];
+        both.sort_unstable();
+        assert_eq!(uuids(answer.get().unwrap().get_ids().unwrap()), both);
         let mut with = roles.people_with_request();
         with.get().set_role("member");
         with.get().set_scope(CLUB);

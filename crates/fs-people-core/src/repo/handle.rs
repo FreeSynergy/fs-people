@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use fs_store::traits::{ObjectQuery, ObjectRepository};
 use fs_store::{ObjectId, Store};
+use tokio::sync::Mutex;
 
 use super::backend::StoreAdapter;
 use crate::feed::Registry;
@@ -22,6 +23,8 @@ pub struct PeopleRepo {
     pub(super) matcher: Arc<dyn MatchStrategy>,
     pub(super) registry: RoleRegistry,
     pub(super) feed: Arc<Registry>,
+    /// One write at a time through the traits; clones share it.
+    pub(super) writes: Arc<Mutex<()>>,
     pub(super) actor: String,
     pub(super) instance: String,
 }
@@ -46,6 +49,7 @@ impl PeopleRepo {
             matcher: Arc::new(SharedContactPoint),
             registry: RoleRegistry::known(),
             feed: Arc::default(),
+            writes: Arc::default(),
             actor: actor.into(),
             instance: "local.invalid".into(),
         }

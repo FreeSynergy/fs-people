@@ -26,7 +26,14 @@ async fn create_get_update_delete() {
         let mut by_uid = persons.get_by_uid_request();
         by_uid.get().set_uid("uid-1");
         let got = by_uid.send().promise.await.unwrap();
-        assert_eq!(id_of(got.get().unwrap().get_person().unwrap()), id);
+        let got = got.get().unwrap();
+        assert!(got.get_found());
+        assert_eq!(id_of(got.get_person().unwrap()), id);
+        assert_eq!(name_of(got.get_person().unwrap()), "Ada");
+        assert_eq!(
+            json_of(got.get_person().unwrap())["emails"]["e1"]["address"],
+            "ada@x.org"
+        );
 
         let mut update = persons.update_request();
         write_uuid(update.get().init_id(), Some(id));
@@ -87,7 +94,23 @@ async fn find_by_describes_email_phone() {
         let mut req = persons.find_by_phone_request();
         req.get().set_phone("+49 (30) 1234");
         let found = req.send().promise.await.unwrap();
-        assert_eq!(found.get().unwrap().get_items().unwrap().len(), 1);
+        let items = found.get().unwrap().get_items().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(id_of(items.get(0)), id);
+
+        // Other values find nobody; the other person is not among any of these.
+        let mut req = persons.find_by_email_request();
+        req.get().set_email("nobody@x.org");
+        let found = req.send().promise.await.unwrap();
+        assert_eq!(found.get().unwrap().get_items().unwrap().len(), 0);
+        let mut req = persons.find_by_phone_request();
+        req.get().set_phone("+49 30 9999");
+        let found = req.send().promise.await.unwrap();
+        assert_eq!(found.get().unwrap().get_items().unwrap().len(), 0);
+        let mut req = persons.find_by_describes_request();
+        req.get().set_iri("did:example:bob");
+        let found = req.send().promise.await.unwrap();
+        assert_eq!(found.get().unwrap().get_items().unwrap().len(), 0);
     })
     .await;
 }
@@ -144,7 +167,9 @@ async fn the_filter_combines_with_and() {
 async fn lists_page_in_name_order_through_the_cursor() {
     with_server(|root| async move {
         let persons = persons_of(&root).await;
+        // Created out of name order, so the order below is the provider's work.
         let cards: Vec<_> = (0..130)
+            .rev()
             .map(|i| {
                 json!({"@type": "Card", "version": "1.0", "uid": format!("uid-{i}"),
                     "name": {"full": format!("Person {i:03}")}})
@@ -154,7 +179,7 @@ async fn lists_page_in_name_order_through_the_cursor() {
         import.get().set_media_type("application/jscontact+json");
         import.get().set_text(json!(cards).to_string().as_str());
         let report = import.send().promise.await.unwrap();
-        let created = uuids(
+        let mut created = uuids(
             report
                 .get()
                 .unwrap()
@@ -163,26 +188,29 @@ async fn lists_page_in_name_order_through_the_cursor() {
                 .get_created()
                 .unwrap(),
         );
-        assert_eq!(created.len(), 130);
+        created.reverse(); // now in the order of the names
 
-        let mut seen = vec![];
+        let (mut names, mut ids) = (vec![], vec![]);
         let mut cursor: Vec<u8> = vec![];
-        let mut pages = 0;
+        let mut sizes = vec![];
         loop {
             let mut req = persons.list_request();
             req.get().init_cursor().set_opaque(&cursor);
             let answer = req.send().promise.await.unwrap();
             let page = answer.get().unwrap().get_page().unwrap();
-            seen.extend(page.get_items().unwrap().iter().map(name_of));
+            let items = page.get_items().unwrap();
+            sizes.push(items.len());
+            names.extend(items.iter().map(name_of));
+            ids.extend(items.iter().map(id_of));
             cursor = page.get_next().unwrap().get_opaque().unwrap().to_vec();
-            pages += 1;
             if cursor.is_empty() {
                 break;
             }
         }
-        assert_eq!(pages, 2);
-        assert_eq!(seen.len(), 130);
-        assert!(seen.is_sorted(), "{seen:?}");
+        assert_eq!(sizes, [100, 30]);
+        let expected: Vec<_> = (0..130).map(|i| format!("Person {i:03}")).collect();
+        assert_eq!(names, expected);
+        assert_eq!(ids, created);
     })
     .await;
 }

@@ -5,6 +5,10 @@
 
 use fs_store::ObjectId;
 
+/// The largest card as JSON: with its envelope it still has to fit one answer of the contract, and
+/// small edits (relations, members) must not grow it past that.
+pub const MAX_CARD_BYTES: usize = 16 * 1024 * 1024;
+
 /// One validation problem, with a JSON-pointer-like path into the card.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Issue {
@@ -47,6 +51,12 @@ pub enum Error {
     /// The explicit "not possible" of a provider (ADR 0045).
     #[error(transparent)]
     Unsupported(#[from] fs_interfaces::Unsupported),
+    /// Something already stored cannot be read any more; the request is not to blame.
+    #[error("stored data: {0}")]
+    Stored(String),
+    /// A card too large to come back in one answer of the contract.
+    #[error("the card has {0} bytes, at most {MAX_CARD_BYTES} are kept")]
+    TooLarge(usize),
     /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
     #[error("{0}")]
     Conflict(String),

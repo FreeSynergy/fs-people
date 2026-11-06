@@ -3,13 +3,14 @@
 //! Pattern: Adapter — each function is one method of the contract and one call of the provider.
 
 use fs_interfaces::people_capnp::persons as wire;
-use fs_interfaces::rpc::MAX_PAGE_BYTES;
+use fs_interfaces::rpc::{check_answer, read_object_id};
 use fs_people_core::{ListFilter, People};
 
-use crate::errors::{rpc_error, too_large};
+use crate::errors::rpc_error;
 use crate::formats::{exporter, importer};
 use crate::wire::{
-    read_card, read_filter, read_id, unpaged, write_page, write_person, write_persons, write_report,
+    intake, read_card, read_filter, required, unpaged, write_page, write_person, write_persons,
+    write_report,
 };
 
 type Done = Result<(), capnp::Error>;
@@ -31,7 +32,7 @@ pub(super) async fn update(
     mut results: wire::UpdateResults,
 ) -> Done {
     let p = params.get()?;
-    let id = read_id(p.get_id()?)?;
+    let id = read_object_id(p.get_id()?)?;
     let card = read_card(p.get_jscontact()?)?;
     let stored = people.update(id, card).await.map_err(rpc_error)?;
     write_person(results.get().init_person(), &stored);
@@ -39,7 +40,7 @@ pub(super) async fn update(
 }
 
 pub(super) async fn delete(people: &dyn People, params: wire::DeleteParams) -> Done {
-    let id = read_id(params.get()?.get_id()?)?;
+    let id = read_object_id(params.get()?.get_id()?)?;
     people.delete(id).await.map_err(rpc_error)
 }
 
@@ -48,7 +49,7 @@ pub(super) async fn get(
     params: wire::GetParams,
     mut results: wire::GetResults,
 ) -> Done {
-    let id = read_id(params.get()?.get_id()?)?;
+    let id = read_object_id(params.get()?.get_id()?)?;
     let found = people.get(id).await.map_err(rpc_error)?;
     let mut r = results.get();
     r.set_found(found.is_some());
@@ -64,7 +65,7 @@ pub(super) async fn get_by_uid(
     mut results: wire::GetByUidResults,
 ) -> Done {
     let p = params.get()?;
-    let uid = p.get_uid()?.to_str()?;
+    let uid = required(p.get_uid()?, "uid")?;
     let found = people.get_by_uid(uid).await.map_err(rpc_error)?;
     let mut r = results.get();
     r.set_found(found.is_some());
@@ -96,7 +97,7 @@ pub(super) async fn find_by_describes(
 ) -> Done {
     let p = params.get()?;
     let found = people
-        .find_by_describes(p.get_iri()?.to_str()?)
+        .find_by_describes(required(p.get_iri()?, "iri")?)
         .await
         .map_err(rpc_error)?;
     let length = unpaged(&found)?;
@@ -111,7 +112,7 @@ pub(super) async fn find_by_email(
 ) -> Done {
     let p = params.get()?;
     let found = people
-        .find_by_email(p.get_email()?.to_str()?)
+        .find_by_email(required(p.get_email()?, "email")?)
         .await
         .map_err(rpc_error)?;
     let length = unpaged(&found)?;
@@ -126,7 +127,7 @@ pub(super) async fn find_by_phone(
 ) -> Done {
     let p = params.get()?;
     let found = people
-        .find_by_phone(p.get_phone()?.to_str()?)
+        .find_by_phone(required(p.get_phone()?, "phone")?)
         .await
         .map_err(rpc_error)?;
     let length = unpaged(&found)?;
@@ -140,9 +141,9 @@ pub(super) async fn import_text(
     mut results: wire::ImportTextResults,
 ) -> Done {
     let p = params.get()?;
-    let format = importer(p.get_media_type()?.to_str()?)?;
+    let format = importer(required(p.get_media_type()?, "mediaType")?)?;
     let report = people
-        .import(format, p.get_text()?.to_str()?)
+        .import(format, intake(p.get_text()?, "text")?)
         .await
         .map_err(rpc_error)?;
     write_report(results.get().init_report(), &report)
@@ -154,12 +155,10 @@ pub(super) async fn export_text(
     mut results: wire::ExportTextResults,
 ) -> Done {
     let p = params.get()?;
-    let format = exporter(p.get_media_type()?.to_str()?)?;
-    let id = read_id(p.get_id()?)?;
+    let format = exporter(required(p.get_media_type()?, "mediaType")?)?;
+    let id = read_object_id(p.get_id()?)?;
     let text = people.export(format, id).await.map_err(rpc_error)?;
-    if text.len() > MAX_PAGE_BYTES {
-        return Err(too_large(format!("the export is {} bytes", text.len())));
-    }
+    check_answer(text.len())?;
     results.get().set_text(text.as_str());
     Ok(())
 }

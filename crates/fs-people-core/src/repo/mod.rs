@@ -16,6 +16,7 @@ mod links;
 mod proposals;
 mod relations;
 mod role_config;
+mod role_facade;
 mod roles;
 mod transfer;
 mod types;

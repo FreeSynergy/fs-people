@@ -24,20 +24,22 @@ impl PeopleRepo {
                     continue;
                 }
             };
-            if self.get_by_uid(&imp.card.uid).await?.is_some() {
-                report.skipped.push(imp.card.uid);
-                continue;
-            }
             let uid = imp.card.uid.clone();
+            match self.get_by_uid(&uid).await {
+                Ok(Some(_)) => {
+                    report.skipped.push(uid);
+                    continue;
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    report.failed.push(format!("{uid}: {e}"));
+                    continue;
+                }
+            }
+            // Whatever stops this card, the report says so and the others of the file still count.
             match self.create_inner(imp.card, imp.original).await {
                 Ok(o) => report.created.push(o.envelope.id),
-                // This card cannot be stored; the others of the file still can.
-                Err(
-                    e @ (Error::Invalid(_)
-                    | Error::Conflict(_)
-                    | Error::Store(fs_store::Error::EncryptionRequired(_))),
-                ) => report.failed.push(format!("{uid}: {e}")),
-                Err(e) => return Err(e),
+                Err(e) => report.failed.push(format!("{uid}: {e}")),
             }
         }
         Ok(report)

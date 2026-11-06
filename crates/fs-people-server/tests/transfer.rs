@@ -2,10 +2,30 @@
 
 mod common;
 
-use common::{CLUB, card, create, persons_of, problem_of, roles_of, uuids, with_server};
+use common::{
+    CLUB, INVALID, NOT_POSSIBLE, card, create, expect_problem, id_of, name_of, persons_of,
+    roles_of, uuids, with_server,
+};
 use fs_interfaces::rpc::write_uuid;
 
 const VCF: &str = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:vcard-1\r\nFN:Ada Lovelace\r\nEMAIL:ada@x.org\r\nEND:VCARD\r\n";
+
+async fn id_by_uid(
+    persons: &fs_interfaces::people_capnp::persons::Client,
+    uid: &str,
+) -> uuid::Uuid {
+    let mut get = persons.get_by_uid_request();
+    get.get().set_uid(uid);
+    let answer = get.send().promise.await.unwrap();
+    assert!(answer.get().unwrap().get_found(), "{uid}");
+    id_of(answer.get().unwrap().get_person().unwrap())
+}
+
+fn texts(list: capnp::text_list::Reader<'_>) -> Vec<String> {
+    list.iter()
+        .map(|t| t.unwrap().to_string().unwrap())
+        .collect()
+}
 
 #[tokio::test(flavor = "current_thread")]
 async fn import_reports_created_skipped_and_failed() {
@@ -16,7 +36,10 @@ async fn import_reports_created_skipped_and_failed() {
         import.get().set_text(VCF);
         let answer = import.send().promise.await.unwrap();
         let report = answer.get().unwrap().get_report().unwrap();
-        assert_eq!(uuids(report.get_created().unwrap()).len(), 1);
+        let created = uuids(report.get_created().unwrap());
+        assert_eq!(created, [id_by_uid(&persons, "vcard-1").await]);
+        assert!(texts(report.get_skipped().unwrap()).is_empty());
+        assert!(texts(report.get_failed().unwrap()).is_empty());
 
         let two = format!(
             "[{},{},{}]",
@@ -29,17 +52,43 @@ async fn import_reports_created_skipped_and_failed() {
         import.get().set_text(two.as_str());
         let answer = import.send().promise.await.unwrap();
         let report = answer.get().unwrap().get_report().unwrap();
-        assert_eq!(uuids(report.get_created().unwrap()).len(), 1);
-        let skipped = report.get_skipped().unwrap();
-        assert_eq!(skipped.get(0).unwrap().to_str().unwrap(), "vcard-1");
-        let failed = report.get_failed().unwrap();
+        let created = uuids(report.get_created().unwrap());
+        assert_eq!(created, [id_by_uid(&persons, "new-1").await]);
+        assert_eq!(texts(report.get_skipped().unwrap()), ["vcard-1"]);
+        let failed = texts(report.get_failed().unwrap());
         assert_eq!(failed.len(), 1);
-        assert!(failed.get(0).unwrap().to_str().unwrap().contains("bad-1"));
+        assert!(
+            failed[0].starts_with("bad-1:") && failed[0].contains("/version"),
+            "{failed:?}"
+        );
+
+        // A known uid was not overwritten.
+        let mut get = persons.get_by_uid_request();
+        get.get().set_uid("vcard-1");
+        let answer = get.send().promise.await.unwrap();
+        assert_eq!(
+            name_of(answer.get().unwrap().get_person().unwrap()),
+            "Ada Lovelace"
+        );
+
+        // What is read nowhere is reported, too.
+        let mut lost = persons.import_text_request();
+        lost.get().set_media_type("text/vcard");
+        lost.get().set_text("this is no vCard");
+        let answer = lost.send().promise.await.unwrap();
+        let report = answer.get().unwrap().get_report().unwrap();
+        assert!(uuids(report.get_created().unwrap()).is_empty());
+        let failed = texts(report.get_failed().unwrap());
+        assert_eq!(failed.len(), 1);
+        assert!(
+            failed[0].contains("outside any complete vCard"),
+            "{failed:?}"
+        );
 
         let mut broken = persons.import_text_request();
         broken.get().set_media_type("application/jscontact+json");
         broken.get().set_text("{ not json");
-        assert_eq!(problem_of(broken.send().promise.await).status, 422);
+        expect_problem(broken.send().promise.await, INVALID);
     })
     .await;
 }
@@ -84,24 +133,14 @@ async fn a_media_type_without_a_format_is_not_possible() {
         let mut import = persons.import_text_request();
         import.get().set_media_type("text/csv");
         import.get().set_text("a,b");
-        let refused = problem_of(import.send().promise.await);
-        assert!(refused.is_unsupported());
-        assert!(
-            refused.detail.starts_with("person.import:"),
-            "{}",
-            refused.detail
-        );
+        let detail = expect_problem(import.send().promise.await, NOT_POSSIBLE);
+        assert!(detail.starts_with("person.import:"), "{detail}");
 
         let mut export = persons.export_text_request();
         write_uuid(export.get().init_id(), Some(id));
         export.get().set_media_type("text/csv");
-        let refused = problem_of(export.send().promise.await);
-        assert!(refused.is_unsupported());
-        assert!(
-            refused.detail.starts_with("person.export:"),
-            "{}",
-            refused.detail
-        );
+        let detail = expect_problem(export.send().promise.await, NOT_POSSIBLE);
+        assert!(detail.starts_with("person.export:"), "{detail}");
     })
     .await;
 }

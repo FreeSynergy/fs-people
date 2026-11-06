@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::{create, id_of, json_of, persons_of, problem_of, uuids, with_server};
+use common::{CONFLICT, create, expect_problem, id_of, json_of, persons_of, uuids, with_server};
 use fs_interfaces::rpc::{read_uuid, write_uuid};
 
 #[tokio::test(flavor = "current_thread")]
@@ -78,7 +78,7 @@ async fn proposals_link_and_unlink() {
         let mut again = persons.confirm_same_request();
         write_uuid(again.get().init_a(), Some(a));
         write_uuid(again.get().init_b(), Some(b));
-        assert_eq!(problem_of(again.send().promise.await).status, 409);
+        expect_problem(again.send().promise.await, CONFLICT);
 
         let mut unlink = persons.unlink_same_request();
         write_uuid(unlink.get().init_link(), Some(link));
@@ -135,7 +135,7 @@ async fn lists_hold_people() {
         let mut into_a_person = persons.add_to_list_request();
         write_uuid(into_a_person.get().init_list(), Some(ada));
         write_uuid(into_a_person.get().init_member(), Some(list));
-        assert_eq!(problem_of(into_a_person.send().promise.await).status, 409);
+        expect_problem(into_a_person.send().promise.await, CONFLICT);
     })
     .await;
 }

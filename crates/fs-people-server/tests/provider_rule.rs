@@ -5,7 +5,7 @@ mod common;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use common::{card, persons_of, problem_of, roles_of, with_root};
+use common::{NOT_POSSIBLE, card, expect_problem, persons_of, roles_of, with_root};
 use fs_interfaces::Capabilities;
 use fs_people_core::{ListFilter, People, PeopleFeed, Result as CoreResult, RoleBook};
 use fs_people_server::PeopleServer;
@@ -51,20 +51,20 @@ async fn what_a_provider_does_not_offer_says_so() {
                 create
                     .get()
                     .set_jscontact(card("u", "Ada", "a@x.org").as_str());
-                let refused = problem_of(create.send().promise.await);
-                assert!(refused.is_unsupported());
-                assert!(refused.detail.starts_with("person.create:"));
+                let detail = expect_problem(create.send().promise.await, NOT_POSSIBLE);
+                assert!(detail.starts_with("person.create:"), "{detail}");
 
                 let roles = roles_of(&root).await;
-                let refused = problem_of(roles.list_request().send().promise.await);
-                assert!(refused.is_unsupported());
+                let detail =
+                    expect_problem(roles.list_request().send().promise.await, NOT_POSSIBLE);
+                assert!(detail.starts_with("role.read:"), "{detail}");
 
                 let mut subscribe = root.subscribe_request();
                 let seen: fs_interfaces::common_capnp::change_listener::Client =
                     capnp_rpc::new_client(Never);
                 subscribe.get().set_listener(seen);
-                let refused = problem_of(subscribe.send().promise.await);
-                assert!(refused.detail.starts_with("person.subscribe:"));
+                let detail = expect_problem(subscribe.send().promise.await, NOT_POSSIBLE);
+                assert!(detail.starts_with("person.subscribe:"), "{detail}");
             })
             .await;
         })

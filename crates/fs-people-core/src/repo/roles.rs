@@ -6,6 +6,7 @@
 use fs_store::{Envelope, Query, StoredObject};
 
 use super::consts::{CONTEXT, ROLE_DEFINITION_TYPE};
+use super::envelope::stored_value;
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
 use crate::roles::RoleDefinition;
@@ -67,7 +68,7 @@ impl PeopleRepo {
         }
         self.stored_role(id)
             .await?
-            .map(|o| Ok(serde_json::from_value(o.content)?))
+            .map(|o| stored_value(o.content))
             .transpose()
     }
 
@@ -79,7 +80,7 @@ impl PeopleRepo {
         let configured = self.registry.snapshot();
         let mut out: Vec<RoleDefinition> = configured.values().cloned().collect();
         for o in self.reads.query(&q).await? {
-            let own: RoleDefinition = serde_json::from_value(o.content)?;
+            let own: RoleDefinition = stored_value(o.content)?;
             // Configuration wins, as in `role`: one id, one definition.
             if !configured.contains_key(&own.id) {
                 out.push(own);

@@ -1,20 +1,18 @@
 //! Roles on the wire.
 //!
 //! Pattern: Adapter — `RoleDefinition` and `RoleAssignment` between Rust and `people.capnp`. Empty
-//! text means "none". The `extra` members of a definition have no place on the wire: only roles in a
-//! configuration keep them, `DESIGN.md` names the gap.
+//! text means "none". The `extra` members of a definition have no place on the wire (`DESIGN.md`).
 
 use std::collections::BTreeMap;
 
 use fs_interfaces::people_capnp::{
     RoleScope as Wire, localized, role_assignment, role_definition, role_field,
 };
-use fs_interfaces::rpc::write_object_id;
+use fs_interfaces::rpc::{check_answer, check_intake, invalid_request, write_object_id};
 use fs_people_core::{RoleAssignment, RoleDefinition, RoleField, RoleScope};
 use serde_json::{Map, Value};
 
 use super::person::count;
-use crate::errors::invalid;
 
 type Texts = BTreeMap<String, String>;
 
@@ -76,6 +74,21 @@ pub(crate) fn read_definition(r: role_definition::Reader<'_>) -> capnp::Result<R
         card_kind: optional(r.get_card_kind()?)?,
         ..RoleDefinition::default()
     })
+    .and_then(|definition| {
+        check_intake(definition_weight(&definition))?;
+        Ok(definition)
+    })
+}
+
+/// What a definition costs in an answer.
+pub(crate) fn definition_weight(d: &RoleDefinition) -> usize {
+    serde_json::to_string(d).map_or(0, |text| text.len())
+}
+
+/// How many definitions an answer will hold, if they fit one.
+pub(crate) fn definitions_count(all: &[RoleDefinition]) -> capnp::Result<u32> {
+    check_answer(all.iter().map(definition_weight).sum())?;
+    count(all.len())
 }
 
 /// Write a definition.
@@ -110,7 +123,9 @@ pub(crate) fn read_details(t: capnp::text::Reader<'_>) -> capnp::Result<Map<Stri
     if text.trim().is_empty() {
         return Ok(Map::new());
     }
-    serde_json::from_str(text).map_err(|e| invalid(format!("details are no JSON object: {e}")))
+    check_intake(text.len())?;
+    serde_json::from_str(text)
+        .map_err(|e| invalid_request(format!("details are no JSON object: {e}")))
 }
 
 /// Write one assignment.
@@ -120,6 +135,16 @@ pub(crate) fn write_assignment(mut out: role_assignment::Builder<'_>, a: &RoleAs
     out.set_role(a.role.as_str());
     out.set_scope(a.scope.as_deref().unwrap_or(""));
     out.set_details(Value::Object(a.details.clone()).to_string().as_str());
+}
+
+/// How many assignments an answer will hold, if they fit one.
+pub(crate) fn assignments_count(found: &[RoleAssignment]) -> capnp::Result<u32> {
+    let weight = |a: &RoleAssignment| {
+        let details = Value::Object(a.details.clone()).to_string().len();
+        details + a.role.len() + a.scope.as_ref().map_or(0, String::len)
+    };
+    check_answer(found.iter().map(weight).sum())?;
+    count(found.len())
 }
 
 /// Write a list of assignments.

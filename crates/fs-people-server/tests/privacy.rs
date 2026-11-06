@@ -3,7 +3,8 @@
 mod common;
 
 use common::{
-    CLUB, create, id_of, json_of, name_of, persons_of, problem_of, roles_of, with_server,
+    CLUB, NOT_FOUND, SENSITIVE, create, expect_problem, id_of, json_of, name_of, persons_of,
+    roles_of, with_server,
 };
 use fs_interfaces::rpc::{read_uuid, write_uuid};
 
@@ -73,24 +74,24 @@ async fn a_relationship_is_no_person_and_stays_what_it_is() {
 
             let mut delete = persons.delete_request();
             write_uuid(delete.get().init_id(), Some(relationship));
-            assert_eq!(problem_of(delete.send().promise.await).status, 404);
+            expect_problem(delete.send().promise.await, NOT_FOUND);
 
             let mut export = persons.export_text_request();
             write_uuid(export.get().init_id(), Some(relationship));
             export.get().set_media_type("text/vcard");
-            assert_eq!(problem_of(export.send().promise.await).status, 404);
+            expect_problem(export.send().promise.await, NOT_FOUND);
         }
 
         // Each removal reaches only its own kind of object, and never a card.
         for wrong in [held, a] {
             let mut unlink = persons.unlink_same_request();
             write_uuid(unlink.get().init_link(), Some(wrong));
-            assert_eq!(problem_of(unlink.send().promise.await).status, 404);
+            expect_problem(unlink.send().promise.await, NOT_FOUND);
         }
         for wrong in [link, a] {
             let mut unassign = roles.unassign_request();
             write_uuid(unassign.get().init_assignment(), Some(wrong));
-            assert_eq!(problem_of(unassign.send().promise.await).status, 404);
+            expect_problem(unassign.send().promise.await, NOT_FOUND);
         }
         let mut get = persons.get_request();
         write_uuid(get.get().init_id(), Some(a));
@@ -120,9 +121,7 @@ async fn sensitive_cards_are_not_proposed_or_linked() {
         let mut confirm = persons.confirm_same_request();
         write_uuid(confirm.get().init_a(), Some(a));
         write_uuid(confirm.get().init_b(), Some(b));
-        let refused = problem_of(confirm.send().promise.await);
-        assert_eq!(refused.status, 403);
-        assert!(refused.problem_type.ends_with("/people/sensitive"));
+        expect_problem(confirm.send().promise.await, SENSITIVE);
     })
     .await;
 }

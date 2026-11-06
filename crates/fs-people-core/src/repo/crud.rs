@@ -6,7 +6,7 @@
 use fs_store::{Blob, ObjectId, Query, StoredObject};
 
 use super::consts::PROFILE_TYPE;
-use super::envelope::card_of;
+use super::envelope::{card_of, check_size};
 use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::clock::now_utc;
@@ -29,6 +29,7 @@ impl PeopleRepo {
         card.created.get_or_insert_with(|| now.clone());
         card.updated.get_or_insert(now);
         validate(&card)?;
+        check_size(&card)?;
         if self.get_by_uid(&card.uid).await?.is_some() {
             return Err(Error::Conflict(format!(
                 "a person with uid {} exists",
@@ -83,6 +84,7 @@ impl PeopleRepo {
         card.created = card.created.or(old_card.created);
         card.updated = Some(now_utc());
         validate(&card)?;
+        check_size(&card)?;
         let obj = self.build_object(&card, Some(&old.envelope), None);
         self.objects.put(obj, &self.actor).await?;
         let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;

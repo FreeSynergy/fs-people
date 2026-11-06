@@ -33,11 +33,16 @@ pub(crate) fn subscribe(
     }))
 }
 
-/// A card that is gone again by now has nothing to report but its own `Deleted`, which follows.
-async fn notice(people: &dyn People, change: PersonChange) -> Option<Notice> {
-    match change {
-        PersonChange::Created(id) => Some(Notice::Created(people.get(id).await.ok()??.envelope)),
-        PersonChange::Updated(id) => Some(Notice::Updated(people.get(id).await.ok()??.envelope)),
+/// A card that is gone again by now has nothing to report but its own `Deleted`, which follows. A
+/// card that cannot be read ends the feed: telling nothing would leave the consumer's copy wrong.
+async fn notice(people: &dyn People, change: PersonChange) -> Result<Option<Notice>, String> {
+    let read = |id| async move {
+        let found = people.get(id).await.map_err(|e| e.to_string())?;
+        Ok::<_, String>(found.map(|o| o.envelope))
+    };
+    Ok(match change {
+        PersonChange::Created(id) => read(id).await?.map(Notice::Created),
+        PersonChange::Updated(id) => read(id).await?.map(Notice::Updated),
         PersonChange::Deleted(id) => Some(Notice::Deleted(id)),
-    }
+    })
 }

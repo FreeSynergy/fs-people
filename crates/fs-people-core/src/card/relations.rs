@@ -15,10 +15,19 @@ impl Card {
             .related_to
             .entry(uid.to_string())
             .or_insert_with(|| json!({"@type": "Relation", "relation": {}}));
-        if entry.get("relation").is_none_or(|r| !r.is_object()) {
-            entry["relation"] = json!({});
+        // `relatedTo` comes from outside and is kept verbatim: it may hold anything until edited here.
+        if !entry.is_object() {
+            *entry = json!({"@type": "Relation"});
         }
-        entry["relation"][relation] = Value::Bool(true);
+        if let Some(object) = entry.as_object_mut() {
+            let kinds = object.entry("relation").or_insert_with(|| json!({}));
+            if !kinds.is_object() {
+                *kinds = json!({});
+            }
+            if let Some(kinds) = kinds.as_object_mut() {
+                kinds.insert(relation.to_string(), Value::Bool(true));
+            }
+        }
     }
 
     /// Remove one relation; a related card without any relation left is removed too.
