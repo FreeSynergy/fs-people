@@ -4,7 +4,7 @@
 
 use fs_store::ObjectId;
 
-/// Filter for `ContactRepo::list`.
+/// Filter for `PeopleRepo::list`.
 #[derive(Clone, Debug, Default)]
 pub struct ListFilter {
     /// Only this JSContact `kind`.

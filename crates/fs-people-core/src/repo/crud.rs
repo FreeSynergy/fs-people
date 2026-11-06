@@ -1,19 +1,19 @@
 //! Create, read, update and delete of single cards.
 //!
-//! Pattern: Repository — the write side of the contact book; every change goes through the
+//! Pattern: Repository — the write side of the people program; every change goes through the
 //! store, which logs it and makes it undoable.
 
 use fs_store::{Blob, ObjectId, Query, StoredObject};
 
 use super::consts::PROFILE_TYPE;
 use super::envelope::card_of;
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::clock::now_utc;
 use crate::error::{Error, Result};
 use crate::validate::validate;
 
-impl ContactRepo {
+impl PeopleRepo {
     /// Validate and store a new card. Refused if its `uid` already exists.
     pub async fn create(&self, card: Card) -> Result<StoredObject> {
         self.create_inner(card, None).await
@@ -30,7 +30,7 @@ impl ContactRepo {
         validate(&card)?;
         if self.get_by_uid(&card.uid).await?.is_some() {
             return Err(Error::Conflict(format!(
-                "a contact with uid {} exists",
+                "a person with uid {} exists",
                 card.uid
             )));
         }
@@ -40,7 +40,7 @@ impl ContactRepo {
         self.get(id).await?.ok_or(Error::NotFound(id))
     }
 
-    /// The stored object of a contact, if it exists.
+    /// The stored object of a person, if it exists.
     pub async fn get(&self, id: ObjectId) -> Result<Option<StoredObject>> {
         Ok(self
             .objects
@@ -49,7 +49,7 @@ impl ContactRepo {
             .filter(|o| o.envelope.object_type == PROFILE_TYPE))
     }
 
-    /// The card of a contact, if it exists.
+    /// The card of a person, if it exists.
     pub async fn get_card(&self, id: ObjectId) -> Result<Option<Card>> {
         self.get(id).await?.map(|o| card_of(&o)).transpose()
     }

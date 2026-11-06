@@ -17,13 +17,13 @@ async fn create_get_update_delete_with_envelope() {
     assert_eq!(o.envelope.object_type, "Profile");
     assert_eq!(o.envelope.name, "Ada Lovelace");
     assert_eq!(o.content_type, "application/jscontact+json");
-    assert_eq!(o.envelope.context.as_deref(), Some("contacts"));
+    assert_eq!(o.envelope.context.as_deref(), Some("people"));
     assert!(
         o.envelope
             .iri
             .as_deref()
             .unwrap()
-            .starts_with("https://local.invalid/contacts/")
+            .starts_with("https://local.invalid/people/")
     );
     assert_eq!(o.index["email"], ["ada@example.org"]);
     assert_eq!(o.index["phone"], ["+49301234567"]);

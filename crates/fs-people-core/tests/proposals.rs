@@ -5,7 +5,7 @@ mod common;
 use std::sync::Arc;
 
 use common::{ME, person, repo, setup};
-use fs_people_core::{ContactRepo, Error, MatchKind, MatchReason};
+use fs_people_core::{Error, MatchKind, MatchReason, PeopleRepo};
 use fs_store::{ObjectId, Store, TursoStore};
 use serde_json::json;
 
@@ -58,7 +58,7 @@ async fn same_person_proposals_and_confirmation() {
         rel.content["subject"]
             .as_str()
             .unwrap()
-            .contains("/contacts/")
+            .contains("/people/")
     );
     // both cards remain, link visible, no longer proposed, not linkable twice
     assert!(r.get(a).await.unwrap().is_some() && r.get(b).await.unwrap().is_some());
@@ -116,7 +116,7 @@ async fn sensitive_card_needs_encrypted_store() {
     let dir = std::env::temp_dir().join(format!("fs-contacts-{}", fs_store::ObjectId::new()));
     std::fs::create_dir_all(&dir).unwrap();
     let store: Arc<dyn Store> = Arc::new(TursoStore::open(dir.join("c.db")).await.unwrap());
-    let r = ContactRepo::new(store, ME);
+    let r = PeopleRepo::new(store, ME);
     let mut c = person("Secret", "s@example.org");
     c.mark_sensitive(["pd:SexualPreference"]);
     assert!(matches!(

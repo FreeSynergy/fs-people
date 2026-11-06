@@ -6,12 +6,12 @@
 use fs_store::{Blob, Envelope, ObjectId, StoredObject};
 
 use super::consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE};
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::error::Result;
 use crate::index::index_fields;
 
-impl ContactRepo {
+impl PeopleRepo {
     pub(super) fn build_object(
         &self,
         card: &Card,

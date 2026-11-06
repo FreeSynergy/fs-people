@@ -1,6 +1,6 @@
-//! The store-backed contact book: module map.
+//! The store-backed people program: module map.
 //!
-//! Pattern: Facade (declarations) — `ContactRepo` is the one entry point; the files behind it
+//! Pattern: Facade (declarations) — `PeopleRepo` is the one entry point; the files behind it
 //! are one concept each (CRUD, search, groups, links, proposals, import / export).
 
 mod backend;
@@ -18,5 +18,5 @@ mod types;
 
 pub use consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE, RELATIONSHIP_TYPE};
 pub use envelope::card_of;
-pub use handle::ContactRepo;
+pub use handle::PeopleRepo;
 pub use types::{ImportReport, ListFilter};

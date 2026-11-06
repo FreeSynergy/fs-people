@@ -1,6 +1,6 @@
-//! Adapter from the `Store` facade to the two narrow traits the contact book needs.
+//! Adapter from the `Store` facade to the two narrow traits the people program needs.
 //!
-//! Pattern: Adapter — `ContactRepo::new` still takes `Arc<dyn Store>`, but the repository itself
+//! Pattern: Adapter — `PeopleRepo::new` still takes `Arc<dyn Store>`, but the repository itself
 //! only sees `dyn ObjectRepository` and `dyn ObjectQuery` (interface segregation, ADR 0043).
 
 use std::sync::Arc;

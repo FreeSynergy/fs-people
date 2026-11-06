@@ -6,12 +6,12 @@
 
 use fs_store::ObjectId;
 
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use super::types::ImportReport;
 use crate::error::{Error, Result};
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 
-impl ContactRepo {
+impl PeopleRepo {
     /// Import the cards `importer` finds in `text`. Cards whose `uid` already exists are skipped,
     /// never overwritten; the importer's original text (ADR 0030) is kept per card.
     pub async fn import(&self, importer: &dyn Importer, text: &str) -> Result<ImportReport> {

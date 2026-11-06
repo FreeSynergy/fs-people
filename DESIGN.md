@@ -1,7 +1,7 @@
-# fs-contacts – Design
+# fs-people – Design
 
-`fs-contacts` is the contacts program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI).
-A contact is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
+`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI).
+A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
 (ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the GUI/workbench crates come later and use this core.
 
 ## State
@@ -12,13 +12,13 @@ Version 0.1.0 (refactored to ADR 0043), local only (no remote, never pushed). Bu
 |---|---|
 | Typed `Card` (serde) with lossless unknown/vendor properties (`extra` maps on the card and every sub-object) | done; all 20 demo cards round-trip byte-equal as JSON |
 | Validation (RFC 9553: `@type`, `version` "1.0", `uid`, `kind` enum or `<domain>:<value>`, UTC date-times, required members of sub-objects, `members` only for groups) | done |
-| Contract `ContactBook` (trait, object-safe) + store-backed `ContactRepo` (create / update / delete / get / get_by_uid / list / search / groups / links / import / export) | done; `ContactRepo` depends on `dyn ObjectRepository` + `dyn ObjectQuery` only (narrow fs-store traits) |
-| Envelope derivation: type `Profile`, `name` (ADR 0032: `name.full`, else components, nickname, org, e-mail, uid), `context=contacts`, IRI `https://<instance>/contacts/<id>`, `sensitive` from the card | done |
+| Contract `People` (trait, object-safe) + store-backed `PeopleRepo` (create / update / delete / get / get_by_uid / list / search / groups / links / import / export) | done; `PeopleRepo` depends on `dyn ObjectRepository` + `dyn ObjectQuery` only (narrow fs-store traits) |
+| Envelope derivation: type `Profile`, `name` (ADR 0032: `name.full`, else components, nickname, org, e-mail, uid), `context=people`, IRI `https://<instance>/people/<id>`, `sensitive` from the card | done |
 | Index fields: `uid`, `kind`, `name_sort`, `email` (lowercase), `phone` (E.164-ish), `nickname`, `org` (lowercase), `member` | done; `describes` moved to the envelope (fs-store 0.2) |
 | Envelope `describes` (AS2 `Profile.describes`) from the vendor property `freesynergy.net:describes`; `find_by_describes` | done |
 | Search by name / nickname / e-mail / phone / organisation (substring, case-insensitive) | done **in the store**: one query with an OR-group of `Op::Contains` (name, `name_sort`, nickname, e-mail, org, phone digits); Unicode case-insensitive, `%` `_` literal |
 | Listing / ordering | `list` ordered by the `name_sort` index ("surname, given") case-insensitively, limit/offset in the store (no Rust sort) |
-| Formats behind `Importer` / `Exporter` traits (`VCardFormat`, `JsContactFormat`); `ContactRepo::import(&dyn Importer, ..)` / `export(&dyn Exporter, ..)` | done |
+| Formats behind `Importer` / `Exporter` traits (`VCardFormat`, `JsContactFormat`); `PeopleRepo::import(&dyn Importer, ..)` / `export(&dyn Exporter, ..)` | done |
 | vCard 4.0 import/export via `calcard` (also reads 2.1/3.0); original kept per card (`text/vcard`, ADR 0030); re-import skips known `uid`s | done |
 | Groups / folders: `kind: group` + `members` (ADR 0037); add/remove member, resolve members, groups of a card | done |
 | Same-person proposals (ADR 0019/0029) as a `MatchStrategy` (default `SharedContactPoint`, swappable with `with_match_strategy`): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
@@ -29,13 +29,13 @@ Version 0.1.0 (refactored to ADR 0043), local only (no remote, never pushed). Bu
 
 ## Structure and pattern map (ADR 0043)
 
-Public contract: the trait `ContactBook`; `ContactRepo` is its implementation (Repository + Facade) and keeps all
+Public contract: the trait `People`; `PeopleRepo` is its implementation (Repository + Facade) and keeps all
 its inherent methods, so callers that do not import the trait keep working. Every file is one concept, <= 200 lines
 (tests included); `lib.rs` and every `mod.rs` only declare and re-export.
 
 | Module | Pattern | Why |
 |---|---|---|
-| `book.rs` | Repository (interface) | the program's public contract; GUI, hub and tests use `dyn ContactBook` |
+| `people.rs` | Repository (interface) | the program's public contract; GUI, hub and tests use `dyn People` |
 | `repo/handle.rs`, `repo/mod.rs` | Repository + Facade | one small type hides store, envelope rules, formats and matching |
 | `repo/backend.rs` | Adapter | `Arc<dyn Store>` presented as `dyn ObjectRepository` + `dyn ObjectQuery` (narrowest store traits) |
 | `repo/{crud,find,groups,links}.rs` | Repository | one concern each: writes, queries, groups, `owl:sameAs` links |
@@ -52,13 +52,13 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Migration for dependents
 
-* `ContactRepo::store()` is removed: the repository no longer holds the whole `Store`, only the narrow traits. Keep your
+* `PeopleRepo::store()` is removed: the repository no longer holds the whole `Store`, only the narrow traits. Keep your
   own `Arc<dyn Store>` for undo / log / count calls (the old tests did `r.store().undo(..)`).
 * `vcard::ImportedCard` moved to `format::ImportedCard` (re-exported at the crate root); `original` is now `Option<Blob>`.
-* `Card`, `ContactRepo::new/with_instance/create/get/update/delete/list/search/...`, `ListFilter`, `ImportReport`, `MatchKind`,
+* `Card`, `PeopleRepo::new/with_instance/create/get/update/delete/list/search/...`, `ListFilter`, `ImportReport`, `MatchKind`,
   `MatchReason`, `SameAsProposal`, `validate::*`, `vcard::*` keep their paths and signatures; fs-hub compiles unchanged.
-* New: `ContactBook`, `Importer`, `Exporter`, `MatchStrategy`, `ContactRepo::{with_backend, with_match_strategy, import, export}`.
-  If you import `ContactBook` next to `ContactRepo`'s inherent methods nothing is ambiguous (inherent methods win).
+* New: `People`, `Importer`, `Exporter`, `MatchStrategy`, `PeopleRepo::{with_backend, with_match_strategy, import, export}`.
+  If you import `People` next to `PeopleRepo`'s inherent methods nothing is ambiguous (inherent methods win).
 
 ## Crates
 

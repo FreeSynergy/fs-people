@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use fs_people_core::{ContactBook, ContactRepo, ListFilter};
+use fs_people_core::{ListFilter, People, PeopleRepo};
 use fs_store::{Store, TursoStore};
 
 const DEMO: &str = "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.json";
@@ -13,9 +13,9 @@ const DEMO: &str = "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.js
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::args().nth(1).unwrap_or_else(|| DEMO.into());
     let store: Arc<dyn Store> = Arc::new(TursoStore::open_in_memory().await?);
-    // Program against the trait; `ContactRepo` is the store-backed implementation.
-    let repo: Arc<dyn ContactBook> =
-        Arc::new(ContactRepo::new(store, "https://local.invalid/users/owner"));
+    // Program against the trait; `PeopleRepo` is the store-backed implementation.
+    let repo: Arc<dyn People> =
+        Arc::new(PeopleRepo::new(store, "https://local.invalid/users/owner"));
 
     let rep = repo
         .import_jscontact(&std::fs::read_to_string(path)?)

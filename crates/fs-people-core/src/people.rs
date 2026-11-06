@@ -1,7 +1,7 @@
-//! The [`ContactBook`] contract: what the contacts program offers to everyone else.
+//! The [`People`] contract: what the people program offers to everyone else.
 //!
 //! Pattern: Repository (interface) — callers (the GUI, the hub, tests with fakes) depend on this
-//! trait, never on the store-backed `ContactRepo`.
+//! trait, never on the store-backed `PeopleRepo`.
 
 use async_trait::async_trait;
 use fs_store::{ObjectId, StoredObject};
@@ -14,7 +14,7 @@ use crate::repo::{ImportReport, ListFilter};
 
 /// Cards, groups, search, import / export and same-person links.
 #[async_trait]
-pub trait ContactBook: Send + Sync {
+pub trait People: Send + Sync {
     /// Validate and store a new card. Refused if its `uid` already exists.
     async fn create(&self, card: Card) -> Result<StoredObject>;
     /// The stored object of a contact, if it exists.

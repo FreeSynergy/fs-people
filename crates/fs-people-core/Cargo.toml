@@ -1,6 +1,6 @@
 [package]
 name = "fs-people-core"
-description = "Program core of FreeSynergy contacts: JSContact cards over fs-store, vCard import/export, same-person proposals"
+description = "Program core of FreeSynergy people: JSContact cards over fs-store, vCard import/export, same-person proposals"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1,4 +1,4 @@
-//! The program is usable through its traits alone: `ContactBook`, `Importer`, `Exporter`,
+//! The program is usable through its traits alone: `People`, `Importer`, `Exporter`,
 //! `MatchStrategy` (ADR 0043).
 
 mod common;
@@ -7,13 +7,13 @@ use std::sync::Arc;
 
 use common::{ME, person, repo, setup};
 use fs_people_core::{
-    Candidate, Card, ContactBook, ContactRepo, Exporter, ImportedCard, Importer, JsContactFormat,
-    MatchKind, MatchReason, MatchStrategy, Result, SameAsProposal, VCardFormat,
+    Candidate, Card, Exporter, ImportedCard, Importer, JsContactFormat, MatchKind, MatchReason,
+    MatchStrategy, People, PeopleRepo, Result, SameAsProposal, VCardFormat,
 };
 
 #[tokio::test]
 async fn contact_book_works_as_a_trait_object() {
-    let book: Arc<dyn ContactBook> = Arc::new(repo().await);
+    let book: Arc<dyn People> = Arc::new(repo().await);
     let o = book.create(person("Ada", "ada@example.org")).await.unwrap();
     assert_eq!(book.search("ada").await.unwrap().len(), 1);
     assert!(
@@ -96,7 +96,7 @@ async fn the_match_strategy_is_swappable() {
     assert_eq!(r.find_same_person_proposals().await.unwrap().len(), 1);
     // the default strategy needs a shared contact point
     assert!(
-        ContactRepo::new(store, ME)
+        PeopleRepo::new(store, ME)
             .find_same_person_proposals()
             .await
             .unwrap()

@@ -1,7 +1,7 @@
-//! `fs-people-core`: program core of FreeSynergy contacts (no GUI).
+//! `fs-people-core`: program core of FreeSynergy people (no GUI).
 //!
-//! A contact is a JSContact `Card` (RFC 9553) in an AS2 `Profile` envelope stored through
-//! `fs-store` (ADR 0014, 0019, 0020). Start with the [`ContactBook`] trait; [`ContactRepo`] is
+//! A person is a JSContact `Card` (RFC 9553) in an AS2 `Profile` envelope stored through
+//! `fs-store` (ADR 0014, 0019, 0020). Start with the [`People`] trait; [`PeopleRepo`] is
 //! its store-backed implementation. See `DESIGN.md` for the pattern map.
 //!
 //! Pattern: Facade — this file only declares modules and re-exports the public API.
@@ -17,18 +17,17 @@
     clippy::module_name_repetitions
 )]
 
-mod book;
 pub mod card;
 mod clock;
 mod error;
 pub mod format;
 pub mod index;
 pub mod matching;
+mod people;
 mod repo;
 pub mod validate;
 pub mod vcard;
 
-pub use book::ContactBook;
 pub use card::Card;
 pub use clock::now_utc;
 pub use error::{Error, Issue, Result};
@@ -36,7 +35,8 @@ pub use format::{Exporter, ImportedCard, Importer, JsContactFormat, VCardFormat}
 pub use matching::{
     Candidate, MatchKind, MatchReason, MatchStrategy, SameAsProposal, SharedContactPoint,
 };
+pub use people::People;
 pub use repo::{
-    CONTENT_TYPE, CONTEXT, ContactRepo, ImportReport, ListFilter, PROFILE_TYPE, RELATIONSHIP_TYPE,
+    CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, RELATIONSHIP_TYPE,
     card_of,
 };

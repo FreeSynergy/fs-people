@@ -6,11 +6,11 @@
 use fs_store::{ObjectId, Query, StoredObject};
 
 use super::consts::PROFILE_TYPE;
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::error::{Error, Result};
 
-impl ContactRepo {
+impl PeopleRepo {
     /// A group (folder, mailing list): a card with `kind: group` and `members`.
     pub async fn create_group(&self, name: &str) -> Result<StoredObject> {
         self.create(Card::group(name)).await

@@ -6,12 +6,12 @@
 use fs_store::{Cond, Op, Query, StoredObject};
 
 use super::consts::{CONTEXT, PROFILE_TYPE};
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use super::types::ListFilter;
 use crate::error::Result;
 use crate::index::{normalise_email, normalise_phone};
 
-impl ContactRepo {
+impl PeopleRepo {
     /// Profiles ordered case-insensitively by `name_sort` ("surname, given"); filtering, ordering
     /// and paging are done by the store.
     pub async fn list(&self, filter: &ListFilter) -> Result<Vec<StoredObject>> {
@@ -56,7 +56,7 @@ impl ContactRepo {
 
     /// Case-insensitive (Unicode-normalised) substring search over name, nicknames, e-mail,
     /// phone (digits) and organisation, evaluated by the store (`Op::Contains` over an
-    /// OR-group). Result order as in [`ContactRepo::list`].
+    /// OR-group). Result order as in [`PeopleRepo::list`].
     pub async fn search(&self, term: &str) -> Result<Vec<StoredObject>> {
         let term = term.trim();
         if term.is_empty() {

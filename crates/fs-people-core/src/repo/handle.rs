@@ -1,7 +1,7 @@
-//! [`ContactRepo`]: the store-backed implementation of the contact book.
+//! [`PeopleRepo`]: the store-backed implementation of `People`.
 //!
 //! Pattern: Repository + Facade — one small type hides the object store, the envelope rules, the
-//! formats and the matching strategy behind the `ContactBook` contract. Its collaborators are
+//! formats and the matching strategy behind the `People` contract. Its collaborators are
 //! injected as traits (`ObjectRepository`, `ObjectQuery`, `MatchStrategy`), so each can be swapped.
 
 use std::sync::Arc;
@@ -12,9 +12,9 @@ use fs_store::{ObjectId, Store};
 use super::backend::StoreAdapter;
 use crate::matching::{MatchStrategy, SharedContactPoint};
 
-/// Contacts over an object store. Cheap to clone.
+/// People over an object store. Cheap to clone.
 #[derive(Clone)]
-pub struct ContactRepo {
+pub struct PeopleRepo {
     pub(super) objects: Arc<dyn ObjectRepository>,
     pub(super) reads: Arc<dyn ObjectQuery>,
     pub(super) matcher: Arc<dyn MatchStrategy>,
@@ -22,15 +22,15 @@ pub struct ContactRepo {
     pub(super) instance: String,
 }
 
-impl ContactRepo {
-    /// Contacts over a whole [`Store`]. `actor` is the IRI of the acting person / program
+impl PeopleRepo {
+    /// People over a whole [`Store`]. `actor` is the IRI of the acting person / program
     /// (written to the log).
     pub fn new(store: Arc<dyn Store>, actor: impl Into<String>) -> Self {
         let adapter = Arc::new(StoreAdapter(store));
         Self::with_backend(adapter.clone(), adapter, actor)
     }
 
-    /// Contacts over the narrow store traits only (a remote or fake backend can supply them).
+    /// People over the narrow store traits only (a remote or fake backend can supply them).
     pub fn with_backend(
         objects: Arc<dyn ObjectRepository>,
         reads: Arc<dyn ObjectQuery>,
@@ -45,7 +45,7 @@ impl ContactRepo {
         }
     }
 
-    /// Instance domain for external IRIs `https://<instance>/contacts/<id>` (ADR 0027).
+    /// Instance domain for external IRIs `https://<instance>/people/<id>` (ADR 0027).
     #[must_use]
     pub fn with_instance(mut self, instance: impl Into<String>) -> Self {
         self.instance = instance.into();
@@ -60,6 +60,6 @@ impl ContactRepo {
     }
 
     pub(super) fn iri(&self, id: ObjectId) -> String {
-        format!("https://{}/contacts/{}", self.instance, id)
+        format!("https://{}/people/{}", self.instance, id)
     }
 }

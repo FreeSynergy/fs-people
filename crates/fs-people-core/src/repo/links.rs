@@ -10,10 +10,10 @@ use serde_json::json;
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE, SAME_AS};
 use super::envelope::card_of;
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
 
-impl ContactRepo {
+impl PeopleRepo {
     /// A person confirmed a proposal: store an AS2 `Relationship` (`owl:sameAs`) between the two
     /// cards. Both cards stay (link, don't merge). Refused for sensitive cards, even if someone
     /// constructs the proposal by hand.

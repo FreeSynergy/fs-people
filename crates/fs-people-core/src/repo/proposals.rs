@@ -5,12 +5,12 @@
 //! `MatchStrategy`.
 
 use super::envelope::card_of;
-use super::handle::ContactRepo;
+use super::handle::PeopleRepo;
 use super::types::ListFilter;
 use crate::error::Result;
 use crate::matching::{Candidate, SameAsProposal};
 
-impl ContactRepo {
+impl PeopleRepo {
     /// Candidate pairs the match strategy proposes (by default: a shared normalised e-mail
     /// address or phone number).
     ///
