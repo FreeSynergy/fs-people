@@ -89,15 +89,6 @@ async fn a_delete_finishes_after_its_client_went_away() {
         let roles = roles_of(&second.client).await;
         // However busy the machine: it gets there, where without `run_to_end` it stops for good.
         for _ in 0..500 {
-            let mut linked = persons.linked_to_request();
-            write_uuid(linked.get().init_id(), Some(b));
-            let answer = linked.send().promise.await.unwrap();
-            if uuids(answer.get().unwrap().get_ids().unwrap()).is_empty() {
-                break;
-            }
-            tokio::time::sleep(PAUSE * 4).await;
-        }
-        for _ in 0..500 {
             let mut of = roles.roles_of_request();
             write_uuid(of.get().init_person(), Some(a));
             let answer = of.send().promise.await.unwrap();
