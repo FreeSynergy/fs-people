@@ -16,20 +16,20 @@ impl PeopleRepo {
     pub async fn store_role_config(&self, json: &str) -> Result<()> {
         RoleRegistry::check(json)?;
         let content: Value = serde_json::from_str(json)?;
-        let env = match self.stored_role_config().await? {
-            Some(previous) => previous.envelope,
-            None => {
-                let mut env = Envelope::new(ROLE_CONFIG_TYPE, "Configured roles");
-                env.context = Some(CONTEXT.into());
-                env.attributed_to = Some(self.actor.clone());
-                env.to = vec![self.actor.clone()];
-                env.iri = Some(self.iri(env.id));
-                env
-            }
-        };
+        let previous = self.stored_role_config().await?;
+        let env = previous.map_or_else(|| self.role_config_envelope(), |o| o.envelope);
         let object = StoredObject::new(env, "application/json", content);
         self.objects.put(object, &self.actor).await?;
         self.registry.load(json)
+    }
+
+    fn role_config_envelope(&self) -> Envelope {
+        let mut env = Envelope::new(ROLE_CONFIG_TYPE, "Configured roles");
+        env.context = Some(CONTEXT.into());
+        env.attributed_to = Some(self.actor.clone());
+        env.to = vec![self.actor.clone()];
+        env.iri = Some(self.iri(env.id));
+        env
     }
 
     /// Put the stored configuration in force, if there is one. Called once when the program starts.

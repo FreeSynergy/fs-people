@@ -100,7 +100,7 @@ impl PeopleRepo {
     /// End an assignment (the store's undo can bring it back). Any other object with this id stays.
     pub async fn unassign_role(&self, assignment: ObjectId) -> Result<()> {
         let found = self.objects.get(assignment).await?;
-        if !found.as_ref().is_some_and(|o| read(o).is_some()) {
+        if found.as_ref().and_then(read).is_none() {
             return Err(fs_store::Error::NotFound(assignment).into());
         }
         self.objects.delete(assignment, &self.actor).await?;

@@ -1,0 +1,141 @@
+//! Relations, same-person links and lists of people over a real socket.
+
+mod common;
+
+use common::{create, id_of, json_of, persons_of, problem_of, uuids, with_server};
+use fs_interfaces::rpc::{read_uuid, write_uuid};
+
+#[tokio::test(flavor = "current_thread")]
+async fn relations_stay_on_the_card() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let id = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+
+        let mut relate = persons.relate_request();
+        write_uuid(relate.get().init_id(), Some(id));
+        relate.get().set_other_uid("uid-2");
+        relate.get().set_relation("friend");
+        let answer = relate.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert_eq!(card["relatedTo"]["uid-2"]["relation"]["friend"], true);
+
+        let mut relations = persons.relations_request();
+        write_uuid(relations.get().init_id(), Some(id));
+        let answer = relations.send().promise.await.unwrap();
+        let items = answer.get().unwrap().get_items().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items.get(0).get_uid().unwrap().to_str().unwrap(), "uid-2");
+        assert_eq!(
+            items.get(0).get_relation().unwrap().to_str().unwrap(),
+            "friend"
+        );
+
+        let mut unrelate = persons.unrelate_request();
+        write_uuid(unrelate.get().init_id(), Some(id));
+        unrelate.get().set_other_uid("uid-2");
+        unrelate.get().set_relation("friend");
+        let answer = unrelate.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert!(card.get("relatedTo").is_none());
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn proposals_link_and_unlink() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let a = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+        let b = create(&persons, "uid-2", "A. King", "ada@x.org").await;
+        create(&persons, "uid-3", "Bob", "bob@x.org").await;
+
+        let answer = persons.proposals_request().send().promise.await.unwrap();
+        let items = answer.get().unwrap().get_items().unwrap();
+        assert_eq!(items.len(), 1);
+        let proposal = items.get(0);
+        let mut pair = [
+            read_uuid(proposal.get_a().unwrap()).unwrap(),
+            read_uuid(proposal.get_b().unwrap()).unwrap(),
+        ];
+        pair.sort_unstable();
+        assert_eq!(pair, [a, b]);
+        let reason = proposal.get_reasons().unwrap().get(0).unwrap();
+        assert_eq!(reason.to_str().unwrap(), "email:ada@x.org");
+
+        let mut confirm = persons.confirm_same_request();
+        write_uuid(confirm.get().init_a(), Some(a));
+        write_uuid(confirm.get().init_b(), Some(b));
+        let answer = confirm.send().promise.await.unwrap();
+        let link = read_uuid(answer.get().unwrap().get_link().unwrap()).unwrap();
+
+        let mut linked = persons.linked_to_request();
+        write_uuid(linked.get().init_id(), Some(a));
+        let answer = linked.send().promise.await.unwrap();
+        assert_eq!(uuids(answer.get().unwrap().get_ids().unwrap()), [b]);
+        let answer = persons.proposals_request().send().promise.await.unwrap();
+        assert_eq!(answer.get().unwrap().get_items().unwrap().len(), 0);
+
+        let mut again = persons.confirm_same_request();
+        write_uuid(again.get().init_a(), Some(a));
+        write_uuid(again.get().init_b(), Some(b));
+        assert_eq!(problem_of(again.send().promise.await).status, 409);
+
+        let mut unlink = persons.unlink_same_request();
+        write_uuid(unlink.get().init_link(), Some(link));
+        unlink.send().promise.await.unwrap();
+        let mut linked = persons.linked_to_request();
+        write_uuid(linked.get().init_id(), Some(a));
+        let answer = linked.send().promise.await.unwrap();
+        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn lists_hold_people() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let ada = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+
+        let mut make = persons.create_list_request();
+        make.get().set_name("Friends");
+        let answer = make.send().promise.await.unwrap();
+        let person = answer.get().unwrap().get_person().unwrap();
+        let list = id_of(person);
+        assert_eq!(json_of(person)["kind"], "group");
+
+        let mut add = persons.add_to_list_request();
+        write_uuid(add.get().init_list(), Some(list));
+        write_uuid(add.get().init_member(), Some(ada));
+        let answer = add.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert_eq!(card["members"]["uid-1"], true);
+
+        let mut members = persons.list_members_request();
+        write_uuid(members.get().init_list(), Some(list));
+        let answer = members.send().promise.await.unwrap();
+        let items = answer.get().unwrap().get_items().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(id_of(items.get(0)), ada);
+
+        let mut of = persons.lists_of_request();
+        write_uuid(of.get().init_member(), Some(ada));
+        let answer = of.send().promise.await.unwrap();
+        let items = answer.get().unwrap().get_items().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(id_of(items.get(0)), list);
+
+        let mut remove = persons.remove_from_list_request();
+        write_uuid(remove.get().init_list(), Some(list));
+        write_uuid(remove.get().init_member(), Some(ada));
+        let answer = remove.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert!(card.get("members").is_none());
+
+        let mut into_a_person = persons.add_to_list_request();
+        write_uuid(into_a_person.get().init_list(), Some(ada));
+        write_uuid(into_a_person.get().init_member(), Some(list));
+        assert_eq!(problem_of(into_a_person.send().promise.await).status, 409);
+    })
+    .await;
+}

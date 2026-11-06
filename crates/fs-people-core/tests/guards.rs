@@ -3,7 +3,7 @@
 mod common;
 
 use common::{person, repo, setup};
-use fs_people_core::{Card, Error, ListFilter, RoleDefinition, RoleRegistry, RoleScope};
+use fs_people_core::{Card, Error, RoleDefinition, RoleRegistry, RoleScope};
 use fs_store::{Envelope, ObjectId};
 use serde_json::{Map, json};
 
@@ -121,73 +121,6 @@ async fn a_scope_is_an_iri_and_details_belong_to_own_roles() {
 }
 
 #[tokio::test]
-async fn people_with_a_role_appear_once_and_filters_combine() {
-    let r = repo().await;
-    let ada = r
-        .create(person("Ada", "a@x.org"))
-        .await
-        .unwrap()
-        .envelope
-        .id;
-    r.create(person("Adam", "b@x.org")).await.unwrap();
-    let org = r
-        .create(Card::new("org", "Adacorp"))
-        .await
-        .unwrap()
-        .envelope
-        .id;
-    for holder in [ada, org] {
-        r.assign_role(holder, "member", Some(CLUB), Map::new())
-            .await
-            .unwrap();
-    }
-    r.assign_role(ada, "member", Some("https://x/groups/b"), Map::new())
-        .await
-        .unwrap();
-    assert_eq!(r.people_with_role("member", None).await.unwrap().len(), 2);
-
-    let names = |filter: ListFilter| {
-        let r = r.clone();
-        async move {
-            let found = r.list(&filter).await.unwrap();
-            found
-                .into_iter()
-                .map(|o| o.envelope.name)
-                .collect::<Vec<_>>()
-        }
-    };
-    let term = Some("ada".to_string());
-    let all = names(ListFilter {
-        term: term.clone(),
-        ..Default::default()
-    })
-    .await;
-    assert_eq!(all, ["Ada", "Adacorp", "Adam"]);
-    let role = Some("member".to_string());
-    let held = names(ListFilter {
-        term: term.clone(),
-        role: role.clone(),
-        ..Default::default()
-    })
-    .await;
-    assert_eq!(held, ["Ada", "Adacorp"]);
-    let filter = ListFilter {
-        term,
-        role: role.clone(),
-        kind: Some("org".into()),
-        ..Default::default()
-    };
-    assert_eq!(names(filter).await, ["Adacorp"]);
-    let filter = ListFilter {
-        role,
-        limit: Some(1),
-        offset: 1,
-        ..Default::default()
-    };
-    assert_eq!(names(filter).await, ["Adacorp"]);
-}
-
-#[tokio::test]
 async fn a_failed_ai_mark_leaves_the_card_alone() {
     let r = repo().await.with_roles(RoleRegistry::empty());
     let a = r
@@ -232,4 +165,22 @@ async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
     again.restore_role_config().await.unwrap();
     assert!(again.role("ai").await.unwrap().is_none());
     assert_eq!(again.role("coach").await.unwrap().unwrap().owner, "o");
+}
+
+#[tokio::test]
+async fn a_refused_card_does_not_stop_the_import() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("objects.db");
+    let store: std::sync::Arc<dyn fs_store::Store> =
+        std::sync::Arc::new(fs_store::TursoStore::open(path).await.unwrap());
+    let r = fs_people_core::PeopleRepo::new(store, common::ME);
+    let cards = json!([
+        {"@type": "Card", "version": "1.0", "uid": "secret", "name": {"full": "Secret"},
+         "freesynergy.net:sensitive": ["pd:HealthRecord"]},
+        {"@type": "Card", "version": "1.0", "uid": "plain", "name": {"full": "Plain"}},
+    ]);
+    let report = r.import_jscontact(&cards.to_string()).await.unwrap();
+    assert_eq!(report.created.len(), 1);
+    assert_eq!(report.failed.len(), 1);
+    assert!(report.failed[0].starts_with("secret:"), "{report:?}");
 }

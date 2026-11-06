@@ -27,7 +27,7 @@ pub fn normalise_phone(s: &str) -> String {
     }
     if plus {
         format!("+{digits}")
-    } else if let Some(rest) = digits.strip_prefix("00") {
+    } else if let Some(rest) = digits.strip_prefix("00").filter(|r| !r.is_empty()) {
         format!("+{rest}")
     } else {
         digits
@@ -61,6 +61,7 @@ mod tests {
             ("030/1234567", "0301234567"),
             ("+1 555 0100 x23", "+15550100"),
             ("n/a", ""),
+            ("00", "00"),
         ] {
             assert_eq!(normalise_phone(i), o, "{i}");
         }
