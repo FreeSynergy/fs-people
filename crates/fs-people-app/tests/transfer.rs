@@ -103,11 +103,12 @@ fn people_marked_sensitive_are_left_out_of_an_export_and_named() {
     let file = dir.file("out.vcf");
     let report = export_all(w.repo.as_ref(), w.runtime.handle(), &file, &[]).unwrap();
     assert_eq!(report.written, 1);
+    assert!(report.left_out[0].starts_with("urn:uuid:"), "{report:?}");
+    let said = report.message(&file);
     assert!(
-        report.left_out[0].starts_with("Secret (urn:uuid:"),
-        "{report:?}"
+        said.contains(&report.left_out[0]) && !said.contains("Secret"),
+        "{said}"
     );
-    assert!(report.message(&file).contains("Secret"));
     assert!(!std::fs::read_to_string(&file).unwrap().contains("s@x.org"));
 }
 

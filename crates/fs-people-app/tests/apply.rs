@@ -144,6 +144,12 @@ fn export_sensitive_releases_exactly_the_person_named() {
     assert!(text.contains("one@x.org") && text.contains("open@x.org"));
     assert!(!text.contains("two@x.org"));
     assert!(report.message(&out).contains("Released by you"));
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&out).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "for its owner alone");
+    }
 }
 
 #[test]
