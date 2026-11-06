@@ -9,8 +9,8 @@ use std::path::Path;
 use fs_people_core::{ListFilter, People};
 use tokio::runtime::Handle;
 
-use fs_components_app::write_new_file;
 use crate::source::{is_marked, reason_text};
+use fs_components_app::write_new_file;
 
 /// Asked of the core at a time while exporting.
 const EXPORT_PAGE: usize = 500;
