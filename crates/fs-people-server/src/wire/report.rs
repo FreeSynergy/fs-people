@@ -42,9 +42,7 @@ fn write_capped<'a>(
     Ok(())
 }
 
-/// Write the report of an import: what fits, `created` first, and what did not fit counted. The
-/// contract has no place for `unclear` yet, and the cards there were stored, but whoever imports must
-/// hear of them: provisionally they come first in `failed`.
+/// Write the report of an import: what fits, `created` first, and what did not fit counted.
 pub(crate) fn write_report(
     mut out: import_report::Builder<'_>,
     report: &ImportReport,
@@ -55,26 +53,24 @@ pub(crate) fn write_report(
         out.reborrow().init_created(count(shown)?),
         &report.created[..shown],
     );
-    let rest = MAX_PAGE_BYTES.saturating_sub(shown.saturating_mul(UUID_BYTES)) / 2;
-    let skipped: Vec<&str> = report.skipped.iter().map(String::as_str).collect();
-    write_capped(|n| out.reborrow().init_skipped(n), &skipped, rest)?;
-    let mut notes: Vec<String> = report
-        .unclear
-        .iter()
-        .map(|who| format!("stored, its sensitive marking names no category: {who}"))
-        .collect();
+    let rest = MAX_PAGE_BYTES.saturating_sub(shown.saturating_mul(UUID_BYTES)) / 3;
+    let note = format!(
+        "{} more were stored, their ids do not fit this answer",
+        report.created.len() - shown
+    );
+    let mut failed = borrowed(&report.failed);
     if shown < report.created.len() {
-        notes.push(format!(
-            "{} more were stored, their ids do not fit this answer",
-            report.created.len() - shown
-        ));
+        failed.insert(0, note.as_str());
     }
-    let failed: Vec<&str> = notes
-        .iter()
-        .chain(&report.failed)
-        .map(String::as_str)
-        .collect();
+    let skipped = borrowed(&report.skipped);
+    write_capped(|n| out.reborrow().init_skipped(n), &skipped, rest)?;
+    let unclear = borrowed(&report.unclear);
+    write_capped(|n| out.reborrow().init_unclear(n), &unclear, rest)?;
     write_capped(|n| out.init_failed(n), &failed, rest)
+}
+
+fn borrowed(list: &[String]) -> Vec<&str> {
+    list.iter().map(String::as_str).collect()
 }
 
 #[cfg(test)]
@@ -110,17 +106,15 @@ mod tests {
             "created is whole"
         );
         let failed = reader.get_failed().unwrap();
-        assert_eq!(
-            failed.get(0).unwrap().to_str().unwrap(),
-            "stored, its sensitive marking names no category: uid: Name"
-        );
+        let unclear = reader.get_unclear().unwrap();
+        assert_eq!(unclear.get(0).unwrap().to_str().unwrap(), "uid: Name");
         let last = failed
             .get(failed.len() - 1)
             .unwrap()
             .to_str()
             .unwrap()
             .to_string();
-        let shown = u64::from(failed.len()) - 2; // without the unclear entry and this one
+        let shown = u64::from(failed.len()) - 1; // without this one
         assert_eq!(last, format!("{} more", 3_000_000 - shown));
         let skipped = reader.get_skipped().unwrap();
         let last = skipped
@@ -172,10 +166,8 @@ mod tests {
             l.iter().map(|t| t.unwrap().to_string().unwrap()).collect()
         };
         assert_eq!(texts(reader.get_skipped().unwrap()), ["s"]);
-        assert_eq!(
-            texts(reader.get_failed().unwrap()),
-            ["stored, its sensitive marking names no category: u: U", "f"]
-        );
+        assert_eq!(texts(reader.get_failed().unwrap()), ["f"]);
+        assert_eq!(texts(reader.get_unclear().unwrap()), ["u: U"]);
     }
 
     #[test]

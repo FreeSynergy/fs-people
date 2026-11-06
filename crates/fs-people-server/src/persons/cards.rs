@@ -11,8 +11,8 @@ use fs_people_core::{ListFilter, People};
 use crate::errors::{finish, rpc_error};
 use crate::formats::{exporter, importer};
 use crate::wire::{
-    intake, read_card, read_filter, required, unpaged, write_page, write_person, write_persons,
-    write_report,
+    count, intake, read_card, read_filter, required, unpaged, write_page, write_person,
+    write_persons, write_report,
 };
 
 type Done = Result<(), capnp::Error>;
@@ -161,8 +161,22 @@ pub(super) async fn export_text(
     let p = params.get()?;
     let format = exporter(required(p.get_media_type()?, "mediaType")?)?;
     let id = read_object_id(p.get_id()?)?;
-    let text = people.export(format, id).await.map_err(rpc_error)?;
-    check_answer(text.len())?;
-    results.get().set_text(text.as_str());
+    let released: Vec<String> = p
+        .get_released()?
+        .iter()
+        .map(|uid| Ok(uid?.to_string()?))
+        .collect::<capnp::Result<_>>()?;
+    let export = people
+        .export_released(format, id, &released)
+        .await
+        .map_err(rpc_error)?;
+    let names: usize = export.withheld.iter().map(|name| name.len() + 16).sum();
+    check_answer(export.text.len().saturating_add(names))?;
+    let mut r = results.get();
+    r.set_text(export.text.as_str());
+    let mut withheld = r.init_withheld(count(export.withheld.len())?);
+    for (i, name) in (0u32..).zip(&export.withheld) {
+        withheld.set(i, name.as_str());
+    }
     Ok(())
 }

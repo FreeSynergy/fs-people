@@ -48,6 +48,9 @@ pub enum Error {
     /// A delete stopped halfway; the text says where. Deleting it again finishes the job.
     #[error("{1}; delete again to finish it")]
     PartlyDeleted(ObjectId, String),
+    /// A sensitive card, not exported without explicit release (ADR 0029).
+    #[error("{0} is sensitive and needs an explicit release")]
+    NotReleased(String),
     /// Who is on a list and sensitive, not taken along without explicit release (ADR 0029).
     #[error("sensitive members need an explicit release: {}", .0.join(", "))]
     SensitiveMembers(Vec<String>),

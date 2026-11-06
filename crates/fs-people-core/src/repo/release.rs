@@ -1,37 +1,46 @@
-//! Exporting a list that has sensitive members (ADR 0029).
+//! What leaves the program with an explicit release, and only then (ADR 0029).
 //!
 //! Pattern: Specification + Value object — adding someone sensitive to a list is allowed when asked for,
-//! as nothing links them automatically. Taking them along out of the program is not: an export or share
-//! of a list treats them as an export of their card would, and the report names who stayed behind.
+//! as nothing links them automatically. Taking a sensitive card out of the program is not: it needs a
+//! release per recipient, which the caller names by `uid`. Marked members of a list stay behind, and the
+//! report names them. The card itself refuses: there is nothing to send without it.
 
 use fs_store::ObjectId;
 
+use super::envelope::{card_of, is_marked};
 use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::error::{Error, Result};
 use crate::format::Exporter;
 use crate::index::normalise_uid;
 
-/// A list as text, and who was left out of it.
+/// A card as text, and who was left out of it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ListExport {
-    /// The list in the exporter's format.
+pub struct ReleasedExport {
+    /// The card in the exporter's format.
     pub text: String,
-    /// Sensitive members not taken along, as `uid: name`.
+    /// Sensitive members of a list not taken along, as `uid: name`.
     pub withheld: Vec<String>,
 }
 
 impl PeopleRepo {
-    /// The list `id` as text, without its sensitive members; those whose `uid` is in `released` go
-    /// along, as they were explicitly released. Any other card is exported as it is.
-    pub async fn export_list(
+    /// The card `id` as text. A sensitive card goes only if its `uid` is in `released`, or the answer
+    /// is [`Error::NotReleased`]. Of a list, sensitive members not in `released` are left out.
+    pub async fn export_released(
         &self,
         exporter: &dyn Exporter,
         id: ObjectId,
         released: &[String],
-    ) -> Result<ListExport> {
-        let mut card = self.get_card(id).await?.ok_or(Error::NotFound(id))?;
+    ) -> Result<ReleasedExport> {
+        let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;
+        let mut card = card_of(&stored)?;
         let released: Vec<String> = released.iter().map(|uid| normalise_uid(uid)).collect();
+        if is_marked(&stored) && !released.contains(&normalise_uid(&card.uid)) {
+            return Err(Error::NotReleased(format!(
+                "{}: {}",
+                card.uid, stored.envelope.name
+            )));
+        }
         let mut withheld = Vec::new();
         for (uid, name) in self.sensitive_members_of(&card).await? {
             if released.contains(&normalise_uid(&uid)) {
@@ -40,7 +49,7 @@ impl PeopleRepo {
             card.members.remove(&uid);
             withheld.push(name);
         }
-        Ok(ListExport {
+        Ok(ReleasedExport {
             text: exporter.export(&card)?,
             withheld,
         })
@@ -55,7 +64,7 @@ impl PeopleRepo {
         }
         for uid in card.members.keys() {
             if let Some(member) = self.get_by_uid(uid).await?
-                && !member.envelope.sensitive.is_empty()
+                && is_marked(&member)
             {
                 found.push((uid.clone(), format!("{uid}: {}", member.envelope.name)));
             }

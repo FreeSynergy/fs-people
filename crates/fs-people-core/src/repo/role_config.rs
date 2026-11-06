@@ -14,11 +14,13 @@ use super::handle::PeopleRepo;
 use super::role_rules::{check_kind, check_reach};
 use crate::error::{Error, Result};
 use crate::roles::{AI_ROLE, RoleDefinition, RoleRegistry};
+use crate::validate::check_exact_numbers;
 
 impl PeopleRepo {
     /// Replace the configured roles: checked first, stored, then swapped at once (ADR 0045). Refused
     /// if someone holds a role that would be gone, or no longer fit what the role asks.
     pub async fn store_role_config(&self, json: &str) -> Result<()> {
+        check_exact_numbers(json)?;
         let next = RoleRegistry::check(json)?;
         self.check_holders_against(&next).await?;
         let content: Value = serde_json::from_str(json)?;

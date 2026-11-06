@@ -59,6 +59,12 @@ pub(super) fn stored_value<T: serde::de::DeserializeOwned>(content: &Value) -> R
     T::deserialize(content).map_err(|e| Error::Stored(e.to_string()))
 }
 
+/// Whether a stored card counts as sensitive: its envelope says so, or its content does (an older card
+/// can have the mark only there), or the content does not read, which fails closed.
+pub(super) fn is_marked(o: &StoredObject) -> bool {
+    !o.envelope.sensitive.is_empty() || card_of(o).map_or(true, |card| card.is_sensitive())
+}
+
 /// Refuse a card that could no longer come back in one answer.
 pub(super) fn check_size(card: &Card) -> Result<()> {
     let bytes = card.to_value().to_string().len();

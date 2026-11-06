@@ -7,8 +7,8 @@ mod report;
 mod role;
 
 pub(crate) use person::{
-    ids_count, intake, proposals_count, read_card, read_filter, relations_count, required, unpaged,
-    write_ids, write_page, write_person, write_persons, write_proposals, write_relations,
+    count, ids_count, intake, proposals_count, read_card, read_filter, relations_count, required,
+    unpaged, write_ids, write_page, write_person, write_persons, write_proposals, write_relations,
 };
 pub(crate) use report::write_report;
 pub(crate) use role::{

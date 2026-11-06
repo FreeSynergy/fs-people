@@ -2,11 +2,11 @@
 
 mod common;
 
-use common::{expect_problem, id_of, persons_of, with_server};
+use common::{SENSITIVE, expect_problem, id_of, persons_of, with_server};
 use fs_interfaces::rpc::{read_envelope, write_uuid};
 
 #[tokio::test(flavor = "current_thread")]
-async fn a_list_carries_the_mark_and_does_not_export_a_sensitive_member() {
+async fn a_list_carries_the_mark_and_nothing_sensitive_leaves_without_release() {
     with_server(|root| async move {
         let persons = persons_of(&root).await;
         let text = r#"{"@type":"Card","version":"1.0","uid":"s","name":{"full":"Secret"},"freesynergy.net:sensitive":["pd:HealthRecord"]}"#;
@@ -30,14 +30,39 @@ async fn a_list_carries_the_mark_and_does_not_export_a_sensitive_member() {
         let envelope = read_envelope(items.get(0).get_envelope().unwrap()).unwrap();
         assert_eq!(envelope.sensitive, ["pd:HealthRecord"]);
 
+        // The list leaves without them, and says who stayed behind.
         let mut export = persons.export_text_request();
         write_uuid(export.get().init_id(), Some(list));
+        export.get().set_media_type("application/jscontact+json");
+        let answer = export.send().promise.await.unwrap();
+        let r = answer.get().unwrap();
+        assert!(!r.get_text().unwrap().to_str().unwrap().contains("\"s\""));
+        let withheld = r.get_withheld().unwrap();
+        assert_eq!(withheld.len(), 1);
+        assert_eq!(withheld.get(0).unwrap().to_str().unwrap(), "s: Secret");
+
+        // On release, it goes along.
+        let mut export = persons.export_text_request();
+        write_uuid(export.get().init_id(), Some(list));
+        export.get().set_media_type("application/jscontact+json");
+        export.get().init_released(1).set(0, "s");
+        let answer = export.send().promise.await.unwrap();
+        let r = answer.get().unwrap();
+        assert!(r.get_text().unwrap().to_str().unwrap().contains("\"s\""));
+        assert_eq!(r.get_withheld().unwrap().len(), 0);
+
+        // The card itself: refused, and on release its text.
+        let mut export = persons.export_text_request();
+        write_uuid(export.get().init_id(), Some(secret));
         export.get().set_media_type("text/vcard");
-        let refused = expect_problem(
-            export.send().promise.await,
-            (403, "https://freesynergy.net/problems/people/sensitive-members"),
-        );
-        assert!(refused.contains("s: Secret"), "{refused}");
+        let refused = expect_problem(export.send().promise.await, SENSITIVE);
+        assert!(refused.contains("Secret"), "{refused}");
+        let mut export = persons.export_text_request();
+        write_uuid(export.get().init_id(), Some(secret));
+        export.get().set_media_type("text/vcard");
+        export.get().init_released(1).set(0, "s");
+        let answer = export.send().promise.await.unwrap();
+        assert!(answer.get().unwrap().get_text().unwrap().to_str().unwrap().contains("Secret"));
     })
     .await;
 }

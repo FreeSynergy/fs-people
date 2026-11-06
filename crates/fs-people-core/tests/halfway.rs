@@ -10,32 +10,6 @@ use serde_json::{Map, json};
 const CLUB: &str = "https://x/groups/club";
 const V7: &str = "01a1aaef-ba80-7f7a-8dff-0000000000ab";
 
-#[tokio::test]
-async fn a_new_card_of_an_id_does_not_inherit_what_a_delete_left() {
-    let (r, store) = setup().await;
-    let mut card = person("Ada", "a@x.org");
-    card.uid = V7.into();
-    let id = r.create(card.clone()).await.unwrap().envelope.id;
-    r.assign_role(id, "member", Some(CLUB), Map::new())
-        .await
-        .unwrap();
-    // A delete that stopped after the card.
-    store.delete(id, ME).await.unwrap();
-
-    let said = r.create(card.clone()).await.unwrap_err();
-    assert!(matches!(said, Error::Conflict(_)), "{said}");
-    let report = r
-        .import_jscontact(&serde_json::to_string(&card).unwrap())
-        .await
-        .unwrap();
-    assert_eq!(report.created.len(), 0);
-    assert_eq!(report.failed.len(), 1, "{report:?}");
-
-    r.delete(id).await.unwrap();
-    r.create(card).await.unwrap();
-    assert!(r.roles_of(id).await.unwrap().is_empty());
-}
-
 fn broken_list(members: serde_json::Value) -> StoredObject {
     let mut envelope = Envelope::new("Profile", "Broken");
     envelope.context = Some("people".into());

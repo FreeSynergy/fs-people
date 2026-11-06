@@ -37,7 +37,7 @@ async fn a_file_of_failures_never_asks_the_store_and_bounds_its_report() {
     let more: usize = last.strip_suffix(" more").map_or(0, |n| n.parse().unwrap());
     assert_eq!(more + report.failed.len() - usize::from(more > 0), 300_000);
     let bytes: usize = report.failed.iter().map(String::len).sum();
-    assert!(bytes <= 8 * 1024 * 1024 + 64, "{bytes}");
+    assert!(bytes <= 5 * 1024 * 1024 + 64, "{bytes}");
 }
 
 #[tokio::test(flavor = "current_thread")]

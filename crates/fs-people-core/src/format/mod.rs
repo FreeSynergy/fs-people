@@ -3,6 +3,7 @@
 //! Pattern: Adapter (declarations) — each format file wraps a foreign representation (vCard,
 //! JSContact JSON) in the `Importer` / `Exporter` traits; more formats plug in the same way.
 
+mod items;
 mod jscontact;
 mod traits;
 mod vcard;

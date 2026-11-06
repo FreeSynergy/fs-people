@@ -12,8 +12,10 @@ use crate::error::{Error, Result};
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 use crate::validate::validate;
 
-/// How much text a report keeps per list, however large the file.
-const MAX_REPORT_TEXT_BYTES: usize = 8 * 1024 * 1024;
+/// How much text a report keeps per list, however large the file; with what each entry costs on top
+/// of its text. Below what an answer has room for, so the count in the last entry always arrives.
+const MAX_REPORT_TEXT_BYTES: usize = 5 * 1024 * 1024;
+const REPORT_ENTRY_BYTES: usize = 32;
 /// Items between two pauses of an import, so the others on this thread get their turn.
 const YIELD_EVERY: usize = 256;
 
@@ -92,16 +94,15 @@ impl PeopleRepo {
         self.import(&JsContactFormat, json_text).await
     }
 
-    /// The card as text of the format `exporter` objects. A list with sensitive members is refused
-    /// here, by name: `export_list` leaves them out or takes them along on explicit release.
+    /// The card as text of the format `exporter` objects. A sensitive card, or a list with sensitive
+    /// members, is refused here by name: `export_released` goes with an explicit release.
     pub async fn export(&self, exporter: &dyn Exporter, id: ObjectId) -> Result<String> {
-        let card = self.get_card(id).await?.ok_or(Error::NotFound(id))?;
-        let withheld = self.sensitive_members_of(&card).await?;
-        if !withheld.is_empty() {
-            let names = withheld.into_iter().map(|(_, name)| name).collect();
-            return Err(Error::SensitiveMembers(names));
+        let export = self.export_released(exporter, id, &[]).await?;
+        if export.withheld.is_empty() {
+            Ok(export.text)
+        } else {
+            Err(Error::SensitiveMembers(export.withheld))
         }
-        exporter.export(&card)
     }
 
     /// The card as vCard 4.0 text.
@@ -120,7 +121,7 @@ struct Bounded {
 
 impl Bounded {
     fn push(&mut self, text: String) {
-        self.bytes = self.bytes.saturating_add(text.len());
+        self.bytes = self.bytes.saturating_add(text.len() + REPORT_ENTRY_BYTES);
         if self.bytes > MAX_REPORT_TEXT_BYTES {
             self.more += 1;
         } else {

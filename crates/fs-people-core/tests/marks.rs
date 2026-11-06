@@ -120,13 +120,16 @@ async fn a_sensitive_member_can_be_added_on_request_but_does_not_leave_with_the_
     let refused = r.export(&JsContactFormat, list).await.unwrap_err();
     assert!(matches!(&refused, Error::SensitiveMembers(names) if names[0].contains("Secret")));
 
-    let without = r.export_list(&JsContactFormat, list, &[]).await.unwrap();
+    let without = r
+        .export_released(&JsContactFormat, list, &[])
+        .await
+        .unwrap();
     assert!(!without.text.contains(&secret_uid), "{}", without.text);
     assert!(without.text.contains(&plain_uid), "{}", without.text);
     assert_eq!(without.withheld, [format!("{secret_uid}: Secret")]);
 
     let released = r
-        .export_list(&VCardFormat, list, std::slice::from_ref(&secret_uid))
+        .export_released(&VCardFormat, list, std::slice::from_ref(&secret_uid))
         .await
         .unwrap();
     assert!(released.text.contains(&secret_uid), "{}", released.text);

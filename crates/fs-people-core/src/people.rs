@@ -13,7 +13,7 @@ use crate::card::Card;
 use crate::error::Result;
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 use crate::matching::SameAsProposal;
-use crate::repo::{ImportReport, ListExport, ListFilter};
+use crate::repo::{ImportReport, ListFilter, ReleasedExport};
 
 /// The explicit "not possible" of a method a provider does not override.
 pub(crate) fn not_possible<T>(capability: &str) -> Result<T> {
@@ -76,14 +76,20 @@ pub trait People: Send + Sync {
     async fn export(&self, _exporter: &dyn Exporter, _id: ObjectId) -> Result<String> {
         not_possible("person.export")
     }
-    /// `person.export`: a list without its sensitive members, naming them; those in `released` go along.
-    async fn export_list(
+    /// `person.export` with a release: a sensitive card only if its `uid` is in `released`, a list
+    /// without the sensitive members that are not, naming them. A provider without marks has nothing
+    /// to hold back.
+    async fn export_released(
         &self,
-        _exporter: &dyn Exporter,
-        _id: ObjectId,
+        exporter: &dyn Exporter,
+        id: ObjectId,
         _released: &[String],
-    ) -> Result<ListExport> {
-        not_possible("person.export")
+    ) -> Result<ReleasedExport> {
+        let text = self.export(exporter, id).await?;
+        Ok(ReleasedExport {
+            text,
+            withheld: Vec::new(),
+        })
     }
     /// `relation.write`: the card with `other_uid` is `relation` to this one (RFC 9553 §2.1.8).
     async fn relate(

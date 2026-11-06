@@ -13,7 +13,7 @@ use crate::clock::now_utc;
 use crate::error::{Error, Issue, Result};
 use crate::feed::PersonChange;
 use crate::index::normalise_uid;
-use crate::validate::validate;
+use crate::validate::{has_negative_zero, inexact, validate};
 
 impl PeopleRepo {
     /// Validate and store a new card. Refused if its `uid` already exists, in any spelling, and if
@@ -45,6 +45,9 @@ impl PeopleRepo {
         card.updated.get_or_insert(now);
         validate(&card)?;
         check_size(&card)?;
+        if has_negative_zero(&card.to_value()) {
+            return Err(inexact("-0"));
+        }
         if self.get_by_uid(&card.uid).await?.is_some() {
             return Err(Error::Conflict(format!(
                 "a person with uid {} exists",
@@ -64,10 +67,11 @@ impl PeopleRepo {
         let uid_is_id = normalise_uid(&card.uid).parse::<ObjectId>().is_ok();
         if uid_is_id
             && (!self.relationships_of(id).await?.is_empty()
-                || !self.roles_of(id).await?.is_empty())
+                || !self.roles_of(id).await?.is_empty()
+                || !self.assignments_scoped_to(&self.iri(id)).await?.is_empty())
         {
             return Err(Error::Conflict(format!(
-                "links or roles of an earlier {id} remain; delete it again first"
+                "links or roles of an earlier {id}, or held within it, remain; delete it again first"
             )));
         }
         self.objects.put(obj, &self.actor).await?;
@@ -144,6 +148,10 @@ impl PeopleRepo {
         card.updated = Some(now_utc());
         validate(&card)?;
         check_size(&card)?;
+        // One an older card holds stays possible to edit around; a new one does not come in.
+        if has_negative_zero(&card.to_value()) && !has_negative_zero(&old.content) {
+            return Err(inexact("-0"));
+        }
         let obj = self.build_object(&card, Some(&old.envelope), None);
         self.objects.put(obj, &self.actor).await?;
         let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;

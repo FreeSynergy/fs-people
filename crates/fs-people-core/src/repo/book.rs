@@ -11,7 +11,7 @@ use fs_interfaces::Capabilities;
 use fs_store::{ObjectId, StoredObject};
 
 use super::handle::PeopleRepo;
-use super::list_export::ListExport;
+use super::release::ReleasedExport;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
 use crate::error::Result;
@@ -82,13 +82,13 @@ impl People for PeopleRepo {
     async fn export(&self, exporter: &dyn Exporter, id: ObjectId) -> Result<String> {
         PeopleRepo::export(self, exporter, id).await
     }
-    async fn export_list(
+    async fn export_released(
         &self,
         exporter: &dyn Exporter,
         id: ObjectId,
         released: &[String],
-    ) -> Result<ListExport> {
-        PeopleRepo::export_list(self, exporter, id, released).await
+    ) -> Result<ReleasedExport> {
+        PeopleRepo::export_released(self, exporter, id, released).await
     }
     async fn create_group(&self, name: &str) -> Result<StoredObject> {
         let _turn = self.writes.lock().await;
