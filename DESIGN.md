@@ -1,12 +1,12 @@
 # fs-people – Design
 
-`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI).
+`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI) and its **server** (`crates/fs-people-server`).
 A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
 (ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the GUI/workbench crates come later and use this core.
 
 ## State
 
-Version 0.2.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.2.0, draft, consumers: 0 of 2). Built on fs-store 0.2 (git tag).
+Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.22.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
 
 | Area | State |
 |---|---|
@@ -29,7 +29,13 @@ Version 0.2.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), never on the card, so no export reveals them (ADR 0029) | done |
 | Relations (what someone is to me): JSContact `relatedTo` on the card, `relate` / `unrelate` / `relations` | done |
 | AI marking (ADR 0054): `mark_ai` = `kind: application` (RFC 9553 §2.1.4, travels with the card) + role `ai` (plain software is `application` too). Restricts nothing | done |
-| Tests | 38 (17 new: roles, relations, AI marking, provider rule). Before them: 21 (3 unit + 18 integration in `tests/{model,crud,search,vcard,groups,proposals,interfaces}.rs`; the 18 pre-refactor tests are unchanged in behaviour, 3 new ones cover the trait seams): unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` |
+| Server `fs-people-server`: every method of `People`, `Persons`, `Roles`; `subscribe` (with `ended`), `supportReport`; typed problems (`people/not-found` 404, `people/conflict` 409, `people/invalid` 422, `people/sensitive` 403, `people/encryption-required` 409, `people/stored-data` 500, shared `invalid-request` 422, `too-large` 413, `unsupported` 501); binary with `--socket`, `--data`, `--actor` | done, draft |
+| Live feed: `PeopleFeed`, `PersonListener`, `PersonChange`; cards only, never roles or links | done |
+| `list`: kind, role and term combine with AND (`ListFilter`) | done |
+| Writes through the traits take turns (`writes` in `PeopleRepo`), so a read-modify-write is not lost when the backend yields; the inherent methods do not, and compose each other | done |
+| Limits: a card is at most `MAX_CARD_BYTES` as JSON (also after small edits), every stored text passes `check_intake`, every answer without a cursor `check_answer` | done |
+| Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
+| Tests | 52 in the core, 30 for the server: over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Structure and pattern map (ADR 0043)
@@ -40,11 +46,17 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 | Module | Pattern | Why |
 |---|---|---|
+| `fs-people-server/{people_service,roles_service,persons/*}.rs` | Adapter + Factory | wire in, one trait call, wire out; depends on the traits only. `persons/service.rs` is the dispatch, `cards`, `links`, `lists` behind it |
+| `fs-people-server/wire/*`, `errors.rs` | Adapter | values on the wire, limits of a message, core errors as RFC 9457 problems |
+| `fs-people-server/formats.rs` | Registry | media type to format of the core; an unknown type is `Unsupported` |
+| `fs-people-server/feed.rs`, `feed.rs` (core) | Observer | `PeopleFeed` to the shared forwarder; a read error ends the feed with `ended` |
+| `repo/role_config.rs` | Memento | the last accepted configuration as one object in the store |
+| `repo/role_facade.rs` | Facade | `RoleBook` and `PeopleFeed` over the inherent methods, writes take turns |
 | `role_book.rs`, `repo/{roles,assign}.rs` | Repository (interface + implementation) | role definitions and assignments, split from `People` so a provider of cards alone still fits |
 | `roles/registry.rs` | Registry, swapped atomically | configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
 | `roles/{definition,assignment}.rs` | Value objects | the same form for shipped and own roles |
 | `card/relations.rs`, `repo/relations.rs` | Command | small edits of `relatedTo` |
-| `people.rs` | Repository (interface) + Null Object | the program's public contract; GUI, hub and tests use `dyn People` |
+| `people.rs` | Repository (interface) + Null Object | the program's public contract; GUI, hub, server and tests use `dyn People` |
 | `repo/handle.rs`, `repo/mod.rs` | Repository + Facade | one small type hides store, envelope rules, formats and matching |
 | `repo/backend.rs` | Adapter | `Arc<dyn Store>` presented as `dyn ObjectRepository` + `dyn ObjectQuery` (narrowest store traits) |
 | `repo/{crud,find,groups,links}.rs` | Repository | one concern each: writes, queries, groups, `owl:sameAs` links |
@@ -71,7 +83,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.2.0): `Capabilities`, `Unsupported`.
+* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.22.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
@@ -85,6 +97,9 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Object id = uid** when the `uid` is a `urn:uuid:` UUIDv7 (the demo data are), so re-imports map onto the same object. Otherwise a fresh UUIDv7.
   vCards without `UID` get a deterministic `urn:uuid:` (version 8) derived from the text, so importing the same file twice does not duplicate.
 * **`uid` is immutable**; `update` refuses a changed `uid`. `updated` is set to now on update.
+* **Object id = uid, guarded.** `create` refuses a `uid` that is the id of any other object (a role assignment, a link, another card); `put` would overwrite it without a word.
+* **Removals stay with their kind.** `unlink` and `unassign_role` remove only a same-person link or a role assignment; any other id answers not found.
+* **Import reports everything.** A card that cannot be stored is listed in `failed` and the others go on; lines outside a complete vCard are listed as well.
 * **Sensitive (ADR 0029).** The card carries categories in `freesynergy.net:sensitive`; the repo copies them to `envelope.sensitive`.
   Sensitive cards are excluded from proposals and `confirm_same_person` refuses them even for hand-made pairs.
 * **Link, don't merge.** The `Relationship` object has `subject`/`object` IRIs, `relationship: "owl:sameAs"` and index fields `subject`/`object`
@@ -96,10 +111,21 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 ## Open points of the `people` interface
 
 * **Operator of an AI (ADR 0054):** planned, the form is open. Nothing blocks it: `RoleAssignment.details` and the card's `extra` are lossless. Locking AIs out is deliberately not built.
-* **`person.subscribe`:** in the contract, not built; the provider reports it as not built yet. Comes with the first consumer that needs a live view.
 * **Role privacy across programs:** assignments are `Relationship` objects with `to = [actor]`. A program with read access to the type `Relationship` could see them through the hub, whose rule goes by type. To be settled with `fs-groups` and the sharing interface (ADR 0029).
+* **Role privacy on the server (provisional, stricter reading):** `Person.roles` holds "only what the caller may see", and the socket tells the user id, not the caller. So it is **always empty**; roles are asked for on `Roles`. Whoever reaches the socket reaches `Roles` as well, so `PersonFilter.role`, `rolesOf` and `peopleWith` answer what the contract names. When callers get an identity, all three need the same gate. A subscriber is told of cards only: an assignment or a link causes no change, and `confirmSame` hands out the id of its `Relationship`, nothing else.
+* **Details of a role (provisional):** `assign` refuses `details` for a role not owned by `fs-people`: the owner of a role holds its fields (`people.capnp`). A non-empty `scope` must be an IRI, which also keeps it apart from the internal "personal".
+* **`peopleWith` with an empty scope (provisional):** means every scope, as `PersonFilter` reads empty as no restriction, although `RoleAssignment.scope` reads empty as personal. The contract should say.
+* **Sensitive cards in the binary:** the binary opens an unencrypted store, so `fs-store` refuses them (`people/encryption-required`). The key provider comes with the key vault (ADR 0024).
 * **Role definition format:** SKOS not read yet (strategy session); the JSON form may still get sharper before 1.0.
-* **Cap'n Proto server:** the wire form exists, the capnp-rpc server is not written yet (same as `fs-tasks`). The trait returns `StoredObject` of `fs-store`; a provider without a store has to build one. To be decided before 1.0.
+* **The trait returns `StoredObject` of `fs-store`:** a provider without a store has to build one. To be decided before 1.0.
+* **Gaps of `people.capnp` (for the owner of the contract):**
+  * The root has no `capabilities` method (`tasks.capnp` has one), so `Capabilities::write_list` has no place; `supportReport` is the only report.
+  * `RoleDefinition` has no place for the lossless `extra` of the core: a role read over the wire loses it. It stays in what the store and a configuration hold.
+  * `confirmSame` is the only way to learn the id of a link, `linkedTo` answers card ids: after a restart a consumer cannot name the link it wants to `unlinkSame`.
+  * Lists without a cursor (`findBy*`, `listMembers`, `listsOf`, `relations`, `proposals`, `Roles.list`, `rolesOf`, `peopleWith`): an answer that would not fit one message is refused as `too-large`; such a list cannot be read at all.
+  * The ids `person.read`, `person.find` and the others are comments in the schema; the report follows them.
+* **Whole import limit:** `importText` takes at most `MAX_INTAKE_BYTES` per call, also for many small cards. Split a larger file.
+* **`Registry` of the feed** has the same shape as the one in `fs-tasks-core`; it belongs into a shared crate once a third program needs it (ADR 0043 §4).
 * **Group cards vs `fs-groups`:** `create_group` / `members` stay as JSContact lists of people; belonging and rights go to `fs-groups` (ADR 0050).
 
 ## fs-store 0.2 – what is used, what is still missing
@@ -115,6 +141,7 @@ Still wanted:
 
 ## Open points
 
+* A failure between the steps of `delete` (links, assignments, card) leaves the earlier steps done; the store has no transaction across calls here.
 * Sync token / CardDAV (RFC 6352) is not part of the core.
 * Field-level `freesynergy.net:sensitive` is detected, but export/sharing filtering by field (ADR 0029 point 2) is a hub/frontend concern.
 * JSContact `PatchObject` updates (RFC 9553) are not implemented; `update` replaces the whole card.
