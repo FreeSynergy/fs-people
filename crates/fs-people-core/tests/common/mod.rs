@@ -8,7 +8,11 @@ use fs_people_core::{Card, PeopleRepo};
 use fs_store::{Store, TursoStore};
 
 pub const ME: &str = "https://local.invalid/users/owner";
-pub const DEMO: &str = "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.json";
+/// The demo cards; `FS_PEOPLE_DEMO` names a copy to read instead of the documentation tree.
+pub const DEMO: &str = match option_env!("FS_PEOPLE_DEMO") {
+    Some(copy) => copy,
+    None => "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.json",
+};
 
 /// A repository over a fresh in-memory store.
 pub async fn repo() -> PeopleRepo {

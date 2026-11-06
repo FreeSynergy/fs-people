@@ -6,4 +6,4 @@ mod fields;
 mod normalise;
 
 pub use fields::index_fields;
-pub use normalise::{fold, normalise_email, normalise_phone};
+pub use normalise::{fold, normalise_email, normalise_phone, normalise_uid};

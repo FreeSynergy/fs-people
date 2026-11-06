@@ -28,4 +28,7 @@ pub struct ImportReport {
     pub skipped: Vec<String>,
     /// Entries that could not be converted or validated.
     pub failed: Vec<String>,
+    /// Who was stored with a sensitive marking that names no category: treated as sensitive until
+    /// someone clarifies it (ADR 0029). Name and `uid`.
+    pub unclear: Vec<String>,
 }

@@ -3,20 +3,35 @@
 //! Pattern: Repository — the write side of the people program; every change goes through the
 //! store, which logs it and makes it undoable.
 
-use fs_store::{Blob, ObjectId, Query, StoredObject};
+use fs_store::{Blob, Cond, ObjectId, Op, Query, StoredObject};
 
 use super::consts::PROFILE_TYPE;
 use super::envelope::{card_of, check_size};
 use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::clock::now_utc;
-use crate::error::{Error, Result};
+use crate::error::{Error, Issue, Result};
 use crate::feed::PersonChange;
+use crate::index::normalise_uid;
 use crate::validate::validate;
 
 impl PeopleRepo {
-    /// Validate and store a new card. Refused if its `uid` already exists.
+    /// Validate and store a new card. Refused if its `uid` already exists, in any spelling, and if
+    /// it carries a sensitive marking that names no category: whoever types it can say what is
+    /// meant (an import keeps such a card, see `import`).
     pub async fn create(&self, card: Card) -> Result<StoredObject> {
+        let unclear = card.unclear_sensitive_paths();
+        if !unclear.is_empty() {
+            return Err(Error::Invalid(
+                unclear
+                    .into_iter()
+                    .map(|path| Issue {
+                        path,
+                        message: "a sensitive marking must name its categories".into(),
+                    })
+                    .collect(),
+            ));
+        }
         self.create_inner(card, None).await
     }
 
@@ -65,11 +80,23 @@ impl PeopleRepo {
         self.get(id).await?.map(|o| card_of(&o)).transpose()
     }
 
-    /// Lookup by the card's `uid`.
+    /// Lookup by the card's `uid`, in any spelling of the same identity.
     pub async fn get_by_uid(&self, uid: &str) -> Result<Option<StoredObject>> {
+        let key = normalise_uid(uid);
+        if let Ok(id) = key.parse::<ObjectId>()
+            && let Some(found) = self.get(id).await?
+        {
+            return Ok(Some(found));
+        }
+        let is = |index: &str, value: &str| Cond::Index {
+            key: index.into(),
+            op: Op::Eq,
+            value: value.into(),
+        };
         let q = Query::new()
             .of_type(PROFILE_TYPE)
-            .with_index("uid", uid)
+            .or(is("uid_key", &key))
+            .or(is("uid", uid))
             .limit(1);
         Ok(self.reads.query(&q).await?.into_iter().next())
     }
@@ -93,15 +120,23 @@ impl PeopleRepo {
     }
 
     /// Delete a card (undoable through the store). Its role assignments and the same-person links
-    /// that mention it are removed too.
+    /// that mention it are removed too. The store has no transaction over several objects, so the
+    /// card goes first: if that fails nothing has changed. If removing the rest then fails, the
+    /// error says so and the same call again removes what is left.
     pub async fn delete(&self, id: ObjectId) -> Result<()> {
-        self.get(id).await?.ok_or(Error::NotFound(id))?;
-        for rel in self.relationships_of(id).await? {
-            self.objects.delete(rel.envelope.id, &self.actor).await?;
+        let card_there = self.get(id).await?.is_some();
+        if card_there {
+            self.objects.delete(id, &self.actor).await?;
+            self.feed.notify(&PersonChange::Deleted(id));
         }
-        self.delete_assignments_of(id).await?;
-        self.objects.delete(id, &self.actor).await?;
-        self.feed.notify(&PersonChange::Deleted(id));
-        Ok(())
+        let links = self.relationships_of(id).await?;
+        let roles = self.roles_of(id).await?;
+        if !card_there && links.is_empty() && roles.is_empty() {
+            return Err(Error::NotFound(id));
+        }
+        for link in links {
+            self.objects.delete(link.envelope.id, &self.actor).await?;
+        }
+        self.delete_assignments_of(id).await
     }
 }

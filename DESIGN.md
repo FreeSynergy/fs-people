@@ -71,6 +71,12 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 | `validate/*` | Specification | RFC 9553 rules reporting into one `Sink`; all issues at once |
 | `error.rs`, `clock.rs` | none | plain error enum, pure helper |
 
+## Findings of the review (2026-11-06), on branch `people-core-fixes`
+
+* **Identity of a `uid`.** `index::normalise_uid` gives one text for every spelling of a UUID (`urn:uuid:` or not, any case, hyphens or not); any other `uid` stays as it is. The index field `uid_key` holds it, and `get_by_uid`, `create` and `import` compare on it, so another spelling is a conflict or a skip, never an overwrite or a second person, also for UUIDs that are not v7 (which do not become the object id).
+* **A sensitive marking that names no category fails closed.** `Card::is_sensitive` is true for any marking at all. `create` refuses one that is not a list of names; an import keeps the card as it came, names it in `ImportReport::unclear`, and the envelope carries `freesynergy.net:unclear` (not a DPV category) so the store and every reader treat it as sensitive. A plain store refuses it, which the report gives as failed with its reason; the file is still there, so nothing is lost. `update` does not refuse it, so such a card can still be corrected.
+* **Delete.** The store has no transaction over several objects, so the card goes first: if that fails, nothing changed. If removing links and roles then fails, the error says so, they stay until the same call is made again, which finishes the job. **Known limit:** until then a link or role names a card that is gone.
+
 ## Migration for dependents
 
 * `PeopleRepo::store()` is removed: the repository no longer holds the whole `Store`, only the narrow traits. Keep your

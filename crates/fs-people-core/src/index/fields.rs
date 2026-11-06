@@ -4,7 +4,7 @@
 
 use fs_store::IndexFields;
 
-use super::normalise::{fold, normalise_email, normalise_phone};
+use super::normalise::{fold, normalise_email, normalise_phone, normalise_uid};
 use crate::card::Card;
 
 /// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `nickname`, `org`, `member`. (`describes` is an envelope field since fs-store 0.2.)
@@ -19,6 +19,7 @@ pub fn index_fields(card: &Card) -> IndexFields {
         }
     };
     add("uid", card.uid.clone());
+    add("uid_key", normalise_uid(&card.uid));
     add("kind", card.kind().to_string());
     add("name_sort", sort_key(card));
     for e in card.emails.values() {

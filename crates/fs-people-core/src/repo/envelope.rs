@@ -8,9 +8,9 @@ use serde_json::Value;
 
 use super::consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE};
 use super::handle::PeopleRepo;
-use crate::card::Card;
+use crate::card::{Card, UNCLEAR_SENSITIVE};
 use crate::error::{Error, MAX_CARD_BYTES, Result};
-use crate::index::index_fields;
+use crate::index::{index_fields, normalise_uid};
 
 impl PeopleRepo {
     pub(super) fn build_object(
@@ -25,6 +25,10 @@ impl PeopleRepo {
         env.name = card.display_name(); // ADR 0032: derived, never typed separately
         env.describes = card.describes().map(str::to_string); // AS2 Profile.describes
         env.sensitive = card.sensitive_categories(); // ADR 0029
+        if env.sensitive.is_empty() && card.is_sensitive() {
+            // Marked, but with no category we can read: the store must treat it as sensitive.
+            env.sensitive.push(UNCLEAR_SENSITIVE.to_string());
+        }
         let mut o = StoredObject::new(env, CONTENT_TYPE, card.to_value());
         o.index = index_fields(card);
         o.original = original;
@@ -34,7 +38,7 @@ impl PeopleRepo {
     fn fresh_envelope(&self, card: &Card) -> Envelope {
         let mut e = Envelope::new(PROFILE_TYPE, card.display_name());
         // A UUIDv7 uid doubles as object id, so a re-import maps onto the same object.
-        if let Ok(id) = card.uid.parse::<ObjectId>() {
+        if let Ok(id) = normalise_uid(&card.uid).parse::<ObjectId>() {
             e.id = id;
         }
         e.iri = Some(self.iri(e.id));

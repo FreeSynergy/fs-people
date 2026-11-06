@@ -16,4 +16,4 @@ pub use parts::{
     Address, AddressComponent, EmailAddress, Link, Name, NameComponent, Nickname, Note,
     Organization, Phone, Title,
 };
-pub use types::{DESCRIBES_KEY, Extra, Map, SENSITIVE_KEY, VENDOR};
+pub use types::{DESCRIBES_KEY, Extra, Map, SENSITIVE_KEY, UNCLEAR_SENSITIVE, VENDOR};

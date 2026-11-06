@@ -41,38 +41,73 @@ impl Card {
     /// sorted, unique.
     pub fn sensitive_categories(&self) -> Vec<String> {
         let mut out = Vec::new();
-        if let Ok(v) = serde_json::to_value(self) {
-            collect_sensitive(&v, &mut out);
-        }
+        visit_markings(&self.to_value(), "", &mut |_, marking| {
+            categories_of(marking, &mut out);
+        });
         out.sort();
         out.dedup();
         out
     }
 
-    /// Whether any part of the card is marked sensitive.
+    /// Whether any part of the card carries the marking, also one that names no category: that
+    /// fails closed.
     pub fn is_sensitive(&self) -> bool {
-        !self.sensitive_categories().is_empty()
+        let mut found = false;
+        visit_markings(&self.to_value(), "", &mut |_, _| found = true);
+        found
+    }
+
+    /// Where the card carries a marking that is not a list of category names.
+    pub fn unclear_sensitive_paths(&self) -> Vec<String> {
+        let mut paths = Vec::new();
+        visit_markings(&self.to_value(), "", &mut |path, marking| {
+            if !is_clear(marking) {
+                paths.push(path.to_string());
+            }
+        });
+        paths
     }
 }
 
-fn collect_sensitive(v: &Value, out: &mut Vec<String>) {
-    match v {
-        Value::Object(o) => {
-            for (k, v) in o {
-                if k == SENSITIVE_KEY {
-                    match v {
-                        Value::Array(a) => {
-                            out.extend(a.iter().filter_map(|x| x.as_str().map(str::to_string)));
-                        }
-                        Value::String(s) => out.push(s.clone()),
-                        _ => {}
-                    }
+fn categories_of(marking: &Value, out: &mut Vec<String>) {
+    let mut one = |text: &str| {
+        if !text.trim().is_empty() {
+            out.push(text.to_string());
+        }
+    };
+    match marking {
+        Value::Array(list) => list.iter().filter_map(Value::as_str).for_each(&mut one),
+        Value::String(text) => one(text),
+        _ => {}
+    }
+}
+
+fn is_clear(marking: &Value) -> bool {
+    let named = |v: &Value| v.as_str().is_some_and(|t| !t.trim().is_empty());
+    match marking {
+        Value::Array(list) => !list.is_empty() && list.iter().all(named),
+        other => named(other),
+    }
+}
+
+/// Call `found` with the path and value of every marking in `value`.
+fn visit_markings(value: &Value, path: &str, found: &mut dyn FnMut(&str, &Value)) {
+    match value {
+        Value::Object(members) => {
+            for (key, member) in members {
+                let here = format!("{path}/{key}");
+                if key == SENSITIVE_KEY {
+                    found(&here, member);
                 } else {
-                    collect_sensitive(v, out);
+                    visit_markings(member, &here, found);
                 }
             }
         }
-        Value::Array(a) => a.iter().for_each(|x| collect_sensitive(x, out)),
+        Value::Array(items) => {
+            for (i, item) in items.iter().enumerate() {
+                visit_markings(item, &format!("{path}/{i}"), found);
+            }
+        }
         _ => {}
     }
 }

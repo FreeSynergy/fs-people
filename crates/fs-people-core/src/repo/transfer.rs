@@ -12,8 +12,10 @@ use crate::error::{Error, Result};
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 
 impl PeopleRepo {
-    /// Import the cards `importer` finds in `text`. Cards whose `uid` already exists are skipped,
-    /// never overwritten; the importer's original text (ADR 0030) is kept per card.
+    /// Import the cards `importer` finds in `text`. Cards whose `uid` already exists, in any spelling,
+    /// are skipped, never overwritten; the importer's original text (ADR 0030) is kept per card. A
+    /// card with a sensitive marking that names no category is kept as it came, treated as sensitive
+    /// and named in `unclear`: an import must not lose a record.
     pub async fn import(&self, importer: &dyn Importer, text: &str) -> Result<ImportReport> {
         let mut report = ImportReport::default();
         for item in importer.import(text)? {
@@ -25,6 +27,8 @@ impl PeopleRepo {
                 }
             };
             let uid = imp.card.uid.clone();
+            let name = format!("{uid}: {}", imp.card.display_name());
+            let unclear = imp.card.is_sensitive() && !imp.card.unclear_sensitive_paths().is_empty();
             match self.get_by_uid(&uid).await {
                 Ok(Some(_)) => {
                     report.skipped.push(uid);
@@ -32,14 +36,19 @@ impl PeopleRepo {
                 }
                 Ok(None) => {}
                 Err(e) => {
-                    report.failed.push(format!("{uid}: {e}"));
+                    report.failed.push(format!("{name}: {e}"));
                     continue;
                 }
             }
             // Whatever stops this card, the report says so and the others of the file still count.
             match self.create_inner(imp.card, imp.original).await {
-                Ok(o) => report.created.push(o.envelope.id),
-                Err(e) => report.failed.push(format!("{uid}: {e}")),
+                Ok(o) => {
+                    report.created.push(o.envelope.id);
+                    if unclear {
+                        report.unclear.push(name);
+                    }
+                }
+                Err(e) => report.failed.push(format!("{name}: {e}")),
             }
         }
         Ok(report)
