@@ -75,7 +75,10 @@ fn has_something_to_call_it(card: &Card) -> bool {
         || !card.nicknames.is_empty()
         || !card.emails.is_empty()
         || !card.phones.is_empty()
-        || !card.organizations.is_empty()
+        || card
+            .organizations
+            .values()
+            .any(|o| o.name.as_deref().is_some_and(|n| !n.trim().is_empty()))
 }
 
 fn set_name(card: &mut Card, value: &str) -> Result<(), SourceError> {

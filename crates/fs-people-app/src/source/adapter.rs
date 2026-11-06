@@ -178,9 +178,10 @@ impl PeopleSource for PeopleAdapter {
             .map_err(|e| reason(&e))
     }
 
-    fn delete(&self, key: &str) -> Result<(), SourceError> {
+    fn delete(&self, key: &str) -> Result<Option<String>, SourceError> {
         self.runtime
             .block_on(self.people.delete(id_of(key)?))
+            .map(|()| None)
             .map_err(|e| reason(&e))
     }
 }

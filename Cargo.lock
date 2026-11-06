@@ -1401,7 +1401,7 @@ checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 [[package]]
 name = "fs-components-app"
 version = "0.2.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0#e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=4db5c43638a60714b72298a36767db8cafb74d38#4db5c43638a60714b72298a36767db8cafb74d38"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1415,7 +1415,7 @@ dependencies = [
 [[package]]
 name = "fs-components-primitives"
 version = "0.2.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0#e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=4db5c43638a60714b72298a36767db8cafb74d38#4db5c43638a60714b72298a36767db8cafb74d38"
 dependencies = [
  "blinc_cn",
  "blinc_core",
@@ -1425,7 +1425,7 @@ dependencies = [
 [[package]]
 name = "fs-components-render"
 version = "0.2.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0#e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=4db5c43638a60714b72298a36767db8cafb74d38#4db5c43638a60714b72298a36767db8cafb74d38"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1440,7 +1440,7 @@ dependencies = [
 [[package]]
 name = "fs-components-widgets"
 version = "0.2.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0#e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=4db5c43638a60714b72298a36767db8cafb74d38#4db5c43638a60714b72298a36767db8cafb74d38"
 dependencies = [
  "blinc_cn",
  "blinc_core",
@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "fs-components-workbenches"
 version = "0.2.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0#e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=4db5c43638a60714b72298a36767db8cafb74d38#4db5c43638a60714b72298a36767db8cafb74d38"
 dependencies = [
  "blinc_app",
  "blinc_cn",

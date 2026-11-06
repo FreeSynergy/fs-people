@@ -9,12 +9,12 @@ license.workspace = true
 fs-people-core = { path = "../fs-people-core" }
 fs-store = { git = "https://github.com/FreeSynergy/fs-store", tag = "v0.2.0" }
 # provisional: becomes a tag once reviewed
-fs-components-app = { git = "https://github.com/FreeSynergy/fs-components", rev = "e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0" }
+fs-components-app = { git = "https://github.com/FreeSynergy/fs-components", rev = "4db5c43638a60714b72298a36767db8cafb74d38" }
 # provisional: becomes a tag once reviewed
-fs-components-workbenches = { git = "https://github.com/FreeSynergy/fs-components", rev = "e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0" }
+fs-components-workbenches = { git = "https://github.com/FreeSynergy/fs-components", rev = "4db5c43638a60714b72298a36767db8cafb74d38" }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [dev-dependencies]
 # provisional: becomes a tag once reviewed
-fs-components-render = { git = "https://github.com/FreeSynergy/fs-components", rev = "e0cd962a2a38cd727fdeebfe30f6d257bd8e4aa0" }
+fs-components-render = { git = "https://github.com/FreeSynergy/fs-components", rev = "4db5c43638a60714b72298a36767db8cafb74d38" }
