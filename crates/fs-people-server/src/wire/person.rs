@@ -15,11 +15,11 @@ use fs_interfaces::rpc::{
     DEFAULT_PAGE_SIZE, Page, check_answer, check_intake, envelope_weight, invalid_request,
     write_envelope, write_object_id,
 };
-use fs_people_core::{Card, ImportReport, ListFilter, MatchKind, SameAsProposal};
+use fs_people_core::{Card, ListFilter, MatchKind, SameAsProposal};
 use fs_store::{ObjectId, StoredObject};
 
 /// Room for one list entry with its pointers; only for the check that an answer fits.
-const UUID_BYTES: usize = 32;
+pub(super) const UUID_BYTES: usize = 32;
 
 /// A length as the wire counts it.
 pub(crate) fn count(n: usize) -> capnp::Result<u32> {
@@ -103,27 +103,6 @@ pub(crate) fn write_persons(
     for (i, o) in (0u32..).zip(found) {
         write_person(out.reborrow().get(i), o);
     }
-}
-
-/// Write the report of an import.
-pub(crate) fn write_report(
-    mut out: fs_interfaces::people_capnp::import_report::Builder<'_>,
-    report: &ImportReport,
-) -> capnp::Result<()> {
-    write_ids(
-        out.reborrow().init_created(count(report.created.len())?),
-        &report.created,
-    );
-    let texts = |mut list: capnp::text_list::Builder<'_>, items: &[String]| {
-        for (i, s) in (0u32..).zip(items) {
-            list.set(i, s.as_str());
-        }
-    };
-    let skipped = count(report.skipped.len())?;
-    texts(out.reborrow().init_skipped(skipped), &report.skipped);
-    let failed = count(report.failed.len())?;
-    texts(out.init_failed(failed), &report.failed);
-    Ok(())
 }
 
 /// Write a list of ids.

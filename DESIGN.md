@@ -33,7 +33,9 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | Live feed: `PeopleFeed`, `PersonListener`, `PersonChange`; cards only, never roles or links | done |
 | `list`: kind, role and term combine with AND (`ListFilter`) | done |
 | Writes through the traits take turns (`writes` in `PeopleRepo`), so a read-modify-write is not lost when the backend yields; the inherent methods do not, and compose each other | done |
-| Limits: a card is at most `MAX_CARD_BYTES` as JSON (also after small edits), every stored text passes `check_intake`, every answer without a cursor `check_answer` | done |
+| Limits: a card is at most `MAX_CARD_BYTES` as JSON (also after small edits), every stored text passes `check_intake`, every answer without a cursor `check_answer`; the report of an import keeps `created` whole and cuts `skipped` and `failed` to fit, with a last entry "N more" | done |
+| A write of the server runs to its end, also if the client goes away (`run_to_end`, `fs-interfaces` branch `rpc-side`, **needs the tag**: until the pin moves the branch builds only with the `[patch]` below) | done |
+| Numbers stay exact in `details`, unknown card properties and role `extra` (`serde_json` feature `arbitrary_precision`; JSON is read through its text, since `from_value` refuses a long number into `flatten` extras; only the form of an exponent is normalised, `1e400` becomes `1e+400`) | done |
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
 | Tests | 52 in the core, 30 for the server: over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
@@ -75,7 +77,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 * **Identity of a `uid`.** `index::normalise_uid` gives one text for every spelling of a UUID (`urn:uuid:` or not, any case, hyphens or not); any other `uid` stays as it is. The index field `uid_key` holds it, and `get_by_uid`, `create` and `import` compare on it, so another spelling is a conflict or a skip, never an overwrite or a second person, also for UUIDs that are not v7 (which do not become the object id). Cards stored before `uid_key` existed need no migration: a search over `uid` finds them whatever their case, and the result is checked against the identity. `get_by_uid` goes by the `uid` alone; a card whose object id equals the `uid` asked for but has another `uid` is not returned, and `create` and `import` still refuse to overwrite it.
 * **A sensitive marking that names no category fails closed.** `Card::is_sensitive` is true for any marking at all. `create` refuses one that is not a list of names; an import keeps the card as it came, names it in `ImportReport::unclear`, and the envelope carries `freesynergy.net:unclear` (not a DPV category) so the store and every reader treat it as sensitive. A plain store refuses it, which the report gives as failed with its reason; the file is still there, so nothing is lost. `update` does not refuse it, so such a card can still be corrected.
-* **Delete.** The store has no transaction over several objects, so the card goes first: if that fails, nothing changed. If removing links and roles then fails, the error is `Error::PartlyDeleted`, which says the person is gone and what remains; they stay until the same call is made again, which finishes the job. **Known limit:** until then a link or role names a card that is gone, and a frontend whose list no longer shows the person cannot offer that second call.
+* **Delete.** The store has no transaction over several objects. The order is: off every list, as only the card knows its `uid`; then the card; then links and roles. A write goes to its end also if the client goes away (`run_to_end`). What stays possible, because a store call fails or the process dies between two steps: (1) the person is still there, off some lists; the error says so and the same call again finishes it. (2) The card is gone and links or roles remain: `people/partly-deleted` (500) says so and the same call again finishes it; until then a link or role names a card that is gone. After a crash nobody is told, and nothing repairs it at the next start.
 
 ## Migration for dependents
 
@@ -103,6 +105,9 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Object id = uid** when the `uid` is a `urn:uuid:` UUIDv7 (the demo data are), so re-imports map onto the same object. Otherwise a fresh UUIDv7.
   vCards without `UID` get a deterministic `urn:uuid:` (version 8) derived from the text, so importing the same file twice does not duplicate.
 * **`uid` is immutable**; `update` refuses a changed `uid`. `updated` is set to now on update.
+* **A card keeps what its roles ask.** `update` refuses a `kind` a held role does not allow, `markAi` refuses one another role does not allow, a new role configuration refuses to orphan or misfit a holder. An AI is `kind: application` and the role, both.
+* **A list holds `uid`s.** Deleting a card takes its `uid` off every list; removal goes by the `uid` in any spelling, also for a member whose card is gone, if its `uid` was its id. `removeFromList` and `listMembers` on a card that is no list are a conflict, like `addToList`.
+* **Relations are open.** `unrelate` keeps an entry that still has members of its own; `relations` shows an entry without a relation, with an empty one, and `unrelate` with an empty relation removes it.
 * **Object id = uid, guarded.** `create` refuses a `uid` that is the id of any other object (a role assignment, a link, another card); `put` would overwrite it without a word.
 * **Removals stay with their kind.** `unlink` and `unassign_role` remove only a same-person link or a role assignment; any other id answers not found.
 * **Import reports everything.** A card that cannot be stored is listed in `failed` and the others go on; lines outside a complete vCard are listed as well.
@@ -114,18 +119,24 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
 
+## Building before the tag
+
+`run_to_end` and `ServerOptions.instance` are on branch `rpc-side` of `fs-interfaces`, not on a tag yet; the pin stays `v0.22.0` in Git. Until it moves, the branch builds only with both manifests pointing at a local copy (`path`), never committed. A `[patch]` is not stable here: it is another 0.x, and `Cargo.lock` flips between the two.
+
 ## Open points of the `people` interface
 
 * **Operator of an AI (ADR 0054):** planned, the form is open. Nothing blocks it: `RoleAssignment.details` and the card's `extra` are lossless. Locking AIs out is deliberately not built.
 * **Role privacy across programs:** assignments are `Relationship` objects with `to = [actor]`. A program with read access to the type `Relationship` could see them through the hub, whose rule goes by type. To be settled with `fs-groups` and the sharing interface (ADR 0029).
 * **Role privacy on the server (provisional, stricter reading):** `Person.roles` holds "only what the caller may see", and the socket tells the user id, not the caller. So it is **always empty**; roles are asked for on `Roles`. Whoever reaches the socket reaches `Roles` as well, so `PersonFilter.role`, `rolesOf` and `peopleWith` answer what the contract names. When callers get an identity, all three need the same gate. A subscriber is told of cards only: an assignment or a link causes no change, and `confirmSame` hands out the id of its `Relationship`, nothing else.
-* **Details of a role (provisional):** `assign` refuses `details` for a role not owned by `fs-people`: the owner of a role holds its fields (`people.capnp`). A non-empty `scope` must be an IRI, which also keeps it apart from the internal "personal".
-* **`peopleWith` with an empty scope (provisional):** means every scope, as `PersonFilter` reads empty as no restriction, although `RoleAssignment.scope` reads empty as personal. The contract should say.
+* **Details of a role (provisional):** `assign` refuses `details` for a role not owned by `fs-people`: the owner of a role holds its fields (`people.capnp`). For a role already held, the same or no details answer the assignment, other details are a conflict: nothing is dropped and nothing replaced; end the assignment first.
+* **Scope of an assignment (provisional):** a non-empty `scope` must be an IRI, which also keeps it apart from the internal "personal". `RoleDefinition.scope` decides: `group` needs one, `personal` has none, `public` can be either. `markAi` does not ask, an AI is one everywhere.
+* **`peopleWith` with an empty scope (provisional):** means personal, as in `RoleAssignment.scope`; a non-IRI, also the literal `personal`, is refused. "Everywhere" has no query there: `PersonFilter.role` answers that, as a filter over people. If a consumer needs the ids across all scopes, the contract needs an explicit form.
+* **`ImportReport.unclear` has no place in `people.capnp` (provisional):** those cards were stored, and whoever imports has to hear it, so over the wire they come first in `failed`, starting "stored, its sensitive marking names no category". The contract should get a field of its own (append).
 * **Sensitive cards in the binary:** the binary opens an unencrypted store, so `fs-store` refuses them (`people/encryption-required`). The key provider comes with the key vault (ADR 0024).
 * **Role definition format:** SKOS not read yet (strategy session); the JSON form may still get sharper before 1.0.
 * **The trait returns `StoredObject` of `fs-store`:** a provider without a store has to build one. To be decided before 1.0.
+* **`supportReport` is the standard** for what a provider offers (strategy decision); a method `capabilities` is not added to `People`.
 * **Gaps of `people.capnp` (for the owner of the contract):**
-  * The root has no `capabilities` method (`tasks.capnp` has one), so `Capabilities::write_list` has no place; `supportReport` is the only report.
   * `RoleDefinition` has no place for the lossless `extra` of the core: a role read over the wire loses it. It stays in what the store and a configuration hold.
   * `confirmSame` is the only way to learn the id of a link, `linkedTo` answers card ids: after a restart a consumer cannot name the link it wants to `unlinkSame`.
   * Lists without a cursor (`findBy*`, `listMembers`, `listsOf`, `relations`, `proposals`, `Roles.list`, `rolesOf`, `peopleWith`): an answer that would not fit one message is refused as `too-large`; such a list cannot be read at all.
@@ -147,7 +158,6 @@ Still wanted:
 
 ## Open points
 
-* A failure between the steps of `delete` (links, assignments, card) leaves the earlier steps done; the store has no transaction across calls here.
 * Sync token / CardDAV (RFC 6352) is not part of the core.
 * Field-level `freesynergy.net:sensitive` is detected, but export/sharing filtering by field (ADR 0029 point 2) is a hub/frontend concern.
 * JSContact `PatchObject` updates (RFC 9553) are not implemented; `update` replaces the whole card.

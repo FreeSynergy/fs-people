@@ -2,45 +2,17 @@
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
-use std::time::Duration;
+use std::process::{Command, Stdio};
 
 use fs_interfaces::people_capnp::people;
 use fs_interfaces::rpc::{Problem, connect, read_uuid, write_uuid};
+use program::{start, terminate, wait_for};
 use serde_json::json;
 
+#[path = "common/program.rs"]
+mod program;
+
 const SCOPE: &str = "https://example.org/groups/club";
-
-fn start(socket: &Path, data: &Path) -> Child {
-    Command::new(env!("CARGO_BIN_EXE_fs-people-server"))
-        .arg("--socket")
-        .arg(socket)
-        .arg("--data")
-        .arg(data)
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap()
-}
-
-async fn wait_for(socket: &Path) {
-    for _ in 0..200 {
-        if tokio::net::UnixStream::connect(socket).await.is_ok() {
-            return;
-        }
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-    panic!("the server did not come up");
-}
-
-fn terminate(mut child: Child) {
-    let status = Command::new("kill")
-        .arg("-TERM")
-        .arg(child.id().to_string())
-        .status()
-        .unwrap();
-    assert!(status.success());
-    assert_eq!(child.wait().unwrap().code(), Some(0));
-}
 
 fn sensitive_card() -> String {
     json!({"@type": "Card", "version": "1.0", "uid": "secret", "name": {"full": "Secret"},
@@ -151,7 +123,7 @@ async fn people_survive_a_restart_and_a_second_start_is_refused() {
             wait_for(&socket).await;
 
             let mut second = start(&socket, &data);
-            assert_eq!(second.wait().unwrap().code(), Some(1), "a second server");
+            assert_eq!(second.0.wait().unwrap().code(), Some(1), "a second server");
             let mode = std::fs::metadata(&data).unwrap().permissions().mode();
             assert_eq!(mode & 0o777, 0o700, "people's data for others to read");
             assert!(socket.exists(), "the second start touched the first");

@@ -38,7 +38,7 @@ async fn one_person_has_many_roles_without_a_second_record() {
         [ada]
     );
     assert!(
-        r.people_with_role("member", Some("other"))
+        r.people_with_role("member", Some("https://x/groups/other"))
             .await
             .unwrap()
             .is_empty()

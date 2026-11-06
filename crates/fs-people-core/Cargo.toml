@@ -13,7 +13,8 @@ calcard = "=0.3.14"
 # The contract and the provider rule (ADR 0045).
 fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.22.0" }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# Numbers stay as they came: `details` and unknown card properties are lossless.
+serde_json = { version = "1", features = ["arbitrary_precision"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 thiserror = "2"
 async-trait = "0.1"

@@ -54,8 +54,12 @@ pub trait RoleBook: Send + Sync {
     async fn roles_of(&self, _person: ObjectId) -> Result<Vec<RoleAssignment>> {
         not_possible("role.read")
     }
-    /// `role.read`: the people holding a role; with `scope`, only within that group.
+    /// `role.read`: the people holding a role in any scope; with `scope`, only within that group.
     async fn people_with_role(&self, _role: &str, _scope: Option<&str>) -> Result<Vec<ObjectId>> {
+        not_possible("role.read")
+    }
+    /// `role.read`: the people holding a role personally, not within a group.
+    async fn people_with_personal_role(&self, _role: &str) -> Result<Vec<ObjectId>> {
         not_possible("role.read")
     }
     /// `ai.mark`: mark a card as an AI (`kind` plus role). Restricts nothing (ADR 0054).

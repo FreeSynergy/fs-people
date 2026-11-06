@@ -4,7 +4,7 @@
 mod common;
 
 use common::{TOO_LARGE, expect_problem, name_of, persons_of, roles_of, with_server};
-use fs_interfaces::rpc::MAX_INTAKE_BYTES;
+use fs_interfaces::rpc::{MAX_INTAKE_BYTES, write_uuid};
 use fs_people_core::MAX_CARD_BYTES;
 use serde_json::json;
 
@@ -77,6 +77,37 @@ async fn what_could_not_come_back_is_not_taken() {
         import.get().set_text(too_much.as_str());
         expect_problem(import.send().promise.await, TOO_LARGE);
 
+        let ada = common::create(&persons, "uid-1", "Ada", "ada@x.org").await;
+        let mut scope = roles.assign_request();
+        write_uuid(scope.get().init_person(), Some(ada));
+        scope.get().set_role("member");
+        scope
+            .get()
+            .set_scope(format!("https://x/{too_much}").as_str());
+        expect_problem(scope.send().promise.await, TOO_LARGE);
+
+        let mut define = roles.define_request();
+        let mut d = define.get().init_definition();
+        d.set_id("coach");
+        d.reborrow()
+            .init_names(1)
+            .reborrow()
+            .get(0)
+            .set_text("Coach");
+        d.set_owner("fs-people");
+        define.send().promise.await.unwrap();
+        let mut details = roles.assign_request();
+        write_uuid(details.get().init_person(), Some(ada));
+        details.get().set_role("coach");
+        details
+            .get()
+            .set_details(json!({"a": too_much}).to_string().as_str());
+        expect_problem(details.send().promise.await, TOO_LARGE);
+
+        let mut delete = persons.delete_request();
+        write_uuid(delete.get().init_id(), Some(ada));
+        delete.send().promise.await.unwrap();
+
         let mut config = roles.load_config_request();
         config.get().set_json(too_much.as_str());
         expect_problem(config.send().promise.await, TOO_LARGE);
@@ -91,7 +122,7 @@ async fn what_could_not_come_back_is_not_taken() {
         let person = answer.get().unwrap().get_person().unwrap();
         let id = common::id_of(person);
         let mut relate = persons.relate_request();
-        fs_interfaces::rpc::write_uuid(relate.get().init_id(), Some(id));
+        write_uuid(relate.get().init_id(), Some(id));
         relate.get().set_other_uid("x".repeat(1000).as_str());
         relate.get().set_relation("friend");
         expect_problem(relate.send().promise.await, TOO_LARGE);

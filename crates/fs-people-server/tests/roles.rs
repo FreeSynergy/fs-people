@@ -143,10 +143,13 @@ async fn assignments_come_and_go() {
         assert_eq!(read_uuid(held.get_person().unwrap()), Some(ada));
         assert_eq!(held.get_scope().unwrap().to_str().unwrap(), CLUB);
 
-        let mut personal = roles.assign_request();
-        write_uuid(personal.get().init_person(), Some(bob));
-        personal.get().set_role("member");
-        personal.send().promise.await.unwrap();
+        let mut elsewhere = roles.assign_request();
+        write_uuid(elsewhere.get().init_person(), Some(bob));
+        elsewhere.get().set_role("member");
+        elsewhere
+            .get()
+            .set_scope("https://example.org/groups/other");
+        elsewhere.send().promise.await.unwrap();
 
         let mut of = roles.roles_of_request();
         write_uuid(of.get().init_person(), Some(ada));
@@ -159,12 +162,15 @@ async fn assignments_come_and_go() {
         assert_eq!(read_uuid(items.get(0).get_person().unwrap()), Some(ada));
         assert_eq!(items.get(0).get_scope().unwrap().to_str().unwrap(), CLUB);
 
+        // Empty is personal, and these two hold it within groups.
         let mut with = roles.people_with_request();
         with.get().set_role("member");
         let answer = with.send().promise.await.unwrap();
-        let mut both = vec![ada, bob];
-        both.sort_unstable();
-        assert_eq!(uuids(answer.get().unwrap().get_ids().unwrap()), both);
+        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+        let mut literal = roles.people_with_request();
+        literal.get().set_role("member");
+        literal.get().set_scope("personal");
+        expect_problem(literal.send().promise.await, INVALID);
         let mut with = roles.people_with_request();
         with.get().set_role("member");
         with.get().set_scope(CLUB);

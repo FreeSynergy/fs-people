@@ -10,7 +10,7 @@ use fs_interfaces::people_capnp::roles;
 use fs_interfaces::rpc::{check_intake, read_object_id};
 use fs_people_core::RoleBook;
 
-use crate::errors::rpc_error;
+use crate::errors::{finish, rpc_error};
 use crate::wire::{
     assignments_count, definitions_count, ids_count, intake, read_definition, read_details,
     required, write_assignment, write_assignments, write_definition, write_ids,
@@ -30,7 +30,8 @@ fn scope_of(t: &str) -> Option<&str> {
 impl roles::Server for RolesImpl {
     async fn define(self: Rc<Self>, params: roles::DefineParams, _: roles::DefineResults) -> Done {
         let definition = read_definition(params.get()?.get_definition()?)?;
-        self.roles.define_role(definition).await.map_err(rpc_error)
+        let roles = self.roles.clone();
+        finish(async move { roles.define_role(definition).await }).await
     }
 
     async fn undefine(
@@ -39,8 +40,9 @@ impl roles::Server for RolesImpl {
         _: roles::UndefineResults,
     ) -> Done {
         let p = params.get()?;
-        let id = required(p.get_id()?, "id")?;
-        self.roles.undefine_role(id).await.map_err(rpc_error)
+        let id = required(p.get_id()?, "id")?.to_string();
+        let roles = self.roles.clone();
+        finish(async move { roles.undefine_role(&id).await }).await
     }
 
     async fn load_config(
@@ -49,8 +51,9 @@ impl roles::Server for RolesImpl {
         _: roles::LoadConfigResults,
     ) -> Done {
         let p = params.get()?;
-        let json = intake(p.get_json()?, "json")?;
-        self.roles.load_role_config(json).await.map_err(rpc_error)
+        let json = intake(p.get_json()?, "json")?.to_string();
+        let roles = self.roles.clone();
+        finish(async move { roles.load_role_config(&json).await }).await
     }
 
     async fn get(self: Rc<Self>, params: roles::GetParams, mut results: roles::GetResults) -> Done {
@@ -84,15 +87,17 @@ impl roles::Server for RolesImpl {
     ) -> Done {
         let p = params.get()?;
         let person = read_object_id(p.get_person()?)?;
-        let role = required(p.get_role()?, "role")?;
-        let scope = scope_of(p.get_scope()?.to_str()?);
-        check_intake(scope.map_or(0, str::len))?;
+        let role = required(p.get_role()?, "role")?.to_string();
+        let scope = scope_of(p.get_scope()?.to_str()?).map(str::to_string);
+        check_intake(scope.as_ref().map_or(0, String::len))?;
         let details = read_details(p.get_details()?)?;
-        let held = self
-            .roles
-            .assign_role(person, role, scope, details)
-            .await
-            .map_err(rpc_error)?;
+        let roles = self.roles.clone();
+        let held = finish(async move {
+            roles
+                .assign_role(person, &role, scope.as_deref(), details)
+                .await
+        })
+        .await?;
         write_assignment(results.get().init_assignment(), &held);
         Ok(())
     }
@@ -103,7 +108,8 @@ impl roles::Server for RolesImpl {
         _: roles::UnassignResults,
     ) -> Done {
         let id = read_object_id(params.get()?.get_assignment()?)?;
-        self.roles.unassign_role(id).await.map_err(rpc_error)
+        let roles = self.roles.clone();
+        finish(async move { roles.unassign_role(id).await }).await
     }
 
     async fn roles_of(
@@ -123,12 +129,13 @@ impl roles::Server for RolesImpl {
         mut results: roles::PeopleWithResults,
     ) -> Done {
         let p = params.get()?;
-        let scope = scope_of(p.get_scope()?.to_str()?);
-        let holders = self
-            .roles
-            .people_with_role(required(p.get_role()?, "role")?, scope)
-            .await
-            .map_err(rpc_error)?;
+        let role = required(p.get_role()?, "role")?;
+        // Empty is personal, as in `RoleAssignment.scope`; a group is named by its IRI.
+        let holders = match scope_of(p.get_scope()?.to_str()?) {
+            Some(group) => self.roles.people_with_role(role, Some(group)).await,
+            None => self.roles.people_with_personal_role(role).await,
+        }
+        .map_err(rpc_error)?;
         write_ids(results.get().init_ids(ids_count(&holders)?), &holders);
         Ok(())
     }
@@ -139,7 +146,8 @@ impl roles::Server for RolesImpl {
         mut results: roles::MarkAiResults,
     ) -> Done {
         let person = read_object_id(params.get()?.get_person()?)?;
-        let held = self.roles.mark_ai(person).await.map_err(rpc_error)?;
+        let roles = self.roles.clone();
+        let held = finish(async move { roles.mark_ai(person).await }).await?;
         write_assignment(results.get().init_assignment(), &held);
         Ok(())
     }

@@ -2,24 +2,25 @@
 //!
 //! Pattern: Repository — an assignment is an AS2 `Relationship` (person -> role, in a scope) of its
 //! own, like a same-person link: logged, undoable, and never part of a card or its export (ADR 0029).
-//! Marking an AI is `kind` plus role and restricts nothing (ADR 0054).
 
 use fs_store::{Envelope, ObjectId, Query, StoredObject};
 use serde_json::{Map, Value, json};
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE};
 use super::handle::PeopleRepo;
+use super::role_rules::{check_iri, check_kind, check_reach};
 use crate::error::{Error, Issue, Result};
-use crate::roles::{AI_ROLE, RoleAssignment};
+use crate::roles::{RoleAssignment, RoleDefinition};
 
 const PERSONAL: &str = "personal";
 /// The owner whose role fields this program holds itself.
 const OWN_ROLES: &str = "fs-people";
 
 impl PeopleRepo {
-    /// Give `person` the role, personally (`scope` = `None`) or within the group with this IRI.
-    /// Holding it already changes nothing and returns the assignment. Refused for an unknown role,
-    /// and if the role needs another JSContact `kind`.
+    /// Give `person` the role, personally (`scope` = `None`) or within the group with this IRI, as
+    /// far as the role reaches. Holding it already changes nothing and returns the assignment; other
+    /// `details` than it holds are a conflict, not dropped: end the assignment first. Refused for an
+    /// unknown role, and if the role needs another JSContact `kind`.
     pub async fn assign_role(
         &self,
         person: ObjectId,
@@ -27,28 +28,29 @@ impl PeopleRepo {
         scope: Option<&str>,
         details: Map<String, Value>,
     ) -> Result<RoleAssignment> {
-        if let Some(s) = scope.filter(|s| !s.contains(':')) {
-            return Err(Error::Invalid(vec![Issue {
-                path: "/scope".into(),
-                message: format!("{s:?} is not the IRI of a group"),
-            }]));
-        }
+        check_iri(scope)?;
         let definition = self
             .role(role)
             .await?
             .ok_or_else(|| Error::Conflict(format!("role {role} is not defined")))?;
+        check_reach(&definition, scope)?;
+        self.hold_role(person, &definition, scope, details).await
+    }
+
+    /// Store that `person` holds the role, after what any way of getting it has to meet.
+    pub(super) async fn hold_role(
+        &self,
+        person: ObjectId,
+        definition: &RoleDefinition,
+        scope: Option<&str>,
+        details: Map<String, Value>,
+    ) -> Result<RoleAssignment> {
+        let role = definition.id.as_str();
         let card = self
             .get_card(person)
             .await?
             .ok_or(Error::NotFound(person))?;
-        if let Some(kind) = &definition.card_kind {
-            if card.kind() != kind {
-                return Err(Error::Conflict(format!(
-                    "role {role} needs a card of kind {kind}, this one is {}",
-                    card.kind()
-                )));
-            }
-        }
+        check_kind(definition, card.kind())?;
         if !details.is_empty() && definition.owner != OWN_ROLES {
             return Err(Error::Invalid(vec![Issue {
                 path: "/details".into(),
@@ -64,6 +66,11 @@ impl PeopleRepo {
             .into_iter()
             .find(|a| a.role == role && a.scope.as_deref() == scope)
         {
+            if !details.is_empty() && details != held.details {
+                return Err(Error::Conflict(format!(
+                    "role {role} is held with other details; end the assignment first"
+                )));
+            }
             return Ok(held);
         }
         let mut env = Envelope::new(
@@ -119,43 +126,36 @@ impl PeopleRepo {
             .collect())
     }
 
-    /// The people holding a role; with `scope`, only within that group.
+    /// The people holding a role in any scope; with `scope`, only within that group.
     pub async fn people_with_role(&self, role: &str, scope: Option<&str>) -> Result<Vec<ObjectId>> {
+        check_iri(scope)?;
         let mut q = assignments().with_index("role", role);
         if let Some(s) = scope {
             q = q.with_index("scope", s);
         }
-        let found = self.reads.query(&q).await?;
+        self.holders(&q).await
+    }
+
+    /// The people holding a role personally, not within a group.
+    pub async fn people_with_personal_role(&self, role: &str) -> Result<Vec<ObjectId>> {
+        let q = assignments()
+            .with_index("role", role)
+            .with_index("scope", PERSONAL);
+        self.holders(&q).await
+    }
+
+    /// Every assignment there is.
+    pub(super) async fn all_assignments(&self) -> Result<Vec<RoleAssignment>> {
+        let found = self.reads.query(&assignments()).await?;
+        Ok(found.iter().filter_map(read).collect())
+    }
+
+    async fn holders(&self, q: &Query) -> Result<Vec<ObjectId>> {
+        let found = self.reads.query(q).await?;
         let mut holders: Vec<ObjectId> = found.iter().filter_map(read).map(|a| a.person).collect();
         holders.sort_unstable();
         holders.dedup(); // one person can hold a role in several scopes
         Ok(holders)
-    }
-
-    /// Mark a card as an AI: JSContact `kind` `application` plus the role (ADR 0054). Refused for a
-    /// group card, which stands for several participants.
-    pub async fn mark_ai(&self, person: ObjectId) -> Result<RoleAssignment> {
-        let mut card = self
-            .get_card(person)
-            .await?
-            .ok_or(Error::NotFound(person))?;
-        if card.is_group() {
-            return Err(Error::Conflict("a group card cannot be an AI".into()));
-        }
-        if self.role(AI_ROLE).await?.is_none() {
-            return Err(Error::Conflict(format!("role {AI_ROLE} is not defined")));
-        }
-        if card.kind() != "application" {
-            card.kind = Some("application".into());
-            self.update(person, card).await?;
-        }
-        self.assign_role(person, AI_ROLE, None, Map::new()).await
-    }
-
-    /// Whether this card is marked as an AI.
-    pub async fn is_ai(&self, person: ObjectId) -> Result<bool> {
-        let roles = self.roles_of(person).await?;
-        Ok(roles.iter().any(|a| a.role == AI_ROLE))
     }
 
     pub(super) async fn delete_assignments_of(&self, person: ObjectId) -> Result<()> {

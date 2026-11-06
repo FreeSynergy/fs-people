@@ -63,6 +63,9 @@ pub enum Error {
     /// A card too large to come back in one answer of the contract.
     #[error("the card has {0} bytes, at most {MAX_CARD_BYTES} are kept")]
     TooLarge(usize),
+    /// No role with this id.
+    #[error("role {0} is not defined")]
+    UnknownRole(String),
     /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
     #[error("{0}")]
     Conflict(String),

@@ -5,7 +5,9 @@
 //! never reaches the core (`invalid_request` in `wire`); what fails on data already stored is not the
 //! caller's fault and says so.
 
-use fs_interfaces::rpc::{Problem, failed, too_large, unsupported};
+use std::future::Future;
+
+use fs_interfaces::rpc::{Problem, failed, run_to_end, too_large, unsupported};
 use fs_people_core::Error;
 use fs_store::Error as StoreError;
 
@@ -14,6 +16,7 @@ const CONFLICT: &str = "https://freesynergy.net/problems/people/conflict";
 const INVALID: &str = "https://freesynergy.net/problems/people/invalid";
 const SENSITIVE: &str = "https://freesynergy.net/problems/people/sensitive";
 const ENCRYPTION_REQUIRED: &str = "https://freesynergy.net/problems/people/encryption-required";
+const PARTLY_DELETED: &str = "https://freesynergy.net/problems/people/partly-deleted";
 const STORED_DATA: &str = "https://freesynergy.net/problems/people/stored-data";
 
 /// A core error as an RPC error.
@@ -22,7 +25,7 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
     match e {
         Error::Unsupported(not_possible) => unsupported(&not_possible),
         Error::TooLarge(_) => too_large(text),
-        Error::NotFound(_) | Error::Store(StoreError::NotFound(_)) => {
+        Error::NotFound(_) | Error::UnknownRole(_) | Error::Store(StoreError::NotFound(_)) => {
             Problem::new(NOT_FOUND, "Not found", text, 404).into_error()
         }
         Error::Conflict(_)
@@ -47,9 +50,19 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
         Error::Stored(_) | Error::VCard(_) | Error::Store(StoreError::Serde(_)) => {
             Problem::new(STORED_DATA, "Stored data cannot be read", text, 500).into_error()
         }
-        // The message says the person went and what stayed, which a plain failure would not.
-        Error::PartlyDeleted(..) | Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => {
-            failed(text)
+        // The person went and something of them stayed: a consumer has to be able to tell, and to
+        // call again, without reading a message.
+        Error::PartlyDeleted(..) => {
+            Problem::new(PARTLY_DELETED, "Deleted, not everything of it", text, 500).into_error()
         }
+        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => failed(text),
     }
+}
+
+/// Run a write of the provider to its end, also if the caller goes away meanwhile: dropped halfway
+/// it would leave a person half deleted or an import half done, with nobody told.
+pub(crate) async fn finish<T: 'static>(
+    work: impl Future<Output = fs_people_core::Result<T>> + 'static,
+) -> capnp::Result<T> {
+    run_to_end(work).await?.map_err(rpc_error)
 }

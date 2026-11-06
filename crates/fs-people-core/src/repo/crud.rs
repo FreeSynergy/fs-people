@@ -124,6 +124,9 @@ impl PeopleRepo {
         if old_card.uid != card.uid {
             return Err(Error::Conflict("the uid of a card cannot change".into()));
         }
+        if card.kind() != old_card.kind() {
+            self.check_kind_against_roles(id, card.kind()).await?;
+        }
         card.created = card.created.or(old_card.created);
         card.updated = Some(now_utc());
         validate(&card)?;
@@ -135,13 +138,17 @@ impl PeopleRepo {
         Ok(stored)
     }
 
-    /// Delete a card (undoable through the store). Its role assignments and the same-person links
-    /// that mention it are removed too. The store has no transaction over several objects, so the
-    /// card goes first: if that fails nothing has changed. If removing the rest then fails, the
-    /// error says so and the same call again removes what is left.
+    /// Delete a card (undoable through the store). It leaves every list, and its role assignments
+    /// and the same-person links that mention it are removed too. The store has no transaction over
+    /// several objects, so the
+    /// lists come first, as only the card knows its `uid`; then the card: if either fails the person
+    /// is still there, at most off some lists. If removing the rest then fails, the error says so and
+    /// the same call again removes what is left.
     pub async fn delete(&self, id: ObjectId) -> Result<()> {
-        let card_there = self.get(id).await?.is_some();
-        if card_there {
+        let found = self.get_card(id).await?;
+        let card_there = found.is_some();
+        if let Some(card) = found {
+            self.remove_from_all_groups(&card.uid).await?;
             self.objects.delete(id, &self.actor).await?;
             self.feed.notify(&PersonChange::Deleted(id));
         }

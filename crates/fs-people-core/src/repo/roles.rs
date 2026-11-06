@@ -46,7 +46,7 @@ impl PeopleRepo {
             )));
         }
         let Some(stored) = self.stored_role(id).await? else {
-            return Err(Error::Conflict(format!("role {id} is not defined")));
+            return Err(Error::UnknownRole(id.to_string()));
         };
         if !self.people_with_role(id, None).await?.is_empty() {
             return Err(Error::Conflict(format!("role {id} is still in use")));
@@ -68,7 +68,7 @@ impl PeopleRepo {
         }
         self.stored_role(id)
             .await?
-            .map(|o| stored_value(o.content))
+            .map(|o| stored_value(&o.content))
             .transpose()
     }
 
@@ -80,7 +80,7 @@ impl PeopleRepo {
         let configured = self.registry.snapshot();
         let mut out: Vec<RoleDefinition> = configured.values().cloned().collect();
         for o in self.reads.query(&q).await? {
-            let own: RoleDefinition = stored_value(o.content)?;
+            let own: RoleDefinition = stored_value(&o.content)?;
             // Configuration wins, as in `role`: one id, one definition.
             if !configured.contains_key(&own.id) {
                 out.push(own);
@@ -90,7 +90,7 @@ impl PeopleRepo {
         Ok(out)
     }
 
-    async fn stored_role(&self, id: &str) -> Result<Option<StoredObject>> {
+    pub(super) async fn stored_role(&self, id: &str) -> Result<Option<StoredObject>> {
         let q = Query::new()
             .of_type(ROLE_DEFINITION_TYPE)
             .in_context(CONTEXT)

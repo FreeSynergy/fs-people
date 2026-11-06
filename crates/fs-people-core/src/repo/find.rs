@@ -102,6 +102,11 @@ fn matching_term(q: Query, term: &str) -> Query {
         .or(has("nickname", term.into()))
         .or(has("email", normalise_email(term)))
         .or(has("org", term.into()));
+    // A term of words is no phone number, even with digits in it ("Room 555").
+    let phone_chars = |c: char| c.is_ascii_digit() || "+-/.() ".contains(c);
+    if !term.chars().all(phone_chars) {
+        return q;
+    }
     // Digits only count as a phone search when there are enough of them to mean something.
     let t_phone = normalise_phone(term);
     let phone_needle = t_phone.trim_start_matches('+');

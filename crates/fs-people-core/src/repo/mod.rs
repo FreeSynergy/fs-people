@@ -3,6 +3,7 @@
 //! Pattern: Facade (declarations) — `PeopleRepo` is the one entry point; the files behind it
 //! are one concept each (CRUD, search, groups, links, proposals, import / export).
 
+mod ai;
 mod assign;
 mod backend;
 mod book;
@@ -17,6 +18,7 @@ mod proposals;
 mod relations;
 mod role_config;
 mod role_facade;
+mod role_rules;
 mod roles;
 mod transfer;
 mod types;

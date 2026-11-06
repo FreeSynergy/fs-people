@@ -2,11 +2,13 @@
 //!
 //! Pattern: Adapter — each function is one method of the contract and one call of the provider.
 
+use std::sync::Arc;
+
 use fs_interfaces::people_capnp::persons as wire;
 use fs_interfaces::rpc::{check_answer, read_object_id};
 use fs_people_core::{ListFilter, People};
 
-use crate::errors::rpc_error;
+use crate::errors::{finish, rpc_error};
 use crate::formats::{exporter, importer};
 use crate::wire::{
     intake, read_card, read_filter, required, unpaged, write_page, write_person, write_persons,
@@ -16,36 +18,39 @@ use crate::wire::{
 type Done = Result<(), capnp::Error>;
 
 pub(super) async fn create(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::CreateParams,
     mut results: wire::CreateResults,
 ) -> Done {
     let card = read_card(params.get()?.get_jscontact()?)?;
-    let stored = people.create(card).await.map_err(rpc_error)?;
+    let people = people.clone();
+    let stored = finish(async move { people.create(card).await }).await?;
     write_person(results.get().init_person(), &stored);
     Ok(())
 }
 
 pub(super) async fn update(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::UpdateParams,
     mut results: wire::UpdateResults,
 ) -> Done {
     let p = params.get()?;
     let id = read_object_id(p.get_id()?)?;
     let card = read_card(p.get_jscontact()?)?;
-    let stored = people.update(id, card).await.map_err(rpc_error)?;
+    let people = people.clone();
+    let stored = finish(async move { people.update(id, card).await }).await?;
     write_person(results.get().init_person(), &stored);
     Ok(())
 }
 
-pub(super) async fn delete(people: &dyn People, params: wire::DeleteParams) -> Done {
+pub(super) async fn delete(people: &Arc<dyn People>, params: wire::DeleteParams) -> Done {
     let id = read_object_id(params.get()?.get_id()?)?;
-    people.delete(id).await.map_err(rpc_error)
+    let people = people.clone();
+    finish(async move { people.delete(id).await }).await
 }
 
 pub(super) async fn get(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::GetParams,
     mut results: wire::GetResults,
 ) -> Done {
@@ -60,7 +65,7 @@ pub(super) async fn get(
 }
 
 pub(super) async fn get_by_uid(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::GetByUidParams,
     mut results: wire::GetByUidResults,
 ) -> Done {
@@ -76,7 +81,7 @@ pub(super) async fn get_by_uid(
 }
 
 pub(super) async fn list(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::ListParams,
     mut results: wire::ListResults,
 ) -> Done {
@@ -91,7 +96,7 @@ pub(super) async fn list(
 }
 
 pub(super) async fn find_by_describes(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::FindByDescribesParams,
     mut results: wire::FindByDescribesResults,
 ) -> Done {
@@ -106,7 +111,7 @@ pub(super) async fn find_by_describes(
 }
 
 pub(super) async fn find_by_email(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::FindByEmailParams,
     mut results: wire::FindByEmailResults,
 ) -> Done {
@@ -121,7 +126,7 @@ pub(super) async fn find_by_email(
 }
 
 pub(super) async fn find_by_phone(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::FindByPhoneParams,
     mut results: wire::FindByPhoneResults,
 ) -> Done {
@@ -136,21 +141,20 @@ pub(super) async fn find_by_phone(
 }
 
 pub(super) async fn import_text(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::ImportTextParams,
     mut results: wire::ImportTextResults,
 ) -> Done {
     let p = params.get()?;
     let format = importer(required(p.get_media_type()?, "mediaType")?)?;
-    let report = people
-        .import(format, intake(p.get_text()?, "text")?)
-        .await
-        .map_err(rpc_error)?;
+    let text = intake(p.get_text()?, "text")?.to_string();
+    let people = people.clone();
+    let report = finish(async move { people.import(format, &text).await }).await?;
     write_report(results.get().init_report(), &report)
 }
 
 pub(super) async fn export_text(
-    people: &dyn People,
+    people: &Arc<dyn People>,
     params: wire::ExportTextParams,
     mut results: wire::ExportTextResults,
 ) -> Done {

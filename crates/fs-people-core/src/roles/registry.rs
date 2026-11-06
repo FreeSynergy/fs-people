@@ -34,9 +34,9 @@ impl RoleRegistry {
         Self(Arc::new(RwLock::new(Arc::default())))
     }
 
-    /// Check `json` (an array of definitions) without changing anything.
-    pub fn check(json: &str) -> Result<()> {
-        parse(json).map(|_| ())
+    /// Check `json` (an array of definitions) without changing anything; answers what it defines.
+    pub fn check(json: &str) -> Result<Arc<BTreeMap<String, RoleDefinition>>> {
+        parse(json)
     }
 
     /// Check `json` (an array of definitions) and swap it in at once. On error nothing changes.

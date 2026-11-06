@@ -144,3 +144,29 @@ async fn a_media_type_without_a_format_is_not_possible() {
     })
     .await;
 }
+
+const UUID: &str = "9f8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+
+#[tokio::test(flavor = "current_thread")]
+async fn the_other_spelling_of_a_uid_is_skipped_not_failed() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let id = create(&persons, &format!("urn:uuid:{UUID}"), "Ada", "ada@x.org").await;
+        let mut import = persons.import_text_request();
+        import.get().set_media_type("application/jscontact+json");
+        let upper = UUID.to_uppercase();
+        import
+            .get()
+            .set_text(card(&upper, "Again", "a@x.org").as_str());
+        let answer = import.send().promise.await.unwrap();
+        let report = answer.get().unwrap().get_report().unwrap();
+        assert_eq!(
+            texts(report.get_skipped().unwrap()),
+            std::slice::from_ref(&upper)
+        );
+        assert!(texts(report.get_failed().unwrap()).is_empty());
+        assert!(uuids(report.get_created().unwrap()).is_empty());
+        assert_eq!(id_by_uid(&persons, UUID).await, id);
+    })
+    .await;
+}

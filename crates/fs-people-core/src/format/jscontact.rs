@@ -25,7 +25,8 @@ impl Importer for JsContactFormat {
         Ok(items
             .into_iter()
             .map(|item| {
-                let card = serde_json::from_value::<Card>(item)?;
+                // Through the text, as `from_value` cannot bring a long number into the `flatten` extras.
+                let card = serde_json::from_str::<Card>(&item.to_string())?;
                 Ok(ImportedCard {
                     card,
                     original: None,

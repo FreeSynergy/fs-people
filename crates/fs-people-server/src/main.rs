@@ -15,6 +15,7 @@ fn main() {
         socket,
         data,
         actor,
+        instance,
     } = options;
     let served = run_until_signal(&socket, || async move {
         prepare_data_dir(&data)?;
@@ -22,7 +23,11 @@ fn main() {
             .await
             .map_err(std::io::Error::other)?;
         let store: Arc<dyn Store> = Arc::new(store);
-        let repo = Arc::new(PeopleRepo::new(store, actor));
+        let repo = PeopleRepo::new(store, actor);
+        let repo = Arc::new(match instance {
+            Some(domain) => repo.with_instance(domain),
+            None => repo,
+        });
         repo.restore_role_config()
             .await
             .map_err(std::io::Error::other)?;

@@ -51,12 +51,14 @@ impl PeopleRepo {
 
 /// Parse the content of a stored Profile.
 pub fn card_of(o: &StoredObject) -> Result<Card> {
-    stored_value(o.content.clone())
+    stored_value(&o.content)
 }
 
-/// Read what the store holds; failing here is the fault of the data, not of the request.
-pub(super) fn stored_value<T: serde::de::DeserializeOwned>(content: Value) -> Result<T> {
-    serde_json::from_value(content).map_err(|e| Error::Stored(e.to_string()))
+/// Read what the store holds; failing here is the fault of the data, not of the request. Through its
+/// text: a number of any length is only kept exactly by the text parser, on the way into `flatten`
+/// extras `from_value` refuses it.
+pub(super) fn stored_value<T: serde::de::DeserializeOwned>(content: &Value) -> Result<T> {
+    serde_json::from_str(&content.to_string()).map_err(|e| Error::Stored(e.to_string()))
 }
 
 /// Refuse a card that could no longer come back in one answer.

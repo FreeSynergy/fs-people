@@ -132,10 +132,61 @@ async fn lists_hold_people() {
         let card = json_of(answer.get().unwrap().get_person().unwrap());
         assert!(card.get("members").is_none());
 
+        let mut from_a_person = persons.remove_from_list_request();
+        write_uuid(from_a_person.get().init_list(), Some(ada));
+        write_uuid(from_a_person.get().init_member(), Some(list));
+        expect_problem(from_a_person.send().promise.await, CONFLICT);
+        let mut of_a_person = persons.list_members_request();
+        write_uuid(of_a_person.get().init_list(), Some(ada));
+        expect_problem(of_a_person.send().promise.await, CONFLICT);
+
         let mut into_a_person = persons.add_to_list_request();
         write_uuid(into_a_person.get().init_list(), Some(ada));
         write_uuid(into_a_person.get().init_member(), Some(list));
         expect_problem(into_a_person.send().promise.await, CONFLICT);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_deleted_member_is_gone_from_the_list_and_an_untyped_relation_can_be_named() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let ada = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+        let mut make = persons.create_list_request();
+        make.get().set_name("Friends");
+        let answer = make.send().promise.await.unwrap();
+        let list = id_of(answer.get().unwrap().get_person().unwrap());
+        let mut add = persons.add_to_list_request();
+        write_uuid(add.get().init_list(), Some(list));
+        write_uuid(add.get().init_member(), Some(ada));
+        add.send().promise.await.unwrap();
+        let mut delete = persons.delete_request();
+        write_uuid(delete.get().init_id(), Some(ada));
+        delete.send().promise.await.unwrap();
+        let mut get = persons.get_request();
+        write_uuid(get.get().init_id(), Some(list));
+        let answer = get.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert!(card.get("members").is_none(), "{card}");
+
+        let text = r#"{"@type":"Card","version":"1.0","uid":"u","name":{"full":"U"},"relatedTo":{"x":{"@type":"Relation"}}}"#;
+        let mut create_it = persons.create_request();
+        create_it.get().set_jscontact(text);
+        let answer = create_it.send().promise.await.unwrap();
+        let id = id_of(answer.get().unwrap().get_person().unwrap());
+        let mut relations = persons.relations_request();
+        write_uuid(relations.get().init_id(), Some(id));
+        let answer = relations.send().promise.await.unwrap();
+        let items = answer.get().unwrap().get_items().unwrap();
+        assert_eq!(items.get(0).get_uid().unwrap().to_str().unwrap(), "x");
+        assert_eq!(items.get(0).get_relation().unwrap().to_str().unwrap(), "");
+        let mut unrelate = persons.unrelate_request();
+        write_uuid(unrelate.get().init_id(), Some(id));
+        unrelate.get().set_other_uid("x");
+        let answer = unrelate.send().promise.await.unwrap();
+        let card = json_of(answer.get().unwrap().get_person().unwrap());
+        assert!(card.get("relatedTo").is_none(), "{card}");
     })
     .await;
 }

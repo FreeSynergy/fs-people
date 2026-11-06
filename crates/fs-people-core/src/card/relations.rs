@@ -30,34 +30,48 @@ impl Card {
         }
     }
 
-    /// Remove one relation; a related card without any relation left is removed too.
+    /// Remove one relation. An empty `relation` removes an entry that names none. An entry stays as
+    /// long as it holds another relation or a member of its own (`Relation` is open, RFC 9553).
     pub fn unrelate(&mut self, uid: &str, relation: &str) {
         let Some(entry) = self.related_to.get_mut(uid) else {
             return;
         };
-        let empty = entry
-            .get_mut("relation")
-            .and_then(Value::as_object_mut)
-            .is_none_or(|m| {
-                m.remove(relation);
-                m.is_empty()
-            });
-        if empty {
+        let kinds = entry.get_mut("relation").and_then(Value::as_object_mut);
+        if relation.is_empty() {
+            if kinds.is_none_or(|k| k.is_empty()) {
+                self.related_to.remove(uid);
+            }
+            return;
+        }
+        let Some(kinds) = kinds else { return };
+        if kinds.remove(relation).is_none() || !kinds.is_empty() {
+            return;
+        }
+        let bare = entry
+            .as_object()
+            .is_some_and(|o| o.keys().all(|k| k == "@type" || k == "relation"));
+        if bare {
             self.related_to.remove(uid);
         }
     }
 
-    /// All relations as `(uid, relation)` pairs, in `uid` order.
+    /// All relations as `(uid, relation)` pairs, in `uid` order. A related card that names no
+    /// relation appears with an empty one: it is related, RFC 9553 only leaves open how.
     pub fn relations(&self) -> Vec<(String, String)> {
-        self.related_to
-            .iter()
-            .flat_map(|(uid, v)| {
-                let keys = v.get("relation").and_then(Value::as_object);
-                keys.into_iter()
-                    .flatten()
-                    .filter(|(_, on)| on.as_bool() == Some(true))
-                    .map(|(k, _)| (uid.clone(), k.clone()))
-            })
-            .collect()
+        let mut out = Vec::new();
+        for (uid, entry) in &self.related_to {
+            let kinds = entry.get("relation").and_then(Value::as_object);
+            let named: Vec<&String> = kinds
+                .into_iter()
+                .flatten()
+                .filter(|(_, on)| on.as_bool() == Some(true))
+                .map(|(k, _)| k)
+                .collect();
+            if named.is_empty() {
+                out.push((uid.clone(), String::new()));
+            }
+            out.extend(named.into_iter().map(|k| (uid.clone(), k.clone())));
+        }
+        out
     }
 }

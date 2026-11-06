@@ -55,6 +55,9 @@ impl RoleBook for PeopleRepo {
     async fn people_with_role(&self, role: &str, scope: Option<&str>) -> Result<Vec<ObjectId>> {
         PeopleRepo::people_with_role(self, role, scope).await
     }
+    async fn people_with_personal_role(&self, role: &str) -> Result<Vec<ObjectId>> {
+        PeopleRepo::people_with_personal_role(self, role).await
+    }
     async fn mark_ai(&self, person: ObjectId) -> Result<RoleAssignment> {
         let _turn = self.writes.lock().await;
         PeopleRepo::mark_ai(self, person).await
