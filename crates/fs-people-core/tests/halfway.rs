@@ -187,3 +187,18 @@ async fn role_rules_after_the_second_review() {
     own.card_kind = Some(String::new());
     assert!(matches!(r.define_role(own).await, Err(Error::Invalid(_))));
 }
+
+#[tokio::test]
+async fn an_ai_marked_under_a_public_role_does_not_block_a_group_configuration() {
+    let (r, _) = setup().await;
+    let a = r
+        .create(person("Ada", "a@x.org"))
+        .await
+        .unwrap()
+        .envelope
+        .id;
+    r.mark_ai(a).await.unwrap();
+    let group = json!([{"id": "ai", "names": {"en": "AI"}, "owner": "o", "scope": "group", "cardKind": "application"}]);
+    r.store_role_config(&group.to_string()).await.unwrap();
+    assert!(r.is_ai(a).await.unwrap());
+}
