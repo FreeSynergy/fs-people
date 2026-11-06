@@ -9,7 +9,7 @@ use std::path::Path;
 use fs_people_core::{ListFilter, People};
 use tokio::runtime::Handle;
 
-use crate::new_file::write_new_file;
+use fs_components_app::write_new_file;
 use crate::source::{is_marked, reason_text};
 
 /// Asked of the core at a time while exporting.
