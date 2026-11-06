@@ -10,5 +10,7 @@ pub const RELATIONSHIP_TYPE: &str = "Relationship";
 pub const CONTEXT: &str = "people";
 /// Media type of the card content.
 pub const CONTENT_TYPE: &str = "application/jscontact+json";
+/// Type of a role of your own in the store; AS2 has none.
+pub const ROLE_DEFINITION_TYPE: &str = "RoleDefinition";
 pub(super) const AS2_TYPE: &str = "application/activity+json";
 pub(super) const SAME_AS: &str = "owl:sameAs";

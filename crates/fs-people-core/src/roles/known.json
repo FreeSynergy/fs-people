@@ -1,0 +1,34 @@
+[
+  {
+    "id": "ai",
+    "names": {"en": "AI"},
+    "description": {"en": "A marked participant: everyone can see that this is not a human. Nothing else follows from it (ADR 0054)."},
+    "standard": "JSContact kind application (RFC 9553, section 2.1.4)",
+    "owner": "fs-people",
+    "scope": "public",
+    "cardKind": "application"
+  },
+  {
+    "id": "user",
+    "names": {"en": "User"},
+    "description": {"en": "Someone who can sign in to a system."},
+    "standard": "SCIM User (RFC 7643)",
+    "owner": "identity wrapper",
+    "scope": "group"
+  },
+  {
+    "id": "member",
+    "names": {"en": "Member"},
+    "description": {"en": "Someone who belongs to a group."},
+    "standard": "org:Membership, AS2 Group, SCIM Group",
+    "owner": "fs-groups",
+    "scope": "group"
+  },
+  {
+    "id": "customer",
+    "names": {"en": "Customer"},
+    "description": {"en": "Someone who buys from a group or organisation. No standard exists yet: a gap."},
+    "owner": "CRM (later)",
+    "scope": "group"
+  }
+]

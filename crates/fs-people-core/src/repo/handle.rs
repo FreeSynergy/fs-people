@@ -11,6 +11,7 @@ use fs_store::{ObjectId, Store};
 
 use super::backend::StoreAdapter;
 use crate::matching::{MatchStrategy, SharedContactPoint};
+use crate::roles::RoleRegistry;
 
 /// People over an object store. Cheap to clone.
 #[derive(Clone)]
@@ -18,6 +19,7 @@ pub struct PeopleRepo {
     pub(super) objects: Arc<dyn ObjectRepository>,
     pub(super) reads: Arc<dyn ObjectQuery>,
     pub(super) matcher: Arc<dyn MatchStrategy>,
+    pub(super) registry: RoleRegistry,
     pub(super) actor: String,
     pub(super) instance: String,
 }
@@ -40,6 +42,7 @@ impl PeopleRepo {
             objects,
             reads,
             matcher: Arc::new(SharedContactPoint),
+            registry: RoleRegistry::known(),
             actor: actor.into(),
             instance: "local.invalid".into(),
         }
@@ -56,6 +59,13 @@ impl PeopleRepo {
     #[must_use]
     pub fn with_match_strategy(mut self, matcher: Arc<dyn MatchStrategy>) -> Self {
         self.matcher = matcher;
+        self
+    }
+
+    /// Use these configured roles instead of the shipped ones (default: [`RoleRegistry::known`]).
+    #[must_use]
+    pub fn with_roles(mut self, registry: RoleRegistry) -> Self {
+        self.registry = registry;
         self
     }
 

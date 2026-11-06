@@ -3,6 +3,7 @@
 //! Pattern: Facade (declarations) — `PeopleRepo` is the one entry point; the files behind it
 //! are one concept each (CRUD, search, groups, links, proposals, import / export).
 
+mod assign;
 mod backend;
 mod book;
 mod consts;
@@ -13,10 +14,12 @@ mod groups;
 mod handle;
 mod links;
 mod proposals;
+mod relations;
+mod roles;
 mod transfer;
 mod types;
 
-pub use consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE, RELATIONSHIP_TYPE};
+pub use consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE, RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE};
 pub use envelope::card_of;
 pub use handle::PeopleRepo;
 pub use types::{ImportReport, ListFilter};

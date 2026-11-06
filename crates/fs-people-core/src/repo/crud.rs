@@ -78,13 +78,14 @@ impl PeopleRepo {
         self.get(id).await?.ok_or(Error::NotFound(id))
     }
 
-    /// Delete a card (undoable through the store). Same-person links that mention it are removed
-    /// too.
+    /// Delete a card (undoable through the store). Its role assignments and the same-person links
+    /// that mention it are removed too.
     pub async fn delete(&self, id: ObjectId) -> Result<()> {
         self.get(id).await?.ok_or(Error::NotFound(id))?;
         for rel in self.relationships_of(id).await? {
             self.objects.delete(rel.envelope.id, &self.actor).await?;
         }
+        self.delete_assignments_of(id).await?;
         self.objects.delete(id, &self.actor).await?;
         Ok(())
     }

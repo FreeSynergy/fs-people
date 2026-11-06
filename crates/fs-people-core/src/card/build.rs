@@ -34,6 +34,11 @@ impl Card {
         Self::new("individual", full_name)
     }
 
+    /// A new card of software (`kind: application`, RFC 9553 §2.1.4), for example an AI.
+    pub fn application(full_name: impl Into<String>) -> Self {
+        Self::new("application", full_name)
+    }
+
     /// A new group card (`kind: group`), usable as folder / mailing list (ADR 0037).
     pub fn group(full_name: impl Into<String>) -> Self {
         Self::new("group", full_name)

@@ -7,6 +7,7 @@ mod build;
 mod display;
 mod model;
 mod parts;
+mod relations;
 mod types;
 mod vendor;
 

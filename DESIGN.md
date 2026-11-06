@@ -6,7 +6,7 @@ A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelo
 
 ## State
 
-Version 0.1.0 (refactored to ADR 0043), local only (no remote, never pushed). Built on fs-store 0.2 (path dependency).
+Version 0.2.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.2.0, draft, consumers: 0 of 2). Built on fs-store 0.2 (git tag).
 
 | Area | State |
 |---|---|
@@ -24,7 +24,12 @@ Version 0.1.0 (refactored to ADR 0043), local only (no remote, never pushed). Bu
 | Same-person proposals (ADR 0019/0029) as a `MatchStrategy` (default `SharedContactPoint`, swappable with `with_match_strategy`): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-people-core --example demo`: import demo contacts, list, search, export vCard | done |
-| Tests | 21 (3 unit + 18 integration in `tests/{model,crud,search,vcard,groups,proposals,interfaces}.rs`; the 18 pre-refactor tests are unchanged in behaviour, 3 new ones cover the trait seams): unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` |
+| Interface `People` + `RoleBook` (provider rule, ADR 0045): every method exists, what a provider does not override answers `Error::Unsupported`; `capabilities()` reports the same | done, draft |
+| Roles (ADR 0052): one card, several roles. Definitions are objects: configuration (`roles/known.json`, swapped atomically after checking, `load_role_config`) and your own (`define_role`, in the store). No role list in the code | done |
+| Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), never on the card, so no export reveals them (ADR 0029) | done |
+| Relations (what someone is to me): JSContact `relatedTo` on the card, `relate` / `unrelate` / `relations` | done |
+| AI marking (ADR 0054): `mark_ai` = `kind: application` (RFC 9553 §2.1.4, travels with the card) + role `ai` (plain software is `application` too). Restricts nothing | done |
+| Tests | 38 (17 new: roles, relations, AI marking, provider rule). Before them: 21 (3 unit + 18 integration in `tests/{model,crud,search,vcard,groups,proposals,interfaces}.rs`; the 18 pre-refactor tests are unchanged in behaviour, 3 new ones cover the trait seams): unit (normalisation incl. a property test), integration over a real in-memory `TursoStore` |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Structure and pattern map (ADR 0043)
@@ -35,7 +40,11 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 | Module | Pattern | Why |
 |---|---|---|
-| `people.rs` | Repository (interface) | the program's public contract; GUI, hub and tests use `dyn People` |
+| `role_book.rs`, `repo/{roles,assign}.rs` | Repository (interface + implementation) | role definitions and assignments, split from `People` so a provider of cards alone still fits |
+| `roles/registry.rs` | Registry, swapped atomically | configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
+| `roles/{definition,assignment}.rs` | Value objects | the same form for shipped and own roles |
+| `card/relations.rs`, `repo/relations.rs` | Command | small edits of `relatedTo` |
+| `people.rs` | Repository (interface) + Null Object | the program's public contract; GUI, hub and tests use `dyn People` |
 | `repo/handle.rs`, `repo/mod.rs` | Repository + Facade | one small type hides store, envelope rules, formats and matching |
 | `repo/backend.rs` | Adapter | `Arc<dyn Store>` presented as `dyn ObjectRepository` + `dyn ObjectQuery` (narrowest store traits) |
 | `repo/{crud,find,groups,links}.rs` | Repository | one concern each: writes, queries, groups, `owl:sameAs` links |
@@ -62,7 +71,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (path dependency, not modified).
+* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.2.0): `Capabilities`, `Unsupported`.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
@@ -83,6 +92,15 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Groups** are normal cards of `kind: group`; `members` maps member `uid` -> `true` (RFC 9553). Folder = group = mailing list (ADR 0037).
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
+
+## Open points of the `people` interface
+
+* **Operator of an AI (ADR 0054):** planned, the form is open. Nothing blocks it: `RoleAssignment.details` and the card's `extra` are lossless. Locking AIs out is deliberately not built.
+* **`person.subscribe`:** in the contract, not built; the provider reports it as not built yet. Comes with the first consumer that needs a live view.
+* **Role privacy across programs:** assignments are `Relationship` objects with `to = [actor]`. A program with read access to the type `Relationship` could see them through the hub, whose rule goes by type. To be settled with `fs-groups` and the sharing interface (ADR 0029).
+* **Role definition format:** SKOS not read yet (strategy session); the JSON form may still get sharper before 1.0.
+* **Cap'n Proto server:** the wire form exists, the capnp-rpc server is not written yet (same as `fs-tasks`). The trait returns `StoredObject` of `fs-store`; a provider without a store has to build one. To be decided before 1.0.
+* **Group cards vs `fs-groups`:** `create_group` / `members` stay as JSContact lists of people; belonging and rights go to `fs-groups` (ADR 0050).
 
 ## fs-store 0.2 – what is used, what is still missing
 

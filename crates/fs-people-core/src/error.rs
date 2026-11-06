@@ -44,6 +44,9 @@ pub enum Error {
     /// ADR 0029: sensitive cards are never linked.
     #[error("person {0} carries sensitive categories and must not be linked (ADR 0029)")]
     Sensitive(ObjectId),
+    /// The explicit "not possible" of a provider (ADR 0045).
+    #[error(transparent)]
+    Unsupported(#[from] fs_interfaces::Unsupported),
     /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
     #[error("{0}")]
     Conflict(String),
