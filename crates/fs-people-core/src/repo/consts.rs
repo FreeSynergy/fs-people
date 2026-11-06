@@ -12,5 +12,7 @@ pub const CONTEXT: &str = "people";
 pub const CONTENT_TYPE: &str = "application/jscontact+json";
 /// Type of a role of your own in the store; AS2 has none.
 pub const ROLE_DEFINITION_TYPE: &str = "RoleDefinition";
+/// Type of the stored role configuration; AS2 has none.
+pub(super) const ROLE_CONFIG_TYPE: &str = "RoleConfig";
 pub(super) const AS2_TYPE: &str = "application/activity+json";
 pub(super) const SAME_AS: &str = "owl:sameAs";

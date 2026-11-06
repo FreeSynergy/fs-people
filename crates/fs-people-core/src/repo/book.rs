@@ -3,6 +3,8 @@
 //! Pattern: Facade — each trait method forwards to the inherent method of the same name (inherent
 //! methods keep working for callers that do not import the trait).
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
 use fs_store::{ObjectId, StoredObject};
@@ -12,6 +14,7 @@ use super::handle::PeopleRepo;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
 use crate::error::Result;
+use crate::feed::{PeopleFeed, PersonListener, Subscription};
 use crate::format::{Exporter, Importer};
 use crate::matching::SameAsProposal;
 use crate::people::People;
@@ -114,7 +117,7 @@ impl RoleBook for PeopleRepo {
         PeopleRepo::undefine_role(self, id).await
     }
     async fn load_role_config(&self, json: &str) -> Result<()> {
-        PeopleRepo::load_role_config(self, json)
+        PeopleRepo::store_role_config(self, json).await
     }
     async fn role(&self, id: &str) -> Result<Option<RoleDefinition>> {
         PeopleRepo::role(self, id).await
@@ -148,7 +151,13 @@ impl RoleBook for PeopleRepo {
     }
 }
 
-/// The store-backed provider offers every method, except the live feed, which is not built yet.
+impl PeopleFeed for PeopleRepo {
+    fn subscribe(&self, listener: Arc<dyn PersonListener>) -> Result<Subscription> {
+        Ok(self.feed.add(listener))
+    }
+}
+
+/// The store-backed provider offers every capability of the contract.
 fn capabilities() -> Capabilities {
     let mut caps = Capabilities::new("fs-people");
     for id in [
@@ -159,6 +168,7 @@ fn capabilities() -> Capabilities {
         "person.find",
         "person.import",
         "person.export",
+        "person.subscribe",
         "relation.read",
         "relation.write",
         "cardgroup.read",
@@ -174,6 +184,5 @@ fn capabilities() -> Capabilities {
     ] {
         caps.supported(id);
     }
-    caps.unsupported("person.subscribe", "not built yet; it is possible");
     caps
 }

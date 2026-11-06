@@ -9,6 +9,10 @@ use fs_store::ObjectId;
 pub struct ListFilter {
     /// Only this JSContact `kind`.
     pub kind: Option<String>,
+    /// Only people holding this role, in any scope.
+    pub role: Option<String>,
+    /// Only cards with this substring in name, nickname, e-mail, phone or organisation.
+    pub term: Option<String>,
     /// At most this many results.
     pub limit: Option<usize>,
     /// Skip this many results.

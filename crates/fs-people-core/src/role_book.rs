@@ -23,7 +23,8 @@ pub trait RoleBook: Send + Sync {
     async fn undefine_role(&self, _id: &str) -> Result<()> {
         not_possible("role.define")
     }
-    /// `role.configure`: replace the configured roles, checked first and swapped at once.
+    /// `role.configure`: replace the configured roles, checked first and swapped at once. They stay
+    /// in force after a restart of the provider.
     async fn load_role_config(&self, _json: &str) -> Result<()> {
         not_possible("role.configure")
     }

@@ -31,7 +31,12 @@ impl PeopleRepo {
             let uid = imp.card.uid.clone();
             match self.create_inner(imp.card, imp.original).await {
                 Ok(o) => report.created.push(o.envelope.id),
-                Err(e @ Error::Invalid(_)) => report.failed.push(format!("{uid}: {e}")),
+                // This card cannot be stored; the others of the file still can.
+                Err(
+                    e @ (Error::Invalid(_)
+                    | Error::Conflict(_)
+                    | Error::Store(fs_store::Error::EncryptionRequired(_))),
+                ) => report.failed.push(format!("{uid}: {e}")),
                 Err(e) => return Err(e),
             }
         }

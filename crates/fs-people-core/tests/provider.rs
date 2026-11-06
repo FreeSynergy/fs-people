@@ -65,7 +65,8 @@ async fn the_store_backed_provider_reports_what_it_can() {
     ] {
         assert!(caps.is_supported(id), "{id}");
     }
-    assert!(caps.why_not("person.subscribe").is_some());
+    assert!(caps.is_supported("person.subscribe"));
+    assert!(caps.entries().iter().all(|e| e.supported));
 }
 
 #[tokio::test]

@@ -11,6 +11,7 @@ use super::handle::PeopleRepo;
 use crate::card::Card;
 use crate::clock::now_utc;
 use crate::error::{Error, Result};
+use crate::feed::PersonChange;
 use crate::validate::validate;
 
 impl PeopleRepo {
@@ -36,8 +37,17 @@ impl PeopleRepo {
         }
         let obj = self.build_object(&card, None, original);
         let id = obj.envelope.id;
+        // A UUIDv7 uid doubles as object id; `put` would silently overwrite what already has it.
+        if self.objects.get(id).await?.is_some() {
+            return Err(Error::Conflict(format!(
+                "the uid {} is the id of another object",
+                card.uid
+            )));
+        }
         self.objects.put(obj, &self.actor).await?;
-        self.get(id).await?.ok_or(Error::NotFound(id))
+        let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;
+        self.feed.notify(&PersonChange::Created(id));
+        Ok(stored)
     }
 
     /// The stored object of a person, if it exists.
@@ -75,7 +85,9 @@ impl PeopleRepo {
         validate(&card)?;
         let obj = self.build_object(&card, Some(&old.envelope), None);
         self.objects.put(obj, &self.actor).await?;
-        self.get(id).await?.ok_or(Error::NotFound(id))
+        let stored = self.get(id).await?.ok_or(Error::NotFound(id))?;
+        self.feed.notify(&PersonChange::Updated(id));
+        Ok(stored)
     }
 
     /// Delete a card (undoable through the store). Its role assignments and the same-person links
@@ -87,6 +99,7 @@ impl PeopleRepo {
         }
         self.delete_assignments_of(id).await?;
         self.objects.delete(id, &self.actor).await?;
+        self.feed.notify(&PersonChange::Deleted(id));
         Ok(())
     }
 }

@@ -32,7 +32,7 @@ async fn import_demo_list_and_search() {
         r.list(&ListFilter {
             kind: Some("org".into()),
             limit: Some(5),
-            offset: 0
+            ..Default::default()
         })
         .await
         .unwrap()

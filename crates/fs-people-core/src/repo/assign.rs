@@ -9,10 +9,12 @@ use serde_json::{Map, Value, json};
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE};
 use super::handle::PeopleRepo;
-use crate::error::{Error, Result};
+use crate::error::{Error, Issue, Result};
 use crate::roles::{AI_ROLE, RoleAssignment};
 
 const PERSONAL: &str = "personal";
+/// The owner whose role fields this program holds itself.
+const OWN_ROLES: &str = "fs-people";
 
 impl PeopleRepo {
     /// Give `person` the role, personally (`scope` = `None`) or within the group with this IRI.
@@ -25,6 +27,12 @@ impl PeopleRepo {
         scope: Option<&str>,
         details: Map<String, Value>,
     ) -> Result<RoleAssignment> {
+        if let Some(s) = scope.filter(|s| !s.contains(':')) {
+            return Err(Error::Invalid(vec![Issue {
+                path: "/scope".into(),
+                message: format!("{s:?} is not the IRI of a group"),
+            }]));
+        }
         let definition = self
             .role(role)
             .await?
@@ -40,6 +48,15 @@ impl PeopleRepo {
                     card.kind()
                 )));
             }
+        }
+        if !details.is_empty() && definition.owner != OWN_ROLES {
+            return Err(Error::Invalid(vec![Issue {
+                path: "/details".into(),
+                message: format!(
+                    "role {role} is owned by {}, which holds its fields",
+                    definition.owner
+                ),
+            }]));
         }
         if let Some(held) = self
             .roles_of(person)
@@ -80,8 +97,12 @@ impl PeopleRepo {
         })
     }
 
-    /// End an assignment (the store's undo can bring it back).
+    /// End an assignment (the store's undo can bring it back). Any other object with this id stays.
     pub async fn unassign_role(&self, assignment: ObjectId) -> Result<()> {
+        let found = self.objects.get(assignment).await?;
+        if !found.as_ref().is_some_and(|o| read(o).is_some()) {
+            return Err(fs_store::Error::NotFound(assignment).into());
+        }
         self.objects.delete(assignment, &self.actor).await?;
         Ok(())
     }
@@ -105,7 +126,10 @@ impl PeopleRepo {
             q = q.with_index("scope", s);
         }
         let found = self.reads.query(&q).await?;
-        Ok(found.iter().filter_map(read).map(|a| a.person).collect())
+        let mut holders: Vec<ObjectId> = found.iter().filter_map(read).map(|a| a.person).collect();
+        holders.sort_unstable();
+        holders.dedup(); // one person can hold a role in several scopes
+        Ok(holders)
     }
 
     /// Mark a card as an AI: JSContact `kind` `application` plus the role (ADR 0054). Refused for a
@@ -117,6 +141,9 @@ impl PeopleRepo {
             .ok_or(Error::NotFound(person))?;
         if card.is_group() {
             return Err(Error::Conflict("a group card cannot be an AI".into()));
+        }
+        if self.role(AI_ROLE).await?.is_none() {
+            return Err(Error::Conflict(format!("role {AI_ROLE} is not defined")));
         }
         if card.kind() != "application" {
             card.kind = Some("application".into());
@@ -143,7 +170,11 @@ fn assignments() -> Query {
     Query::new().of_type(RELATIONSHIP_TYPE).in_context(CONTEXT)
 }
 
+/// The assignment in `o`, if it is one; a same-person link or a card is not.
 fn read(o: &StoredObject) -> Option<RoleAssignment> {
+    if o.envelope.object_type != RELATIONSHIP_TYPE {
+        return None;
+    }
     let index = |k: &str| o.index.get(k).and_then(|v| v.first());
     let scope = index("scope")?;
     Some(RoleAssignment {

@@ -10,16 +10,18 @@ use fs_store::traits::{ObjectQuery, ObjectRepository};
 use fs_store::{ObjectId, Store};
 
 use super::backend::StoreAdapter;
+use crate::feed::Registry;
 use crate::matching::{MatchStrategy, SharedContactPoint};
 use crate::roles::RoleRegistry;
 
-/// People over an object store. Cheap to clone.
+/// People over an object store. Cheap to clone; clones share their subscribers.
 #[derive(Clone)]
 pub struct PeopleRepo {
     pub(super) objects: Arc<dyn ObjectRepository>,
     pub(super) reads: Arc<dyn ObjectQuery>,
     pub(super) matcher: Arc<dyn MatchStrategy>,
     pub(super) registry: RoleRegistry,
+    pub(super) feed: Arc<Registry>,
     pub(super) actor: String,
     pub(super) instance: String,
 }
@@ -43,6 +45,7 @@ impl PeopleRepo {
             reads,
             matcher: Arc::new(SharedContactPoint),
             registry: RoleRegistry::known(),
+            feed: Arc::default(),
             actor: actor.into(),
             instance: "local.invalid".into(),
         }

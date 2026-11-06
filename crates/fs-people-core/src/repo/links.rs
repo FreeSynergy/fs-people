@@ -55,8 +55,19 @@ impl PeopleRepo {
         self.objects.get(id).await?.ok_or(Error::NotFound(id))
     }
 
-    /// Remove a same-person link (the store's undo can bring it back).
+    /// Remove a same-person link (the store's undo can bring it back). Any other object with this
+    /// id stays.
     pub async fn unlink(&self, relationship: ObjectId) -> Result<()> {
+        let found = self.objects.get(relationship).await?;
+        let is_link = found.as_ref().is_some_and(|o| {
+            o.envelope.object_type == RELATIONSHIP_TYPE
+                && o.index
+                    .get("relationship")
+                    .is_some_and(|v| v.iter().any(|r| r == SAME_AS))
+        });
+        if !is_link {
+            return Err(fs_store::Error::NotFound(relationship).into());
+        }
         self.objects.delete(relationship, &self.actor).await?;
         Ok(())
     }

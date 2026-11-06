@@ -54,7 +54,8 @@ impl PeopleRepo {
         Ok(())
     }
 
-    /// Replace the configured roles: checked first, then swapped at once (ADR 0045).
+    /// Replace the configured roles in memory: checked first, then swapped at once (ADR 0045). What
+    /// shall outlive the process goes through `store_role_config`.
     pub fn load_role_config(&self, json: &str) -> Result<()> {
         self.registry.load(json)
     }
@@ -75,9 +76,14 @@ impl PeopleRepo {
         let q = Query::new()
             .of_type(ROLE_DEFINITION_TYPE)
             .in_context(CONTEXT);
-        let mut out: Vec<RoleDefinition> = self.registry.snapshot().values().cloned().collect();
+        let configured = self.registry.snapshot();
+        let mut out: Vec<RoleDefinition> = configured.values().cloned().collect();
         for o in self.reads.query(&q).await? {
-            out.push(serde_json::from_value(o.content)?);
+            let own: RoleDefinition = serde_json::from_value(o.content)?;
+            // Configuration wins, as in `role`: one id, one definition.
+            if !configured.contains_key(&own.id) {
+                out.push(own);
+            }
         }
         out.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(out)
