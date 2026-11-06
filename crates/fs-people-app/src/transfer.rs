@@ -4,13 +4,13 @@
 //! report. Nothing is hidden: what failed or was left out is in the report.
 
 use std::fmt::Write as _;
-use std::io::Write as _;
 use std::path::Path;
 
 use fs_people_core::{ListFilter, People};
 use tokio::runtime::Handle;
 
-use crate::source::reason_text;
+use crate::new_file::write_new_file;
+use crate::source::{is_marked, reason_text};
 
 /// Asked of the core at a time while exporting.
 const EXPORT_PAGE: usize = 500;
@@ -83,8 +83,10 @@ pub fn import_file(
 pub struct ExportReport {
     /// People written.
     pub written: usize,
-    /// People marked sensitive, left out (ADR 0029: they leave only by explicit release).
+    /// People marked sensitive and left out, with their `uid` (ADR 0029).
     pub left_out: Vec<String>,
+    /// People marked sensitive and written, because their `uid` was named.
+    pub released: Vec<String>,
     /// People who could not be expressed as vCard, with the reason.
     pub failed: Vec<String>,
 }
@@ -93,10 +95,13 @@ impl ExportReport {
     /// In words.
     pub fn message(&self, path: &Path) -> String {
         let mut text = format!("Wrote {} to {}", self.written, path.display());
+        if !self.released.is_empty() {
+            let _ = write!(text, ". Released by you: {}", self.released.join(", "));
+        }
         if !self.left_out.is_empty() {
             let _ = write!(
                 text,
-                ". Left out as sensitive: {}",
+                ". Left out as sensitive (name one with --export-sensitive <uid>): {}",
                 self.left_out.join(", ")
             );
         }
@@ -107,18 +112,23 @@ impl ExportReport {
     }
 }
 
-/// Write everyone to a new file at `path`. A file that exists is not replaced. Roles are never in
-/// it, because they are not on the card.
+/// Write everyone to a new file at `path`. A file that exists is not replaced, and a failed write
+/// leaves nothing behind. People marked sensitive are left out unless `released` names their `uid`
+/// (ADR 0029: they leave only by explicit release, one by one). Roles are never in it, because they
+/// are not on the card.
 ///
 /// # Errors
-/// A message for the person if the list cannot be read or the file cannot be written.
+/// A message for the person if the list cannot be read, the file cannot be written, or `released`
+/// names someone who does not exist: then nothing is written.
 pub fn export_all(
     people: &dyn People,
     runtime: &Handle,
     path: &Path,
+    released: &[String],
 ) -> Result<ExportReport, String> {
     let mut report = ExportReport::default();
     let mut text = String::new();
+    let mut unmatched: Vec<&String> = released.iter().collect();
     let mut offset = 0;
     loop {
         let filter = ListFilter {
@@ -131,9 +141,17 @@ pub fn export_all(
             .map_err(|e| reason_text(&e))?;
         for object in &page {
             let name = &object.envelope.name;
-            if !object.envelope.sensitive.is_empty() {
-                report.left_out.push(name.clone());
-                continue;
+            let uid = object.content["uid"].as_str().unwrap_or_default();
+            let id = object.envelope.id.to_string();
+            let named = |given: &&String| given.as_str() == uid || **given == id;
+            let is_released = released.iter().any(|given| named(&given));
+            unmatched.retain(|given| !named(given));
+            if is_marked(object) {
+                if !is_released {
+                    report.left_out.push(format!("{name} ({uid})"));
+                    continue;
+                }
+                report.released.push(format!("{name} ({uid})"));
             }
             match runtime.block_on(people.export_vcard(object.envelope.id)) {
                 Ok(card) => {
@@ -148,9 +166,11 @@ pub fn export_all(
             break;
         }
     }
-    let mut file = std::fs::File::create_new(path)
-        .map_err(|e| format!("cannot create {}: {e}", path.display()))?;
-    file.write_all(text.as_bytes())
-        .map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    if let Some(nobody) = unmatched.first() {
+        return Err(format!(
+            "--export-sensitive {nobody} names nobody; nothing was written"
+        ));
+    }
+    write_new_file(path, text.as_bytes())?;
     Ok(report)
 }

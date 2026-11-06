@@ -6,8 +6,10 @@
 mod adapter;
 mod apply;
 mod draft;
+mod marks;
 mod sheet;
 
 pub use adapter::PeopleAdapter;
 pub(crate) use adapter::reason_text;
 pub use apply::apply_draft;
+pub(crate) use marks::is_marked;

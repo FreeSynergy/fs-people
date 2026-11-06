@@ -52,7 +52,7 @@ fn run() -> Result<(), String> {
         });
     }
     if let Some(file) = &args.export {
-        let report = export_all(repo.as_ref(), &handle, file)?;
+        let report = export_all(repo.as_ref(), &handle, file, &args.export_sensitive)?;
         eprintln!("{}", report.message(file));
         if !report.failed.is_empty() {
             return Err(format!("{} could not be exported", report.failed.len()));

@@ -20,6 +20,7 @@ pub fn labels() -> PeopleLabels {
 pub(crate) mod field {
     pub const AI: &str = "AI";
     pub const SENSITIVE: &str = "Sensitive: {}";
+    pub const UNCLEAR: &str = "categories unclear";
     pub const CONTACT: &str = "Contact";
     pub const WORK: &str = "Organisation";
     pub const PLACES: &str = "Addresses";

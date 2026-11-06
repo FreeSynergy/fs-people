@@ -42,3 +42,17 @@ fn mistakes_are_said() {
         );
     }
 }
+
+#[test]
+fn export_sensitive_is_repeatable_and_needs_an_export() {
+    let got = parse(&args(
+        "--export o.vcf --export-sensitive a --export-sensitive b",
+    ))
+    .unwrap();
+    assert_eq!(got.export_sensitive, ["a", "b"]);
+    assert!(
+        parse(&args("--export-sensitive a"))
+            .unwrap_err()
+            .contains("needs --export")
+    );
+}

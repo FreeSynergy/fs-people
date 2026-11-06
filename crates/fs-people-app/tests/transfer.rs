@@ -79,7 +79,7 @@ fn everyone_is_exported_and_comes_back_elsewhere_and_a_taken_file_is_not_replace
     w.add(ada);
     w.add(Card::individual("Bob"));
     let file = dir.file("out.vcf");
-    let report = export_all(w.repo.as_ref(), w.runtime.handle(), &file).unwrap();
+    let report = export_all(w.repo.as_ref(), w.runtime.handle(), &file, &[]).unwrap();
     assert_eq!(report.written, 2);
     let other = World::in_memory();
     let back = import_file(other.repo.as_ref(), other.runtime.handle(), &file).unwrap();
@@ -88,7 +88,7 @@ fn everyone_is_exported_and_comes_back_elsewhere_and_a_taken_file_is_not_replace
     assert_eq!(rows[0].cells, ["Ada", "ada@x.org"]);
 
     let before = std::fs::read_to_string(&file).unwrap();
-    let again = export_all(w.repo.as_ref(), w.runtime.handle(), &file);
+    let again = export_all(w.repo.as_ref(), w.runtime.handle(), &file, &[]);
     assert!(again.unwrap_err().contains("cannot create"));
     assert_eq!(std::fs::read_to_string(&file).unwrap(), before);
 }
@@ -101,9 +101,12 @@ fn people_marked_sensitive_are_left_out_of_an_export_and_named() {
     w.add(secret);
     w.add(person("Open", "o@x.org"));
     let file = dir.file("out.vcf");
-    let report = export_all(w.repo.as_ref(), w.runtime.handle(), &file).unwrap();
+    let report = export_all(w.repo.as_ref(), w.runtime.handle(), &file, &[]).unwrap();
     assert_eq!(report.written, 1);
-    assert_eq!(report.left_out, ["Secret"]);
+    assert!(
+        report.left_out[0].starts_with("Secret (urn:uuid:"),
+        "{report:?}"
+    );
     assert!(report.message(&file).contains("Secret"));
     assert!(!std::fs::read_to_string(&file).unwrap().contains("s@x.org"));
 }
@@ -135,7 +138,7 @@ fn an_export_after_an_edit_says_the_new_name_not_the_imported_one() {
         s.editing().map(|e| e.error.clone())
     );
     let out = dir.file("out.vcf");
-    export_all(w.repo.as_ref(), w.runtime.handle(), &out).unwrap();
+    export_all(w.repo.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
     let text = std::fs::read_to_string(&out).unwrap();
     assert!(text.contains("Augusta King"), "{text}");
     assert!(text.contains("augusta@x.org"), "{text}");

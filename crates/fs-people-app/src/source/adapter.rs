@@ -162,15 +162,6 @@ impl PeopleSource for PeopleAdapter {
         let mut card = Card::individual("");
         card.name = None;
         apply_draft(&mut card, draft)?;
-        if card.name.is_none()
-            && card.emails.is_empty()
-            && card.phones.is_empty()
-            && card.organizations.is_empty()
-        {
-            return Err(SourceError::failed(
-                "enter at least a name, an e-mail, a phone or an organisation",
-            ));
-        }
         self.runtime
             .block_on(self.people.create(card))
             .map(|object| object.envelope.id.to_string())

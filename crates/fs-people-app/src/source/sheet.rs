@@ -9,6 +9,7 @@ use fs_people_core::{AI_ROLE, Card, Error, RoleBook};
 use fs_store::StoredObject;
 use tokio::runtime::Handle;
 
+use super::marks::is_marked;
 use crate::words::field;
 
 /// The e-mail to show in a row: the preferred one, else the first.
@@ -46,11 +47,16 @@ pub(super) fn sheet_of(
     if is_ai {
         sheet.marks.push(field::AI.to_string());
     }
-    if !object.envelope.sensitive.is_empty() {
-        let categories = object.envelope.sensitive.join(", ");
+    if is_marked(object) {
+        let categories = card.sensitive_categories().join(", ");
+        let categories = if categories.is_empty() {
+            field::UNCLEAR
+        } else {
+            categories.as_str()
+        };
         sheet
             .marks
-            .push(field::SENSITIVE.replacen("{}", &categories, 1));
+            .push(field::SENSITIVE.replacen("{}", categories, 1));
     }
     sheet
 }

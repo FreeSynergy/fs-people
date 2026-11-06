@@ -116,6 +116,10 @@ fn an_emptied_e_mail_goes_alone_and_an_added_one_takes_a_free_id() {
     s.save();
     let card = w.card(&key);
     assert!(card.emails.contains_key("e1"));
+    assert!(
+        !card.emails.contains_key("e2"),
+        "a freed id is not reused in the same edit"
+    );
     assert!(!card.emails.values().any(|e| e.address == "home@x.org"));
     assert_eq!(card.emails["e1"].label.as_deref(), Some("desk"));
     assert!(card.emails.values().any(|e| e.address == "new@x.org"));

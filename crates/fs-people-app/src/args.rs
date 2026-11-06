@@ -13,6 +13,8 @@ pub struct Args {
     pub import: Option<PathBuf>,
     /// Write everyone to this vCard file; no window opens then.
     pub export: Option<PathBuf>,
+    /// The `uid`s of people marked sensitive whom the export may include, each named by the person.
+    pub export_sensitive: Vec<String>,
     /// Draw a picture to this file instead of opening a window.
     pub snapshot: Option<PathBuf>,
     /// Size of the window or picture.
@@ -27,6 +29,7 @@ impl Default for Args {
             store: None,
             import: None,
             export: None,
+            export_sensitive: Vec::new(),
             snapshot: None,
             size: (1200, 800),
             help: false,
@@ -51,11 +54,15 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
             "--store" => out.store = Some(PathBuf::from(value("--store")?)),
             "--import" => out.import = Some(PathBuf::from(value("--import")?)),
             "--export" => out.export = Some(PathBuf::from(value("--export")?)),
+            "--export-sensitive" => out.export_sensitive.push(value("--export-sensitive")?),
             "--snapshot" => out.snapshot = Some(PathBuf::from(value("--snapshot")?)),
             "--size" => out.size = size(&value("--size")?)?,
             "-h" | "--help" => out.help = true,
             other => return Err(format!("unknown option {other}")),
         }
+    }
+    if !out.export_sensitive.is_empty() && out.export.is_none() {
+        return Err("--export-sensitive needs --export".into());
     }
     Ok(out)
 }
@@ -77,5 +84,7 @@ pub const HELP: &str = "fs-people-app: the people program
   --import <file>    import a vCard file first; people already known are skipped, never replaced
   --export <file>    write everyone to a new vCard file and stop; an existing file is not replaced,
                      people marked sensitive are left out and named
+  --export-sensitive <uid>
+                     release this person marked sensitive for --export; repeat for each person
   --snapshot <png>   draw a picture instead of opening a window
   --size <WxH>       window or picture size (default 1200x800)";
