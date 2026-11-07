@@ -9,7 +9,7 @@ use super::consts::{CONTEXT, ROLE_DEFINITION_TYPE};
 use super::envelope::stored_value;
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
-use crate::roles::{RoleDefinition, RoleDirectory, full_id, stored_forms};
+use crate::roles::{RoleDefinition, full_id, stored_forms};
 
 impl PeopleRepo {
     /// Store a role of your own. Refused if the id is already taken.

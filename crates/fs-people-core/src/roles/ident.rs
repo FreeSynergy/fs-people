@@ -1,9 +1,9 @@
 //! Identity of a role: short id, base address, full id.
 //!
-//! Pattern: Newtype-like pure functions over text — the full id of a role is its file's base address
-//! plus its short id (ADR 0052). A stored assignment may still hold the short id of one of our roles
-//! (older data); these functions are the one place that knows both forms, so nothing else compares
-//! role ids by hand.
+//! Pattern: none, plain functions. A `RoleId` newtype would only wrap a string compared in this one
+//! file. The full id of a role is its file's base address plus its short id (ADR 0052). A stored
+//! assignment may still hold the short id of one of our roles (older data); these functions are
+//! the one place that knows both forms, so nothing else compares role ids by hand.
 
 /// Base address of the roles `fs-people` ships. Provisional: who controls the domain is not checked.
 pub const ROLE_BASE: &str = "https://freesynergy.net/ns/roles/";
@@ -17,6 +17,7 @@ pub const AI_ROLE_IRI: &str = "https://freesynergy.net/ns/roles/ai";
 /// The full id of `id`: an id with a scheme (`https:`) is one already, a short id belongs to our
 /// base. Provisional: a short id means "ours", also for a role defined with `define_role`.
 pub fn full_id(id: &str) -> String {
+    let id = id.trim();
     if id.contains(':') {
         id.to_string()
     } else {

@@ -84,7 +84,11 @@ async fn a_configuration_cannot_orphan_or_misfit_who_holds_a_role() {
         .await
         .unwrap();
 
-    let without = json!([role("other", "group", None)]);
+    // The object form replaces the whole file of its base; the old array only merges.
+    let without = json!({
+        "@context": [{"@base": "https://freesynergy.net/ns/roles/"}],
+        "id": "", "type": "skos:ConceptScheme", "roles": [role("other", "group", None)]
+    });
     let said = conflict(r.store_role_config(&without.to_string()).await);
     assert!(said.contains("member"), "{said}");
     assert!(r.role("member").await.unwrap().is_some(), "nothing changed");

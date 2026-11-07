@@ -149,7 +149,12 @@ async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
         json!([{"id": "coach", "names": {"en": "Configured"}, "owner": "o", "scope": "group"}]);
     r.store_role_config(&config.to_string()).await.unwrap();
     let ids: Vec<_> = r.roles().await.unwrap().into_iter().map(|d| d.id).collect();
-    assert_eq!(ids, [full_id("coach")], "one id, one definition");
+    let coaches = ids.iter().filter(|i| **i == full_id("coach")).count();
+    assert_eq!(coaches, 1, "one id, one definition");
+    assert!(
+        ids.contains(&full_id("ai")),
+        "the array merges, the shipped roles stay"
+    );
 
     let bad = json!([{"id": "x", "names": {}, "owner": "o"}]);
     assert!(matches!(
@@ -163,7 +168,10 @@ async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
         "not restored yet"
     );
     again.restore_role_config().await.unwrap();
-    assert!(again.role("ai").await.unwrap().is_none());
+    assert!(
+        again.role("ai").await.unwrap().is_some(),
+        "the array merges over the shipped roles"
+    );
     assert_eq!(again.role("coach").await.unwrap().unwrap().owner, "o");
 }
 

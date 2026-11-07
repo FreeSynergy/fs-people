@@ -9,8 +9,8 @@ use std::collections::BTreeSet;
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::definition::RoleDefinition;
-use super::ident::{ROLE_BASE, full_id};
+use super::definition::{RoleDefinition, owner_id};
+use super::ident::ROLE_BASE;
 use crate::card::Map;
 use crate::error::{Error, Issue, Result};
 
@@ -25,6 +25,8 @@ pub struct RoleScheme {
     pub names: Map<String>,
     /// The roles, each with its full id.
     pub roles: Vec<RoleDefinition>,
+    /// Set for the old array form: it is added to the file of the same base instead of replacing it.
+    pub merge: bool,
 }
 
 #[derive(Deserialize)]
@@ -56,13 +58,24 @@ fn base_of(context: &Value) -> Option<String> {
 }
 
 impl RoleScheme {
-    /// Read and check a role file. The old form, an array of definitions, is read as a file of our
-    /// own base (provisional, so a stored or sent configuration from before keeps working).
+    /// Read and check a role file that somebody typed or sent. The old form, an array of definitions
+    /// with short ids, is read as a file of our own base that merges over the shipped roles
+    /// (provisional, so a configuration from before keeps working).
     pub fn parse(json: &str) -> Result<Self> {
+        Self::read(json, false)
+    }
+
+    /// Read a role file that was accepted once and stored. An owner that was a sentence is migrated
+    /// to an id ("CRM (later)" -> "crm-later") instead of refused; everything else is checked.
+    pub fn parse_stored(json: &str) -> Result<Self> {
+        Self::read(json, true)
+    }
+
+    fn read(json: &str, stored: bool) -> Result<Self> {
         let value: Value = serde_json::from_str(json)?;
         if value.is_array() {
             let roles: Vec<RoleDefinition> = serde_json::from_value(value)?;
-            return Self::build(ROLE_BASE.into(), Map::new(), roles, false);
+            return Self::build(ROLE_BASE.into(), Map::new(), roles, true, stored);
         }
         let raw: Raw = serde_json::from_value(value)?;
         if raw.kind != SCHEME_TYPE {
@@ -71,33 +84,37 @@ impl RoleScheme {
         let base = base_of(&raw.context)
             .filter(|b| b.contains(':') && (b.ends_with('/') || b.ends_with('#')))
             .ok_or_else(|| invalid("/@context", "needs an @base address ending in / or #"))?;
-        Self::build(base, raw.names, raw.roles, true)
+        Self::build(base, raw.names, raw.roles, false, stored)
     }
 
     fn build(
         base: String,
         names: Map<String>,
         mut roles: Vec<RoleDefinition>,
-        short: bool,
+        merge: bool,
+        stored: bool,
     ) -> Result<Self> {
         let mut seen = BTreeSet::new();
         for (i, def) in roles.iter_mut().enumerate() {
-            if short && (def.id.trim().is_empty() || def.id.contains(':')) {
-                return Err(invalid(
-                    &format!("/roles/{i}/id"),
-                    "a short id, without a scheme",
-                ));
+            let short = def.id.trim();
+            if short.is_empty() || short.contains([':', '/', '#']) {
+                let message = "a short id: not empty, without scheme, / or #";
+                return Err(invalid(&format!("/roles/{i}/id"), message));
             }
-            def.id = if short {
-                format!("{base}{}", def.id)
-            } else {
-                full_id(&def.id)
-            };
+            def.id = format!("{base}{short}");
+            if stored {
+                def.owner = owner_id(&def.owner);
+            }
             def.check()?;
             if !seen.insert(def.id.clone()) {
                 return Err(Error::Conflict(format!("role {} is defined twice", def.id)));
             }
         }
-        Ok(Self { base, names, roles })
+        Ok(Self {
+            base,
+            names,
+            roles,
+            merge,
+        })
     }
 }

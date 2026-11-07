@@ -94,10 +94,10 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 | `repo/role_config.rs` | Memento | the last accepted file of each base address as one object in the store |
 | `repo/role_facade.rs` | Facade | `RoleBook` and `PeopleFeed` over the inherent methods, writes take turns |
 | `role_book.rs`, `repo/{roles,assign}.rs` | Repository (interface + implementation) | role definitions and assignments, split from `People` so a provider of cards alone still fits |
-| `roles/directory.rs` | Strategy (trait `RoleDirectory`) | callers ask the trait, tests run against it; why: shipped, own and test sources stay interchangeable |
+| `roles/directory.rs` | Strategy (trait `RoleDirectory`) | `PeopleRepo` holds an `Arc<dyn RoleDirectory>` (`with_roles`, default `RoleRegistry`); shipped, decorated and test sources are interchangeable, tests run against the trait |
 | `roles/registry.rs` | Registry, swapped atomically | one scheme per base; configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
-| `roles/scheme.rs` | Adapter | the JSON-LD role file into plain definitions with full ids; the old array form is read as a file of our base |
-| `roles/ident.rs` | Newtype-like functions | short id, base, full id, `is_ai_role`: the one place that knows both forms |
+| `roles/scheme.rs` | Adapter | the JSON-LD role file into plain definitions with full ids; the old array form (short ids only) is read as a file of our base that merges over the shipped roles; `parse_stored` migrates an old sentence owner ("CRM (later)" -> `crm-later`), `parse` stays strict |
+| `roles/ident.rs` | none, plain functions | short id, base, full id, `is_ai_role`: the one place that knows both forms (a newtype would wrap a string compared in one file) |
 | `repo/holders.rs` | Repository (queries) | who holds a role, asking every stored form |
 | `roles/{definition,assignment}.rs` | Value objects | the same form for shipped and own roles |
 | `card/relations.rs`, `repo/relations.rs` | Command | small edits of `relatedTo` |

@@ -14,7 +14,7 @@ use super::envelope::stored_value;
 use super::handle::PeopleRepo;
 use super::role_rules::{check_kind, check_reach};
 use crate::error::{Error, Result};
-use crate::roles::{AI_ROLE_IRI, RoleDefinition, RoleDirectory, RoleScheme};
+use crate::roles::{RoleDefinition, RoleScheme, is_ai_role};
 use crate::validate::check_exact_numbers;
 
 impl PeopleRepo {
@@ -27,7 +27,7 @@ impl PeopleRepo {
         let next = self.registry.preview(json)?;
         self.check_holders_against(&next).await?;
         let content: Value = serde_json::from_str(json)?;
-        let previous = self.stored_role_configs().await?;
+        let (previous, _) = self.stored_role_configs().await?;
         let previous = previous.into_iter().find(|(base, _)| *base == scheme.base);
         let env = previous.map_or_else(|| self.role_config_envelope(), |(_, o)| o.envelope);
         let object = StoredObject::new(env, "application/json", content);
@@ -56,7 +56,7 @@ impl PeopleRepo {
             };
             let scope = held.scope.as_deref();
             // An AI is marked without a scope, whatever the role says of its reach.
-            if held.role != AI_ROLE_IRI && check_reach(&now, scope).is_ok() {
+            if !is_ai_role(&held.role) && check_reach(&now, scope).is_ok() {
                 check_reach(&definition, scope)
                     .map_err(|e| Error::Conflict(format!("in use: {e}")))?;
             }
@@ -79,22 +79,28 @@ impl PeopleRepo {
     }
 
     /// Put the stored configuration in force, if there is one. Called once when the program starts.
-    pub async fn restore_role_config(&self) -> Result<()> {
-        for (_, stored) in self.stored_role_configs().await? {
-            self.registry.load(&stored.content.to_string())?;
+    /// A stored file that cannot be read is skipped, never fatal; the answer says which and why.
+    pub async fn restore_role_config(&self) -> Result<Vec<String>> {
+        let (found, mut skipped) = self.stored_role_configs().await?;
+        for (_, stored) in found {
+            if let Err(e) = self.registry.load_stored(&stored.content.to_string()) {
+                skipped.push(format!("role configuration {}: {e}", stored.envelope.id));
+            }
         }
-        Ok(())
+        Ok(skipped)
     }
 
-    /// The stored role files with their base address; a file of the old array form is one of ours.
-    async fn stored_role_configs(&self) -> Result<Vec<(String, StoredObject)>> {
+    /// The stored role files with their base address (the old array form is one of ours), and a
+    /// note for each one that cannot be read.
+    async fn stored_role_configs(&self) -> Result<(Vec<(String, StoredObject)>, Vec<String>)> {
         let q = Query::new().of_type(ROLE_CONFIG_TYPE).in_context(CONTEXT);
-        let found = self.reads.query(&q).await?;
-        let mut out = vec![];
-        for o in found {
-            let scheme = RoleScheme::parse(&o.content.to_string())?;
-            out.push((scheme.base, o));
+        let (mut out, mut skipped) = (vec![], vec![]);
+        for o in self.reads.query(&q).await? {
+            match RoleScheme::parse_stored(&o.content.to_string()) {
+                Ok(scheme) => out.push((scheme.base, o)),
+                Err(e) => skipped.push(format!("role configuration {}: {e}", o.envelope.id)),
+            }
         }
-        Ok(out)
+        Ok((out, skipped))
     }
 }

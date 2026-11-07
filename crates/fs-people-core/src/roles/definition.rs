@@ -114,7 +114,8 @@ impl RoleDefinition {
                 });
             }
         };
-        require(!self.id.trim().is_empty(), "/id", "required");
+        let named = !self.id.trim().is_empty() && !self.id.ends_with(['/', '#']);
+        require(named, "/id", "required, and more than a base address");
         require(!self.names.is_empty(), "/names", "at least one name");
         require(
             is_id(&self.owner),
@@ -129,6 +130,20 @@ impl RoleDefinition {
             Err(Error::Invalid(issues))
         }
     }
+}
+
+/// An owner from before owners were ids ("CRM (later)") as an id ("crm-later"). Only for data that
+/// was accepted once; new input is checked as it is.
+pub(super) fn owner_id(owner: &str) -> String {
+    if is_id(owner) {
+        return owner.to_string();
+    }
+    let words: Vec<String> = owner
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect();
+    words.join("-")
 }
 
 /// An owner is an id: no blanks, no brackets.

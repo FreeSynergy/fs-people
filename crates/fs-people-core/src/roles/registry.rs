@@ -3,16 +3,16 @@
 //! Pattern: Registry, swapped atomically like a config plugin (ADR 0045, learned from Zentinel) —
 //! a new file is checked completely first; readers see the old or the new set, never a mix. The
 //! registry is keyed by base address, so our file and yours sit side by side and loading one
-//! replaces only that one.
+//! replaces only that one. It is the default `RoleDirectory`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, RwLock};
 
 use super::definition::RoleDefinition;
 use super::directory::RoleDirectory;
 use super::ident::full_id;
 use super::scheme::RoleScheme;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// What this program ships. Data, not code.
 const KNOWN: &str = include_str!("known.json");
@@ -48,11 +48,36 @@ impl RoleRegistry {
         self.0.read().expect("role registry lock").clone()
     }
 
-    fn with(&self, scheme: RoleScheme) -> Schemes {
-        let mut next = (*self.current()).clone();
-        next.insert(scheme.base.clone(), Arc::new(scheme));
-        Arc::new(next)
+    /// Read, change and write under one write lock, so parallel loads cannot lose each other.
+    fn swap(&self, scheme: RoleScheme) -> Result<()> {
+        let mut guard = self.0.write().expect("role registry lock");
+        *guard = merged(&guard, scheme)?;
+        Ok(())
     }
+}
+
+/// `current` with `scheme` in it: replacing the scheme of its base, or, for the old array form,
+/// merging over it. A full id may exist once across all bases.
+fn merged(current: &Schemes, mut scheme: RoleScheme) -> Result<Schemes> {
+    let mut next = (**current).clone();
+    if let (true, Some(old)) = (scheme.merge, next.get(&scheme.base)) {
+        let mut roles: Vec<RoleDefinition> = old
+            .roles
+            .iter()
+            .filter(|d| scheme.roles.iter().all(|n| n.id != d.id))
+            .cloned()
+            .collect();
+        roles.append(&mut scheme.roles);
+        scheme.roles = roles;
+    }
+    next.insert(scheme.base.clone(), Arc::new(scheme));
+    let mut seen = BTreeSet::new();
+    for def in next.values().flat_map(|s| s.roles.iter()) {
+        if !seen.insert(&def.id) {
+            return Err(Error::Conflict(format!("role {} is defined twice", def.id)));
+        }
+    }
+    Ok(Arc::new(next))
 }
 
 fn flatten(schemes: &Schemes) -> BTreeMap<String, RoleDefinition> {
@@ -62,22 +87,19 @@ fn flatten(schemes: &Schemes) -> BTreeMap<String, RoleDefinition> {
 
 impl RoleDirectory for RoleRegistry {
     fn preview(&self, json: &str) -> Result<BTreeMap<String, RoleDefinition>> {
-        Ok(flatten(&self.with(RoleScheme::parse(json)?)))
+        Ok(flatten(&merged(&self.current(), RoleScheme::parse(json)?)?))
     }
 
-    /// # Panics
-    /// Only if another thread panicked while swapping, which holds no user code.
     fn load(&self, json: &str) -> Result<()> {
-        let next = self.with(RoleScheme::parse(json)?);
-        *self.0.write().expect("role registry lock") = next;
-        Ok(())
+        self.swap(RoleScheme::parse(json)?)
+    }
+
+    fn load_stored(&self, json: &str) -> Result<()> {
+        self.swap(RoleScheme::parse_stored(json)?)
     }
 
     fn find(&self, id: &str) -> Option<RoleDefinition> {
-        let full = full_id(id);
-        self.current()
-            .values()
-            .find_map(|s| s.roles.iter().find(|d| d.id == full).cloned())
+        flatten(&self.current()).remove(&full_id(id))
     }
 
     fn all(&self) -> Vec<RoleDefinition> {

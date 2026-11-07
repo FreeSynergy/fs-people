@@ -83,7 +83,10 @@ async fn the_old_array_merges_over_the_shipped_roles() {
 fn an_array_cannot_bring_foreign_full_ids() {
     let dir = RoleRegistry::known();
     let foreign = json!([{"id": "https://example.org/r/ai", "names": {"en": "x"}, "owner": "kal"}]);
-    assert!(matches!(dir.load(&foreign.to_string()), Err(Error::Invalid(_))));
+    assert!(matches!(
+        dir.load(&foreign.to_string()),
+        Err(Error::Invalid(_))
+    ));
     assert_eq!(dir.find("ai").unwrap().id, AI_ROLE_IRI);
 }
 
@@ -95,7 +98,10 @@ fn a_short_id_has_no_slash_and_is_not_empty() {
         assert!(matches!(loaded, Err(Error::Invalid(_))), "{bad:?}");
     }
     let array = json!([{"id": "", "names": {"en": "x"}, "owner": "kal"}]);
-    assert!(matches!(dir.load(&array.to_string()), Err(Error::Invalid(_))));
+    assert!(matches!(
+        dir.load(&array.to_string()),
+        Err(Error::Invalid(_))
+    ));
     assert!(dir.all().is_empty());
 }
 
@@ -104,7 +110,10 @@ async fn define_role_refuses_an_empty_id() {
     let r = repo().await;
     for id in ["", " "] {
         let def = RoleDefinition::new(id, "X", "kal", RoleScope::Personal);
-        assert!(matches!(r.define_role(def).await, Err(Error::Invalid(_))), "{id:?}");
+        assert!(
+            matches!(r.define_role(def).await, Err(Error::Invalid(_))),
+            "{id:?}"
+        );
     }
     assert!(r.role("").await.unwrap().is_none());
     assert_eq!(full_id("a"), format!("{OURS}a"));
@@ -118,7 +127,8 @@ fn parallel_loads_of_different_files_all_arrive() {
             .map(|n| {
                 let dir = dir.clone();
                 std::thread::spawn(move || {
-                    dir.load(&file(&format!("https://example.org/{n}/"), "a")).unwrap();
+                    dir.load(&file(&format!("https://example.org/{n}/"), "a"))
+                        .unwrap();
                 })
             })
             .collect();
@@ -133,7 +143,10 @@ fn parallel_loads_of_different_files_all_arrive() {
 struct Counting(RoleRegistry, Arc<std::sync::atomic::AtomicUsize>);
 
 impl RoleDirectory for Counting {
-    fn preview(&self, json: &str) -> fs_people_core::Result<std::collections::BTreeMap<String, RoleDefinition>> {
+    fn preview(
+        &self,
+        json: &str,
+    ) -> fs_people_core::Result<std::collections::BTreeMap<String, RoleDefinition>> {
         self.0.preview(json)
     }
     fn load(&self, json: &str) -> fs_people_core::Result<()> {
@@ -157,7 +170,9 @@ impl RoleDirectory for Counting {
 #[tokio::test]
 async fn the_repository_asks_whatever_directory_it_is_given() {
     let asked = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let r = repo().await.with_roles(Counting(RoleRegistry::known(), asked.clone()));
+    let r = repo()
+        .await
+        .with_roles(Counting(RoleRegistry::known(), asked.clone()));
     assert!(r.role("member").await.unwrap().is_some());
     assert!(asked.load(std::sync::atomic::Ordering::SeqCst) > 0);
 }
