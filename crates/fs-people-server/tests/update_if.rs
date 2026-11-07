@@ -19,7 +19,8 @@ async fn every_answer_carries_a_revision_and_each_write_changes_it() {
     with_server(|root| async move {
         let persons = persons_of(&root).await;
         let mut make = persons.create_request();
-        make.get().set_jscontact(card("u1", "Ada", "a@x.org").as_str());
+        make.get()
+            .set_jscontact(card("u1", "Ada", "a@x.org").as_str());
         let made = make.send().promise.await.unwrap();
         let person = made.get().unwrap().get_person().unwrap();
         let id = id_of(person);
@@ -32,7 +33,9 @@ async fn every_answer_carries_a_revision_and_each_write_changes_it() {
 
         let mut update = persons.update_request();
         write_uuid(update.get().init_id(), Some(id));
-        update.get().set_jscontact(card("u1", "Ada K", "a@x.org").as_str());
+        update
+            .get()
+            .set_jscontact(card("u1", "Ada K", "a@x.org").as_str());
         let done = update.send().promise.await.unwrap();
         let second = revision_of(done.get().unwrap().get_person().unwrap());
         assert_ne!(second, first);
@@ -118,7 +121,9 @@ async fn a_sensitive_card_has_a_revision_and_a_refusal_says_no_more() {
         let id = id_of(person);
         let read = revision_of(person);
 
-        let done = update_if(&persons, id, read, &marked("s1", "Sam B")).await.unwrap();
+        let done = update_if(&persons, id, read, &marked("s1", "Sam B"))
+            .await
+            .unwrap();
         let now = revision_of(done.get().unwrap().get_person().unwrap());
         assert_ne!(now, read);
         let detail = expect_problem(
@@ -127,7 +132,9 @@ async fn a_sensitive_card_has_a_revision_and_a_refusal_says_no_more() {
         );
         assert!(detail.starts_with("conflict:"), "{detail}");
         assert!(
-            !detail.contains("Sam") && !detail.contains("pd:") && !detail.contains(&format!("{now:016x}")),
+            !detail.contains("Sam")
+                && !detail.contains("pd:")
+                && !detail.contains(&format!("{now:016x}")),
             "{detail}"
         );
     })
