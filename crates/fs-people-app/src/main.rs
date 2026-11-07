@@ -55,7 +55,7 @@ fn run() -> Result<(), String> {
         }
     }
 
-    let adapter = PeopleAdapter::new(people.clone(), people, handle);
+    let adapter = PeopleAdapter::new(people.clone(), people.clone(), people, handle);
     let app = app_widget(Arc::new(adapter)).map_err(|e| e.to_string())?;
     app.set_status(status);
     let (width, height) = args.size;

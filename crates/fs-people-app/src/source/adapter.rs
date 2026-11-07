@@ -16,6 +16,7 @@ use fs_components_workbenches::SourceError;
 use fs_components_workbenches::people::{
     PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
 };
+use fs_people_client::PersonPages;
 use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
 use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
@@ -32,15 +33,23 @@ use super::sheet::{first_email, sensitive_mark, sheet_of};
 pub struct PeopleAdapter {
     people: Arc<dyn People>,
     roles: Arc<dyn RoleBook>,
+    _pages: Arc<dyn PersonPages>,
     runtime: Handle,
 }
 
 impl PeopleAdapter {
-    /// An adapter over a provider of both contracts, driven with `runtime`.
-    pub fn new(people: Arc<dyn People>, roles: Arc<dyn RoleBook>, runtime: Handle) -> Self {
+    /// An adapter over a provider of both contracts and of the page-wise reading, driven with
+    /// `runtime`.
+    pub fn new(
+        people: Arc<dyn People>,
+        roles: Arc<dyn RoleBook>,
+        pages: Arc<dyn PersonPages>,
+        runtime: Handle,
+    ) -> Self {
         Self {
             people,
             roles,
+            _pages: pages,
             runtime,
         }
     }

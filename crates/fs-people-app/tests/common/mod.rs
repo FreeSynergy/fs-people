@@ -7,12 +7,13 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fs_components_workbenches::people::{PeopleLabels, PeopleSource, PeopleState, Variant};
 use fs_interfaces::rpc::{bind_socket, serve};
 use fs_people_app::PeopleAdapter;
-use fs_people_client::RpcPeople;
-use fs_people_core::{Card, People, PeopleRepo, card_of};
+use fs_people_client::{Cursor, PersonPage, PersonPages, RpcPeople};
+use fs_people_core::{Card, ListFilter, People, PeopleRepo, Result as PeopleResult, card_of};
 use fs_people_server::PeopleServer;
 use fs_store::{ObjectId, Store, TursoStore};
 use tokio::runtime::Runtime;
@@ -78,6 +79,8 @@ pub struct World {
     pub adapter: Arc<PeopleAdapter>,
     /// The client: what the app talks to.
     pub people: Arc<RpcPeople>,
+    /// The same client as `PersonPages`, counting its calls (a Decorator; the server is the real one).
+    pub pages: Arc<Counting>,
     /// Where the server listens, for the binary.
     pub socket: PathBuf,
     /// The provider behind the server, only for what the client does not offer (marking an AI,
@@ -106,14 +109,17 @@ impl World {
         let repo = Arc::new(PeopleRepo::new(store, ME));
         let (served, socket) = Served::start(&repo);
         let people = Arc::new(RpcPeople::connect(&socket).unwrap());
+        let pages = Arc::new(Counting::over(people.clone()));
         let adapter = Arc::new(PeopleAdapter::new(
             people.clone(),
             people.clone(),
+            pages.clone(),
             runtime.handle().clone(),
         ));
         Self {
             adapter,
             people,
+            pages,
             socket,
             repo,
             _served: served,
@@ -171,5 +177,45 @@ impl Scratch {
 impl Drop for Scratch {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// `PersonPages` over the real client that counts the pages it reads.
+///
+/// Pattern: Decorator.
+pub struct Counting {
+    inner: Arc<RpcPeople>,
+    firsts: AtomicUsize,
+    nexts: AtomicUsize,
+}
+
+impl Counting {
+    fn over(inner: Arc<RpcPeople>) -> Self {
+        Self {
+            inner,
+            firsts: AtomicUsize::new(0),
+            nexts: AtomicUsize::new(0),
+        }
+    }
+
+    /// (first pages read, continued pages read) so far.
+    pub fn reads(&self) -> (usize, usize) {
+        (
+            self.firsts.load(Ordering::SeqCst),
+            self.nexts.load(Ordering::SeqCst),
+        )
+    }
+}
+
+#[async_trait::async_trait]
+impl PersonPages for Counting {
+    async fn first(&self, filter: &ListFilter) -> PeopleResult<PersonPage> {
+        self.firsts.fetch_add(1, Ordering::SeqCst);
+        self.inner.first(filter).await
+    }
+
+    async fn next(&self, filter: &ListFilter, cursor: &Cursor) -> PeopleResult<PersonPage> {
+        self.nexts.fetch_add(1, Ordering::SeqCst);
+        self.inner.next(filter, cursor).await
     }
 }
