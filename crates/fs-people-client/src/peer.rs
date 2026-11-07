@@ -1,39 +1,32 @@
 //! The connection: what a frontend holds.
 //!
 //! Pattern: Adapter — `People` and `RoleBook` of the core in front of the Cap'n Proto client of
-//! `people.capnp`. The thread of the connection is in `worker.rs`; the calls in `calls/`; the traits
+//! `people.capnp`. The thread of the connection is the shared `Worker` of `fs-interfaces`, with the contract in `remote.rs`; the calls in `calls/`; the traits
 //! in `people_impl.rs` and `roles_impl.rs`. Interface first (ADR 0043): `connect` was written down
 //! before the calls.
 
 use std::future::Future;
 use std::io;
 use std::path::Path;
-use std::time::Duration;
 
 use fs_interfaces::Capabilities;
+use fs_interfaces::rpc::client::{Fault, Timeouts, Worker};
 use fs_people_core::{Error, Result};
 use fs_store::Error as StoreError;
-use tokio::sync::oneshot;
 
 use crate::offered::offered;
-use crate::reply::Reply;
-use crate::timeouts::Timeouts;
-use crate::worker::{Job, Remote, Worker, start};
+use crate::remote::Remote;
 
-fn silent(limit: Duration) -> Error {
-    Error::Store(StoreError::Backend(format!(
-        "people server did not answer within {limit:?}"
-    )))
-}
+/// The name of the server in every error text (`people server: ...`).
+const SERVER: &str = "people";
 
 /// The people program as seen over its socket. Implements `People` and `RoleBook`.
 ///
 /// Calls from any thread are fine; they queue for the one thread that owns the connection and
 /// overlap there. Dropping it closes the connection.
 pub struct RpcPeople {
-    worker: Worker,
+    worker: Worker<Remote>,
     capabilities: Capabilities,
-    timeouts: Timeouts,
 }
 
 impl RpcPeople {
@@ -55,11 +48,10 @@ impl RpcPeople {
     /// # Errors
     /// As for [`connect`](Self::connect), and the server did not answer in time.
     pub fn connect_with(socket: &Path, timeouts: Timeouts) -> io::Result<Self> {
-        let (worker, capabilities) = start(socket.to_path_buf(), timeouts.connect)?;
+        let (worker, capabilities) = Worker::start(SERVER, socket, timeouts)?;
         Ok(Self {
             worker,
             capabilities: offered(&capabilities),
-            timeouts,
         })
     }
 
@@ -69,29 +61,16 @@ impl RpcPeople {
         self.capabilities.clone()
     }
 
-    /// Run `work` on the connection's thread and wait for its answer.
+    /// Run `work` on the connection's thread and wait for its answer. A call that got none (the
+    /// connection is gone, the job ended, the deadline ran out) is a `Backend` error with the text of
+    /// the `Fault`: the core has no variant for it.
     pub(crate) async fn call<T, F, Fut>(&self, work: F) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(Remote) -> Fut + Send + 'static,
         Fut: Future<Output = Result<T>> + 'static,
     {
-        let gone = || {
-            Error::Store(StoreError::Backend(
-                "people server: the connection is gone".into(),
-            ))
-        };
-        let limit = self.timeouts.call;
-        let (reply, answer) = oneshot::channel();
-        let job: Job = Box::new(move |remote| {
-            Box::pin(async move {
-                let reply = Reply::started(reply);
-                // The timer is the connection thread's, so the caller's runtime needs no clock.
-                let done = tokio::time::timeout(limit, work(remote)).await;
-                reply.send(done.unwrap_or_else(|_| Err(silent(limit))));
-            })
-        });
-        self.worker.jobs.send(job).map_err(|_| gone())?;
-        answer.await.map_err(|_| gone())?
+        let fault = |f: Fault| Error::Store(StoreError::Backend(f.to_string()));
+        self.worker.call(work).await.map_err(fault)?
     }
 }

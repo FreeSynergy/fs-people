@@ -25,10 +25,8 @@ mod problems;
 #[cfg(test)]
 mod problems_table;
 mod read;
-mod reply;
+mod remote;
 mod roles_impl;
-mod timeouts;
-mod worker;
 
+pub use fs_interfaces::rpc::client::{CALL_TIMEOUT, CONNECT_TIMEOUT, Timeouts};
 pub use peer::RpcPeople;
-pub use timeouts::{CALL_TIMEOUT, CONNECT_TIMEOUT, Timeouts};
