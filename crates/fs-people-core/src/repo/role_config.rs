@@ -3,7 +3,7 @@
 //! Pattern: Memento — the last accepted configuration is one object in the store, logged and undoable
 //! like every other; a start restores it into the registry. Without one, the shipped roles stay.
 
-use fs_store::{Envelope, Query, StoredObject};
+use fs_objects::{Envelope, Query, StoredObject};
 use serde_json::Value;
 
 use super::consts::{CONTEXT, ROLE_CONFIG_TYPE};

@@ -4,7 +4,7 @@
 //! boundary and own the typed `Card`. The imported text is kept as the original (ADR 0030).
 
 use calcard::vcard::VCard;
-use fs_store::Blob;
+use fs_objects::Blob;
 
 use super::split::scan;
 use super::uid::uid_from_text;

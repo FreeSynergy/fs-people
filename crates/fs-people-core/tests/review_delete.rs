@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use async_trait::async_trait;
 use common::{ME, person};
 use fs_people_core::{Error, PeopleRepo};
-use fs_store::traits::{ObjectQuery, ObjectRepository};
-use fs_store::{Activity, LogEntry, ObjectId, Query, Store, StoredObject, TursoStore};
+use fs_objects::traits::{ObjectQuery, ObjectRepository};
+use fs_objects::{Activity, LogEntry, ObjectId, Query, Store, StoredObject, TursoStore};
 
 /// A real store whose deletes fail on request.
 struct Failing {
@@ -22,7 +22,7 @@ struct Failing {
 
 #[async_trait]
 impl ObjectRepository for Failing {
-    async fn put(&self, object: StoredObject, actor: &str) -> fs_store::Result<Activity> {
+    async fn put(&self, object: StoredObject, actor: &str) -> fs_objects::Result<Activity> {
         Store::put(&*self.store, object, actor).await
     }
     async fn put_and_log(
@@ -30,13 +30,13 @@ impl ObjectRepository for Failing {
         object: StoredObject,
         actor: &str,
         extra: Vec<LogEntry>,
-    ) -> fs_store::Result<Vec<Activity>> {
+    ) -> fs_objects::Result<Vec<Activity>> {
         Store::put_and_log(&*self.store, object, actor, extra).await
     }
-    async fn get(&self, id: ObjectId) -> fs_store::Result<Option<StoredObject>> {
+    async fn get(&self, id: ObjectId) -> fs_objects::Result<Option<StoredObject>> {
         Store::get(&*self.store, id).await
     }
-    async fn delete(&self, id: ObjectId, actor: &str) -> fs_store::Result<Activity> {
+    async fn delete(&self, id: ObjectId, actor: &str) -> fs_objects::Result<Activity> {
         let is_card = Store::get(&*self.store, id)
             .await?
             .is_some_and(|o| o.envelope.object_type == "Profile");
@@ -46,7 +46,7 @@ impl ObjectRepository for Failing {
             &self.fail_others
         };
         if flag.load(Ordering::Relaxed) {
-            return Err(fs_store::Error::Invalid("the disk is full".into()));
+            return Err(fs_objects::Error::Invalid("the disk is full".into()));
         }
         Store::delete(&*self.store, id, actor).await
     }
@@ -54,10 +54,10 @@ impl ObjectRepository for Failing {
 
 #[async_trait]
 impl ObjectQuery for Failing {
-    async fn query(&self, query: &Query) -> fs_store::Result<Vec<StoredObject>> {
+    async fn query(&self, query: &Query) -> fs_objects::Result<Vec<StoredObject>> {
         Store::query(&*self.store, query).await
     }
-    async fn count(&self, query: &Query) -> fs_store::Result<usize> {
+    async fn count(&self, query: &Query) -> fs_objects::Result<usize> {
         Store::count(&*self.store, query).await
     }
 }

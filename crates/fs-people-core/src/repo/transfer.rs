@@ -4,7 +4,7 @@
 //! and store -> report); the parsing step is the [`Importer`] strategy. `import_vcard` and friends are
 //! thin conveniences for the shipped formats.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use super::handle::PeopleRepo;
 use super::types::ImportReport;

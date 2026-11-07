@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use fs_people_core::{Card, PeopleRepo};
-use fs_store::{Store, TursoStore};
+use fs_objects::{Store, TursoStore};
 
 pub const ME: &str = "https://local.invalid/users/owner";
 /// The demo cards; `FS_PEOPLE_DEMO` names a copy to read instead of the documentation tree.

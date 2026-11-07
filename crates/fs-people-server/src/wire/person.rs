@@ -16,7 +16,7 @@ use fs_interfaces::rpc::{
     write_envelope, write_object_id,
 };
 use fs_people_core::{Card, ImportReport, ListFilter, MatchKind, SameAsProposal};
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 /// Room for one list entry with its pointers; only for the check that an answer fits.
 const UUID_BYTES: usize = 32;

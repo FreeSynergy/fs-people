@@ -9,7 +9,7 @@ use std::sync::Arc;
 use common::{ME, person, repo};
 use fs_people_core::index::{normalise_email, normalise_phone};
 use fs_people_core::{Card, Error, PeopleRepo};
-use fs_store::{ObjectId, Store, TursoStore};
+use fs_objects::{ObjectId, Store, TursoStore};
 use serde_json::json;
 
 const V7: &str = "01a1aaef-ba80-7f7a-8dff-0000000000ab";

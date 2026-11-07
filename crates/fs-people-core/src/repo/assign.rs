@@ -4,7 +4,7 @@
 //! own, like a same-person link: logged, undoable, and never part of a card or its export (ADR 0029).
 //! Marking an AI is `kind` plus role and restricts nothing (ADR 0054).
 
-use fs_store::{Envelope, ObjectId, Query, StoredObject};
+use fs_objects::{Envelope, ObjectId, Query, StoredObject};
 use serde_json::{Map, Value, json};
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE};
@@ -101,7 +101,7 @@ impl PeopleRepo {
     pub async fn unassign_role(&self, assignment: ObjectId) -> Result<()> {
         let found = self.objects.get(assignment).await?;
         if found.as_ref().and_then(read).is_none() {
-            return Err(fs_store::Error::NotFound(assignment).into());
+            return Err(fs_objects::Error::NotFound(assignment).into());
         }
         self.objects.delete(assignment, &self.actor).await?;
         Ok(())

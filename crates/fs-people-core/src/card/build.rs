@@ -17,7 +17,7 @@ impl Card {
         Card {
             type_: "Card".into(),
             version: "1.0".into(),
-            uid: format!("urn:uuid:{}", fs_store::ObjectId::new()),
+            uid: format!("urn:uuid:{}", fs_objects::ObjectId::new()),
             kind: Some(kind.into()),
             created: Some(now.clone()),
             updated: Some(now),

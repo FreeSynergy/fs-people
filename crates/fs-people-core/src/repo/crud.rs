@@ -3,7 +3,7 @@
 //! Pattern: Repository — the write side of the people program; every change goes through the
 //! store, which logs it and makes it undoable.
 
-use fs_store::{Blob, Cond, ObjectId, Op, Query, StoredObject};
+use fs_objects::{Blob, Cond, ObjectId, Op, Query, StoredObject};
 
 use super::consts::PROFILE_TYPE;
 use super::envelope::{card_of, check_size};

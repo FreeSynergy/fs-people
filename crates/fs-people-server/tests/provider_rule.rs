@@ -9,7 +9,7 @@ use common::{NOT_POSSIBLE, card, expect_problem, persons_of, roles_of, with_root
 use fs_interfaces::Capabilities;
 use fs_people_core::{ListFilter, People, PeopleFeed, Result as CoreResult, RoleBook};
 use fs_people_server::PeopleServer;
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 /// A provider of cards alone: real for the provider rule, which only such a one can show.
 struct ReadOnly;

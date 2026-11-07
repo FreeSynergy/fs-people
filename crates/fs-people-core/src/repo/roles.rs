@@ -3,7 +3,7 @@
 //! Pattern: Repository over a Registry — configuration comes from [`RoleRegistry`], own definitions
 //! are objects in the store, so they are logged, undoable and survive a restart. Both look the same.
 
-use fs_store::{Envelope, Query, StoredObject};
+use fs_objects::{Envelope, Query, StoredObject};
 
 use super::consts::{CONTEXT, ROLE_DEFINITION_TYPE};
 use super::envelope::stored_value;

@@ -8,7 +8,7 @@ use fs_interfaces::people_capnp::{people, person, persons, roles};
 use fs_interfaces::rpc::{Problem, bind_socket, connect, read_envelope, read_uuid, serve};
 use fs_people_core::PeopleRepo;
 use fs_people_server::PeopleServer;
-use fs_store::{Store, TursoStore};
+use fs_objects::{Store, TursoStore};
 use uuid::Uuid;
 
 pub const ME: &str = "https://local.invalid/users/owner";
@@ -144,5 +144,5 @@ pub fn problem_of<T>(answer: Result<T, capnp::Error>) -> Problem {
 
 /// An id nothing has.
 pub fn unknown_id() -> Uuid {
-    fs_store::Envelope::new("x", "x").id.as_uuid()
+    fs_objects::Envelope::new("x", "x").id.as_uuid()
 }
