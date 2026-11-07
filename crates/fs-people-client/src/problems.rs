@@ -45,7 +45,8 @@ fn from_problem(p: &Problem, subject: &Subject) -> Error {
         "people/not-found" => not_found(detail, subject),
         "people/conflict" => Error::Conflict(detail.to_string()),
         "people/invalid" => invalid(detail),
-        "people/sensitive" => sensitive(p, subject),
+        "people/sensitive" => not_released(detail),
+        "people/sensitive-link" => not_linked(detail, subject),
         "people/sensitive-members" => Error::SensitiveMembers(
             detail
                 .split_once(": ")
@@ -93,28 +94,27 @@ fn not_found(detail: &str, subject: &Subject) -> Error {
     }
 }
 
-/// The server sends one type for two errors: a card that needs a release (`NotReleased`) and a
-/// card that must not be linked (`Sensitive`). Only the title and the text tell them apart.
-fn sensitive(p: &Problem, subject: &Subject) -> Error {
-    let detail = p.detail.as_str();
-    let linked = p.title == "Sensitive cards are not linked"
-        || detail.ends_with("must not be linked (ADR 0029)");
-    if linked {
-        let named = detail
-            .split_whitespace()
-            .find_map(|w| w.parse::<ObjectId>().ok());
-        match (named, subject) {
-            (Some(id), _) => return Error::Sensitive(id),
-            (None, Subject::Person(id)) => return Error::Sensitive(*id),
-            _ => {}
-        }
-    }
+/// `people/sensitive`: a card that needs an explicit release.
+fn not_released(detail: &str) -> Error {
     Error::NotReleased(
         detail
             .strip_suffix(" is sensitive and needs an explicit release")
             .unwrap_or(detail)
             .to_string(),
     )
+}
+
+/// `people/sensitive-link`: a sensitive card that must not be linked. The id is in the text of the
+/// server, else the call names it; the type alone says which error this is.
+fn not_linked(detail: &str, subject: &Subject) -> Error {
+    let named = detail
+        .split_whitespace()
+        .find_map(|w| w.parse::<ObjectId>().ok());
+    match (named, subject) {
+        (Some(id), _) => Error::Sensitive(id),
+        (None, Subject::Person(id)) => Error::Sensitive(*id),
+        (None, _) => Error::Stored(format!("a sensitive card was refused a link: {detail}")),
+    }
 }
 
 /// Everything the server calls invalid has the text of its variant, which is read back from it:
