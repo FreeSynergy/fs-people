@@ -6,7 +6,7 @@ mod common;
 
 use common::{World, person};
 use fs_people_core::card::{Name, NameComponent};
-use fs_people_core::{Card, People};
+use fs_people_core::{AI_ROLE, AI_ROLE_IRI, Card, People, RoleBook};
 use serde_json::{Value, json};
 
 /// A card with something in every corner the form does not show.
@@ -217,6 +217,10 @@ fn roles_and_the_mark_of_an_ai_survive_an_edit_and_are_shown_read_only() {
     let key = w.add(person("Helper", "bot@x.org"));
     let id = key.parse().unwrap();
     w.runtime.block_on(w.repo.mark_ai(id)).unwrap();
+    // The role leaves the server as a full IRI; the sheet must still know it as the AI role.
+    let held = w.runtime.block_on(w.people.roles_of(id)).unwrap();
+    assert_eq!(held[0].role, AI_ROLE_IRI);
+    assert_ne!(held[0].role, AI_ROLE);
     let mut s = w.state();
     let sheet = |s: &fs_components_workbenches::people::PeopleState| match s.shown() {
         fs_components_workbenches::people::Shown::Person { sheet, .. } => sheet.clone(),
