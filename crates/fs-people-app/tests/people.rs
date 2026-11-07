@@ -1,6 +1,6 @@
 //! List, search, read, create, delete and what the provider can do, through the real core.
 //!
-//! Pattern: Integration tests over the adapter and the state machine; no window.
+//! Integration tests over the adapter and the state machine; no window.
 
 mod common;
 

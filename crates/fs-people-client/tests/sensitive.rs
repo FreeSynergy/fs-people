@@ -1,6 +1,6 @@
 //! The server tells the two refusals of a sensitive card by two types, and the client by the type.
 //!
-//! Pattern: Integration tests over the real socket. The link refusal is asked for by a raw call of
+//! Integration tests over the real socket. The link refusal is asked for by a raw call of
 //! `confirmSame`, which the client does not offer, to see the type on the wire.
 
 mod common;

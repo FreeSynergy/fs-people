@@ -1,6 +1,6 @@
 //! The cards through the trait `People`: the client against the real server and the real store.
 //!
-//! Pattern: Integration tests against the trait; no stand-ins.
+//! Integration tests against the trait; no stand-ins.
 
 mod common;
 

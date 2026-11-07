@@ -1,6 +1,6 @@
 //! The deadlines of the client are the shared ones, and the client still names them.
 //!
-//! Pattern: Integration tests against the public API; no stand-ins.
+//! Integration tests against the public API; no stand-ins.
 
 use std::time::Duration;
 

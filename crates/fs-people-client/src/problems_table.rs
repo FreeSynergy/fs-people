@@ -1,6 +1,6 @@
 //! The table of problems, read back: every type of the server and the variant it must become.
 //!
-//! Pattern: Table of inputs and answers — for the types the real server cannot be made to send in
+//! Pattern: none — a test table (input, expected variant) for the types the real server cannot be made to send in
 //! a test (stored data, too large, partly deleted); the others are covered over the real socket.
 
 use fs_interfaces::rpc::Problem;

@@ -1,6 +1,6 @@
 //! vCard files in and out, and a store refusing a sensitive card.
 //!
-//! Pattern: Integration tests over the real core; files in a scratch folder.
+//! Integration tests over the real core; files in a scratch folder.
 
 mod common;
 

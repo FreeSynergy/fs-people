@@ -1,6 +1,6 @@
 //! "Show more" and search read on from a cursor: the pages already read are not read again.
 //!
-//! Pattern: Integration tests against the real server; the client only counts its page reads.
+//! Integration tests against the real server; the client only counts its page reads.
 
 mod common;
 

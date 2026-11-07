@@ -1,7 +1,7 @@
 //! `PersonPages` and `PageWalk`: the list read page by page, by cursor, against the real server and
 //! the real store.
 //!
-//! Pattern: Integration tests against the trait; no stand-ins.
+//! Integration tests against the trait; no stand-ins.
 
 mod common;
 

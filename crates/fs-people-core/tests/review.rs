@@ -1,6 +1,6 @@
 //! The findings of the independent review (2026-11-06), each as a test on the real core.
 //!
-//! Pattern: Regression tests over a real in-memory `TursoStore`. Item 14 is in `review_delete.rs`.
+//! Regression tests over a real in-memory `TursoStore`. Item 14 is in `review_delete.rs`.
 
 mod common;
 

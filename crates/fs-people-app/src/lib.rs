@@ -5,7 +5,7 @@
 //! from `fs-components`. The data comes from a running `fs-people-server` over its Unix socket
 //! (`fs-people-client`); the app holds no store (see `DESIGN.md`).
 //!
-//! Pattern: Facade — this file only declares modules and re-exports the public API.
+//! Pattern: none — this file only declares modules and re-exports the public API (no behaviour).
 
 #![deny(missing_docs)]
 #![warn(clippy::pedantic)]

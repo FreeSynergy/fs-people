@@ -1,7 +1,7 @@
 //! Findings of the review about writing a form back: freed ids, an emptied name, an empty card,
 //! and releasing a person for export. The marking itself is in `marks.rs`.
 //!
-//! Pattern: Integration tests over the real core and the real state machine.
+//! Integration tests over the real core and the real state machine.
 
 mod common;
 

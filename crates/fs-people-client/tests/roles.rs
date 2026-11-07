@@ -1,6 +1,6 @@
 //! Roles through the trait `RoleBook`, and the explicit "not possible" of everything else.
 //!
-//! Pattern: Integration tests against the trait; no stand-ins.
+//! Integration tests against the trait; no stand-ins.
 
 mod common;
 

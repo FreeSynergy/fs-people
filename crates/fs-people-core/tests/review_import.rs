@@ -1,6 +1,6 @@
 //! Items 6 and 7 of the review: what an import reports when a file is only partly usable.
 //!
-//! Pattern: Regression tests over a real in-memory `TursoStore`.
+//! Regression tests over a real in-memory `TursoStore`.
 
 mod common;
 

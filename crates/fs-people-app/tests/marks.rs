@@ -1,7 +1,7 @@
 //! An edit never reduces a sensitive marking, an unclear one stays unclear, and a mere mention marks
 //! nobody.
 //!
-//! Pattern: Integration tests over the real core and the real state machine.
+//! Integration tests over the real core and the real state machine.
 
 mod common;
 

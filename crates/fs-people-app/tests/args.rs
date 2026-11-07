@@ -1,6 +1,6 @@
 //! The command line.
 //!
-//! Pattern: Table of inputs and answers.
+//! A table of inputs and the answers expected.
 
 use std::path::PathBuf;
 

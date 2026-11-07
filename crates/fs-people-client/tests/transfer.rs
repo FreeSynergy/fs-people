@@ -1,6 +1,6 @@
 //! vCard in and out through the trait `People`, including the release of sensitive cards (ADR 0029).
 //!
-//! Pattern: Integration tests against the trait; no stand-ins.
+//! Integration tests against the trait; no stand-ins.
 
 mod common;
 

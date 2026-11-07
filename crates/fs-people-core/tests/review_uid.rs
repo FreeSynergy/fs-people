@@ -1,6 +1,6 @@
 //! `get_by_uid` and cards stored before the index `uid_key` existed.
 //!
-//! Pattern: Regression tests over a real in-memory `TursoStore`; an older card is made by storing it
+//! Regression tests over a real in-memory `TursoStore`; an older card is made by storing it
 //! again without that index field.
 
 mod common;
