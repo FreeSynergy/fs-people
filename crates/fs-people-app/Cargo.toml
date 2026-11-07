@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
 
 [dev-dependencies]
 fs-people-server = { path = "../fs-people-server" }
-fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.32.0", features = ["rpc"] }
+fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.34.0", features = ["rpc"] }
 tempfile = "3"
 async-trait = "0.1"
 # provisional: becomes a tag once reviewed

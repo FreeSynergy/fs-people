@@ -6,7 +6,7 @@ A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelo
 
 ## State
 
-Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.32.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
+Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.34.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
 
 | Area | State |
 |---|---|
@@ -157,7 +157,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.32.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
+* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.34.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
