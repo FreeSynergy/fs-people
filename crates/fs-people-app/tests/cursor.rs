@@ -67,3 +67,22 @@ fn a_person_added_after_the_first_page_does_not_break_show_more() {
     let more = w.adapter.rows("", 100, 100).unwrap();
     assert_eq!(more.len(), 51);
 }
+
+/// The window asks for one row more than it shows and asks on from the rows it shows, as
+/// `PeopleState` of the workbench does: it must still be one walk, no restart.
+#[test]
+fn the_windows_show_more_is_one_walk_without_restarts() {
+    let w = World::in_memory();
+    fill(&w, "P", 650);
+    let mut s = w.state();
+    assert_eq!(s.rows().len(), 200);
+    assert_eq!(w.pages.reads(), (1, 2));
+    for shown in [400, 600, 650] {
+        s.load_more();
+        assert_eq!(s.rows().len(), shown);
+    }
+    assert!(!s.has_more());
+    assert_eq!(w.pages.reads(), (1, 6), "7 pages for 650 people");
+    assert_eq!(s.rows()[649].cells[0], "P 649");
+    assert_eq!(s.rows()[200].cells[0], "P 200", "no row twice, none lost");
+}
