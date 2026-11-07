@@ -10,7 +10,11 @@ use fs_store::{Error as StoreError, ObjectId};
 use crate::problems::{BASE, Subject, error_of};
 
 fn said(kind: &str, status: u16, detail: &str, subject: &Subject) -> Error {
-    let problem = Problem::new(format!("{BASE}{kind}"), "t", detail, status);
+    titled(kind, "t", status, detail, subject)
+}
+
+fn titled(kind: &str, title: &str, status: u16, detail: &str, subject: &Subject) -> Error {
+    let problem = Problem::new(format!("{BASE}{kind}"), title, detail, status);
     error_of(&problem.into_error(), subject)
 }
 
@@ -78,5 +82,62 @@ fn every_text_comes_back_as_the_core_would_have_said_it() {
     assert_eq!(
         e.to_string(),
         "urn:uuid:1: Ada is sensitive and needs an explicit release"
+    );
+}
+
+#[test]
+fn an_invalid_text_is_not_wrapped_a_second_time() {
+    let none = Subject::None;
+    let text = "object store: invalid input: name is empty";
+    let e = said("people/invalid", 422, text, &none);
+    assert!(
+        matches!(&e, Error::Store(StoreError::Invalid(t)) if t == "name is empty"),
+        "{e:?}"
+    );
+    assert_eq!(e.to_string(), text);
+}
+
+#[test]
+fn an_inexact_number_and_a_json_error_come_back_as_themselves() {
+    let none = Subject::None;
+    let text = "the number 1e999 cannot be kept exactly; write it as a string";
+    let e = said("people/invalid", 422, text, &none);
+    assert!(
+        matches!(&e, Error::InexactNumber(n) if n == "1e999"),
+        "{e:?}"
+    );
+    assert_eq!(e.to_string(), text);
+    let text = "json: expected value at line 1 column 1";
+    let e = said("people/invalid", 422, text, &none);
+    assert!(matches!(e, Error::Json(_)), "{e:?}");
+    assert_eq!(e.to_string(), text);
+}
+
+#[test]
+fn the_two_meanings_of_sensitive_are_told_apart_by_title_and_text() {
+    let id = ObjectId::new();
+    let none = Subject::None;
+    let text =
+        format!("person {id} carries sensitive categories and must not be linked (ADR 0029)");
+    let e = titled(
+        "people/sensitive",
+        "Sensitive cards are not linked",
+        403,
+        &text,
+        &none,
+    );
+    assert!(matches!(e, Error::Sensitive(i) if i == id), "{e:?}");
+    assert_eq!(e.to_string(), text);
+    let text = "urn:uuid:1: Ada is sensitive and needs an explicit release";
+    let e = titled(
+        "people/sensitive",
+        "A sensitive card needs an explicit release",
+        403,
+        text,
+        &none,
+    );
+    assert!(
+        matches!(&e, Error::NotReleased(w) if w == "urn:uuid:1: Ada"),
+        "{e:?}"
     );
 }
