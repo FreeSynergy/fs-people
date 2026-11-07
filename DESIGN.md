@@ -40,7 +40,7 @@ Version 0.4.0 (updateIf, revision, roles as IRIs, server): provider of the `peop
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
 | Compare-and-set: `People::update_checked(id, Revision, card)` and `Persons.updateIf`; every `Person` carries `revision` (derived from the stored time and card, not stored; compare for equality only). A stale revision is `people/conflict` (409) whose detail starts `conflict:` and names no revision; nothing is written. Atomic inside one process (the write turn) | done, draft |
 | Tests | 142 in the core, 60 for the server (the app has its own: `crates/fs-people-app/tests`): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
-| ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
+| ADR 0043 refactor | done: no file over the hard limit of 300 lines, five test files over the guideline of 200 (`check_rust_rules.py`: 0 errors, 5 warnings: app tests keeps and people, core tests guards and role_forms, server test roles), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Frontend `fs-people-app` (first version, provisional)
 
