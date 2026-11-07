@@ -3,7 +3,7 @@
 //! Pattern: Specification — `assign`, `update`, `mark_ai` and a new configuration all ask here, so a
 //! card cannot leave through one what it had to meet at another.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use super::handle::PeopleRepo;
 use crate::error::{Error, Issue, Result};

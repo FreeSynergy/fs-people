@@ -69,7 +69,7 @@ async fn list_is_case_insensitive_unicode_ordered_and_paged_by_the_store() {
         r.create(Card::individual(n)).await.unwrap();
     }
     let names =
-        |v: Vec<fs_store::StoredObject>| v.into_iter().map(|o| o.envelope.name).collect::<Vec<_>>();
+        |v: Vec<fs_objects::StoredObject>| v.into_iter().map(|o| o.envelope.name).collect::<Vec<_>>();
     let all = names(r.list(&ListFilter::default()).await.unwrap());
     assert_eq!(all, ["apple", "Nextcloud", "NLnet", "zebra", "Ärger"]);
     let page = names(
@@ -101,7 +101,7 @@ async fn search_runs_in_the_store_with_unicode_nicknames_and_literal_wildcards()
     r.create(person("5000 Rabatt", "other@example.org"))
         .await
         .unwrap();
-    let n = |v: Vec<fs_store::StoredObject>| v.len();
+    let n = |v: Vec<fs_objects::StoredObject>| v.len();
     assert_eq!(n(r.search("ÉMILIE").await.unwrap()), 1);
     assert_eq!(
         n(r.search("e\u{301}milie").await.unwrap()),

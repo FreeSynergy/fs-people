@@ -3,7 +3,7 @@
 //! Pattern: Strategy + Adapter — the repository depends on these traits only; every foreign
 //! format (vCard now, CardDAV / CSV later) is an adapter implementing them.
 
-use fs_store::Blob;
+use fs_objects::Blob;
 
 use crate::card::Card;
 use crate::error::Result;

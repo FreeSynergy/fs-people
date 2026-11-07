@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use fs_store::{Envelope, Query, StoredObject};
+use fs_objects::{Envelope, Query, StoredObject};
 use serde_json::Value;
 
 use super::consts::{CONTEXT, ROLE_CONFIG_TYPE};

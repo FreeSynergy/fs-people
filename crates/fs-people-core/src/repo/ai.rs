@@ -4,7 +4,7 @@
 //! software is `application` too, and a role alone says nothing once the kind has moved on. Marking
 //! restricts nothing.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 use serde_json::Map;
 
 use super::handle::PeopleRepo;

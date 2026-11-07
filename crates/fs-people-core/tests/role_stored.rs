@@ -9,7 +9,7 @@ use fs_people_core::{
     AI_ROLE_IRI, CONTEXT, Error, PeopleRepo, RoleDefinition, RoleDirectory, RoleRegistry,
     RoleScope, full_id,
 };
-use fs_store::{Envelope, Store, StoredObject};
+use fs_objects::{Envelope, Store, StoredObject};
 use serde_json::{Value, json};
 
 const OURS: &str = "https://freesynergy.net/ns/roles/";

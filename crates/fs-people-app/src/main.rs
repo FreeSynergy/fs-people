@@ -9,7 +9,7 @@ use fs_components_app::{Status, WindowOptions, launch};
 use fs_people_app::args::{HELP, parse};
 use fs_people_app::{PeopleAdapter, app_widget, export_all, import_file};
 use fs_people_core::PeopleRepo;
-use fs_store::{Store, TursoStore};
+use fs_objects::{Store, TursoStore};
 
 /// Who acts on this store. Provisional: there is no sign-in yet.
 const ACTOR: &str = "https://localhost/actors/owner";

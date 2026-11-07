@@ -1,9 +1,9 @@
 //! Card <-> stored object: envelope derivation and index fields.
 //!
 //! Pattern: Adapter — maps the JSContact card onto the AS2 `Profile` envelope + index fields that
-//! `fs-store` understands (ADR 0020); the envelope `name` is derived, never typed (ADR 0032).
+//! `fs-objects` understands (ADR 0020); the envelope `name` is derived, never typed (ADR 0032).
 
-use fs_store::{Blob, Envelope, ObjectId, StoredObject};
+use fs_objects::{Blob, Envelope, ObjectId, StoredObject};
 use serde_json::Value;
 
 use super::consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE};
