@@ -157,3 +157,29 @@ async fn a_walk_that_met_an_error_stays_where_it_was() {
     assert!(walk.next_page().await.is_err());
     assert!(walk.next_page().await.is_err(), "still at the same place");
 }
+
+/// What the server checks of a cursor is its form (a version byte and a position), nothing else
+/// (`fs-interfaces` page.rs). These tests pin that, so a stronger cursor there shows up here.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_well_formed_cursor_is_taken_as_a_place_whoever_made_it_and_for_whatever_filter() {
+    let served = Served::start().await;
+    let people = served.client();
+    fill(&people, "Alpha", 150).await;
+    fill(&people, "Beta", 5).await;
+    // Made up, but of the right form: version 1 and the place 3.
+    let mut made_up = vec![1u8];
+    made_up.extend_from_slice(&3u64.to_le_bytes());
+    let got = people
+        .next(&ListFilter::default(), &Cursor::from_bytes(made_up))
+        .await
+        .unwrap();
+    assert_eq!(got.items[0].envelope.name, "Alpha 003");
+
+    // The cursor of the whole list (place 100) under the filter "beta": no error, the wrong place.
+    let whole = people.first(&ListFilter::default()).await.unwrap();
+    let wrong = people
+        .next(&term("beta"), &whole.next.unwrap())
+        .await
+        .unwrap();
+    assert!(wrong.items.is_empty() && wrong.next.is_none());
+}

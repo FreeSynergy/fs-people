@@ -14,7 +14,8 @@ use fs_people_core::{ListFilter, Result};
 use fs_store::StoredObject;
 
 /// Where the next page starts: opaque, handed back as it came. It belongs to the filter it was
-/// given with; another filter or a made-up value is refused by the server.
+/// given with, but the server checks only its form: a cursor of the wrong form is refused, a made-up
+/// one of the right form or one from another filter is taken as a place and gives the wrong page.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cursor(Vec<u8>);
 
@@ -54,6 +55,7 @@ pub trait PersonPages: Send + Sync {
     /// The page that starts at `cursor`, for the same `filter` the cursor came from.
     ///
     /// # Errors
-    /// The cursor is not one the server handed out (`Error::Store(Invalid)`), or as for `first`.
+    /// The cursor has the wrong form (`Error::Store(Invalid)`); one of the right form is not
+    /// checked against the filter. Otherwise as for `first`.
     async fn next(&self, filter: &ListFilter, cursor: &Cursor) -> Result<PersonPage>;
 }

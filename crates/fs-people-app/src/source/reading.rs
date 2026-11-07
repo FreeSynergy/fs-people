@@ -88,7 +88,7 @@ impl Reading {
         }
         self.served += rows.len();
         if !rows.is_empty() {
-            self.kept = rows.clone();
+            self.kept.clone_from(&rows);
         }
         Ok(rows)
     }
