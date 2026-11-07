@@ -12,7 +12,8 @@ use fs_interfaces::people_capnp::{
 };
 use fs_interfaces::rpc::{read_envelope, read_object_id};
 use fs_people_core::{
-    Error, ImportReport, Result, RoleAssignment, RoleDefinition, RoleField, RoleKind, RoleScope,
+    Error, ImportReport, Result, Revision, RoleAssignment, RoleDefinition, RoleField, RoleKind,
+    RoleScope,
 };
 use fs_store::StoredObject;
 use serde_json::Value;
@@ -46,6 +47,11 @@ pub(crate) fn stored(r: person::Reader<'_>) -> Result<StoredObject> {
         "application/jscontact+json",
         content,
     ))
+}
+
+/// The revision the server gave the person (`Person.revision`).
+pub(crate) fn revision(r: person::Reader<'_>) -> Revision {
+    Revision::from(r.get_revision())
 }
 
 /// An assignment.

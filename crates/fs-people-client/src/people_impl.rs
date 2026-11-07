@@ -1,18 +1,21 @@
 //! `People` over the socket: the methods the app uses.
 //!
-//! Pattern: Adapter — each method is one call of `Persons`. Every other method of the trait is not
+//! Pattern: Adapter — each method is one call of `Persons` (`update_checked` is `updateIf`). Every other method of the trait is not
 //! overridden, so it answers the explicit `Unsupported` of the provider rule (ADR 0045); `search`
 //! is `list` with a term, as the contract has no search of its own.
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
-use fs_people_core::{Card, Exporter, ImportReport, ListFilter, People, ReleasedExport, Result};
+use fs_people_core::{
+    Card, Exporter, ImportReport, ListFilter, People, ReleasedExport, Result, Revision,
+};
 use fs_store::{ObjectId, StoredObject};
 
 use crate::RpcPeople;
 use crate::calls::lists;
 use crate::calls::persons::{self, card_text};
 use crate::pages::{Cursor, PersonPage, PersonPages};
+use crate::revised::{Revised, RevisedPeople};
 
 const VCARD: &str = "text/vcard";
 
@@ -42,6 +45,17 @@ impl People for RpcPeople {
     async fn update(&self, id: ObjectId, card: Card) -> Result<StoredObject> {
         let card = card_text(&card);
         self.call(move |r| async move { persons::update(&r.persons, id, card).await })
+            .await
+    }
+
+    async fn update_checked(
+        &self,
+        id: ObjectId,
+        expected: Revision,
+        card: Card,
+    ) -> Result<StoredObject> {
+        let card = card_text(&card);
+        self.call(move |r| async move { persons::update_if(&r.persons, id, expected, card).await })
             .await
     }
 
@@ -90,6 +104,14 @@ impl PersonPages for RpcPeople {
     async fn next(&self, filter: &ListFilter, cursor: &Cursor) -> Result<PersonPage> {
         let (filter, cursor) = (filter.clone(), cursor.clone());
         self.call(move |r| async move { lists::page(&r.persons, &filter, Some(&cursor)).await })
+            .await
+    }
+}
+
+#[async_trait]
+impl RevisedPeople for RpcPeople {
+    async fn get_revised(&self, id: ObjectId) -> Result<Option<Revised>> {
+        self.call(move |r| async move { persons::get_revised(&r.persons, id).await })
             .await
     }
 }

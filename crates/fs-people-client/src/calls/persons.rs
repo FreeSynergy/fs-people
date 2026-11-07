@@ -4,11 +4,12 @@
 
 use fs_interfaces::people_capnp::persons::Client;
 use fs_interfaces::rpc::write_object_id;
-use fs_people_core::{Card, ImportReport, ReleasedExport, Result};
+use fs_people_core::{Card, ImportReport, ReleasedExport, Result, Revision};
 use fs_store::{ObjectId, StoredObject};
 
 use crate::problems::{Subject, error_of};
-use crate::read::{report, stored, unreadable};
+use crate::read::{report, revision, stored, unreadable};
+use crate::revised::Revised;
 
 fn person(id: ObjectId) -> Subject {
     Subject::Person(id)
@@ -35,6 +36,30 @@ pub(crate) async fn create(c: &Client, card: String) -> Result<StoredObject> {
 pub(crate) async fn update(c: &Client, id: ObjectId, card: String) -> Result<StoredObject> {
     let mut req = c.update_request();
     write_object_id(req.get().init_id(), id);
+    req.get().set_jscontact(card.as_str());
+    let answer = req
+        .send()
+        .promise
+        .await
+        .map_err(|e| error_of(&e, &person(id)))?;
+    stored(
+        answer
+            .get()
+            .and_then(|r| r.get_person())
+            .map_err(unreadable)?,
+    )
+}
+
+/// `updateIf`: only if the person still has `revision`; the server answers `conflict:` otherwise.
+pub(crate) async fn update_if(
+    c: &Client,
+    id: ObjectId,
+    revision: Revision,
+    card: String,
+) -> Result<StoredObject> {
+    let mut req = c.update_if_request();
+    write_object_id(req.get().init_id(), id);
+    req.get().set_revision(revision.get());
     req.get().set_jscontact(card.as_str());
     let answer = req
         .send()
@@ -137,4 +162,24 @@ pub(crate) async fn export(
 /// The JSON text of a card, as the server reads it.
 pub(crate) fn card_text(card: &Card) -> String {
     card.to_value().to_string()
+}
+
+/// `get` with the revision of the answer: `None` when the server says `found = false`.
+pub(crate) async fn get_revised(c: &Client, id: ObjectId) -> Result<Option<Revised>> {
+    let mut req = c.get_request();
+    write_object_id(req.get().init_id(), id);
+    let answer = req
+        .send()
+        .promise
+        .await
+        .map_err(|e| error_of(&e, &person(id)))?;
+    let r = answer.get().map_err(unreadable)?;
+    if !r.get_found() {
+        return Ok(None);
+    }
+    let p = r.get_person().map_err(unreadable)?;
+    Ok(Some(Revised {
+        revision: revision(p),
+        object: stored(p)?,
+    }))
 }

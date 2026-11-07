@@ -27,10 +27,12 @@ mod problems;
 mod problems_table;
 mod read;
 mod remote;
+mod revised;
 mod roles_impl;
 mod walk;
 
 pub use fs_interfaces::rpc::client::{CALL_TIMEOUT, CONNECT_TIMEOUT, Timeouts};
 pub use pages::{Cursor, PersonPage, PersonPages};
 pub use peer::RpcPeople;
+pub use revised::{Revised, RevisedPeople};
 pub use walk::PageWalk;

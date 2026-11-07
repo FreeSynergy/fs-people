@@ -43,7 +43,7 @@ fn from_problem(p: &Problem, subject: &Subject) -> Error {
     match local_type(p) {
         "unsupported" => unsupported_of(detail, "people").into(),
         "people/not-found" => not_found(detail, subject),
-        "people/conflict" => Error::Conflict(detail.to_string()),
+        "people/conflict" => conflict(detail, subject),
         "people/invalid" => invalid(detail),
         "people/sensitive" => not_released(detail),
         "people/sensitive-link" => not_linked(detail, subject),
@@ -78,6 +78,15 @@ fn from_problem(p: &Problem, subject: &Subject) -> Error {
             "people server ({}): {detail}",
             p.status
         ))),
+    }
+}
+
+/// `people/conflict`: the contract says a refused `updateIf` has a reason starting `conflict:`;
+/// that marker (not a sentence for people) tells it from the other conflicts.
+fn conflict(detail: &str, subject: &Subject) -> Error {
+    match subject {
+        Subject::Person(id) if detail.starts_with("conflict:") => Error::Changed(*id),
+        _ => Error::Conflict(detail.to_string()),
     }
 }
 
