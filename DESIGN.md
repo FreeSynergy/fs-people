@@ -246,3 +246,8 @@ Still wanted:
 * JSContact `PatchObject` updates (RFC 9553) are not implemented; `update` replaces the whole card.
 * The vCard `PHOTO`/`KEY` handling is whatever calcard does (not tested here).
 * "Dismissed" proposals are not remembered; a person who rejects one will see it again.
+
+## After the sprint (strategy list, 2026-11-07)
+
+* `Error::Conflict(String)` carries no object: a taken `uid` or a role in use names no id; give it a `Subject`.
+* `broader`/`closeMatch` in role definitions are not normalised to full IRIs; a stored role file freezes the roles shipped with the version that wrote it.
