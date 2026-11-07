@@ -78,6 +78,8 @@ pub struct World {
     pub adapter: Arc<PeopleAdapter>,
     /// The client: what the app talks to.
     pub people: Arc<RpcPeople>,
+    /// Where the server listens, for the binary.
+    pub socket: PathBuf,
     /// The provider behind the server, only for what the client does not offer (marking an AI,
     /// importing JSContact): set-up, never what is under test.
     pub repo: Arc<PeopleRepo>,
@@ -112,6 +114,7 @@ impl World {
         Self {
             adapter,
             people,
+            socket,
             repo,
             _served: served,
             runtime,

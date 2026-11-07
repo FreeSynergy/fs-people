@@ -1,18 +1,14 @@
 //! The binary: wiring only.
 //!
-//! Pattern: Facade consumer — parse arguments, open the store, import, then export or show. The
-//! runtime lives as long as the window: the workbench's calls run on it.
+//! Pattern: Facade consumer — parse arguments, connect to the server, import, then export or show.
+//! The runtime lives as long as the window: the workbench's calls wait on it.
 
 use std::sync::Arc;
 
 use fs_components_app::{Status, WindowOptions, launch};
 use fs_people_app::args::{HELP, parse};
 use fs_people_app::{PeopleAdapter, app_widget, export_all, import_file};
-use fs_people_core::PeopleRepo;
-use fs_store::{Store, TursoStore};
-
-/// Who acts on this store. Provisional: there is no sign-in yet.
-const ACTOR: &str = "https://localhost/actors/owner";
+use fs_people_client::RpcPeople;
 
 fn main() {
     if let Err(message) = run() {
@@ -28,22 +24,19 @@ fn run() -> Result<(), String> {
         println!("{HELP}");
         return Ok(());
     }
+    let socket = args.socket_path()?;
     let runtime = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
-    let store: Arc<dyn Store> = runtime
-        .block_on(async {
-            match &args.store {
-                Some(file) => TursoStore::open(file).await,
-                None => TursoStore::open_in_memory().await,
-            }
-        })
-        .map(|s| Arc::new(s) as Arc<dyn Store>)
-        .map_err(|e| format!("cannot open the store: {e}"))?;
-    let repo = Arc::new(PeopleRepo::new(store, ACTOR));
+    let people = Arc::new(RpcPeople::connect(socket).map_err(|e| {
+        format!(
+            "cannot reach the people server at {}: {e}",
+            socket.display()
+        )
+    })?);
     let handle = runtime.handle().clone();
 
     let mut status = None;
     if let Some(file) = &args.import {
-        let summary = import_file(repo.as_ref(), &handle, file)?;
+        let summary = import_file(people.as_ref(), &handle, file)?;
         eprintln!("{}", summary.message());
         status = Some(if summary.is_clean() {
             Status::Info(summary.message())
@@ -52,7 +45,7 @@ fn run() -> Result<(), String> {
         });
     }
     if let Some(file) = &args.export {
-        let report = export_all(repo.as_ref(), &handle, file, &args.export_sensitive)?;
+        let report = export_all(people.as_ref(), &handle, file, &args.export_sensitive)?;
         eprintln!("{}", report.message(file));
         if !report.failed.is_empty() {
             return Err(format!("{} could not be exported", report.failed.len()));
@@ -62,7 +55,7 @@ fn run() -> Result<(), String> {
         }
     }
 
-    let adapter = PeopleAdapter::new(repo.clone(), repo, handle);
+    let adapter = PeopleAdapter::new(people.clone(), people, handle);
     let app = app_widget(Arc::new(adapter)).map_err(|e| e.to_string())?;
     app.set_status(status);
     let (width, height) = args.size;

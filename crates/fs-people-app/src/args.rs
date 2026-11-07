@@ -1,14 +1,14 @@
 //! The command line.
 //!
-//! Pattern: Builder-like parser — plain `std::env::args`, no extra crate for five options.
+//! Pattern: Builder-like parser — plain `std::env::args`, no extra crate for a handful of options.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// What was asked for on the command line.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Args {
-    /// Store file; `None` = in memory, gone when the program ends.
-    pub store: Option<PathBuf>,
+    /// Unix socket of a running `fs-people-server`; the app holds no store of its own.
+    pub socket: Option<PathBuf>,
     /// A `.vcf` file to import before anything else.
     pub import: Option<PathBuf>,
     /// Write everyone to this vCard file; no window opens then.
@@ -26,7 +26,7 @@ pub struct Args {
 impl Default for Args {
     fn default() -> Self {
         Self {
-            store: None,
+            socket: None,
             import: None,
             export: None,
             export_sensitive: Vec::new(),
@@ -34,6 +34,20 @@ impl Default for Args {
             size: (1200, 800),
             help: false,
         }
+    }
+}
+
+impl Args {
+    /// The socket to connect to.
+    ///
+    /// # Errors
+    /// A message for the person if `--socket` was not given, saying where a socket comes from.
+    pub fn socket_path(&self) -> Result<&Path, String> {
+        self.socket.as_deref().ok_or_else(|| {
+            "no --socket given: the app talks to a running people server; start one with \
+             `fs-people-server --socket <path>` and pass the same path here"
+                .to_string()
+        })
     }
 }
 
@@ -51,7 +65,14 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
                 .ok_or_else(|| format!("{name} needs a value"))
         };
         match arg.as_str() {
-            "--store" => out.store = Some(PathBuf::from(value("--store")?)),
+            "--socket" => out.socket = Some(PathBuf::from(value("--socket")?)),
+            "--store" => {
+                return Err(
+                    "--store is gone: the store belongs to the server, start it with \
+                            `fs-people-server --data <dir>` and give the app its --socket"
+                        .into(),
+                );
+            }
             "--import" => out.import = Some(PathBuf::from(value("--import")?)),
             "--export" => out.export = Some(PathBuf::from(value("--export")?)),
             "--export-sensitive" => out.export_sensitive.push(value("--export-sensitive")?),
@@ -70,7 +91,7 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
 /// The help text.
 pub const HELP: &str = "fs-people-app: the people program
 
-  --store <file>     keep the people in this store file (default: in memory, gone at the end)
+  --socket <path>    Unix socket of a running `fs-people-server --socket <path>` (required)
   --import <file>    import a vCard file first; people already known are skipped, never replaced
   --export <file>    write everyone to a new vCard file and stop; an existing file is not replaced,
                      people marked sensitive are left out and named

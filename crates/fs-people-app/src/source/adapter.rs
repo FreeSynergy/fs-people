@@ -1,7 +1,8 @@
 //! `PeopleAdapter`: `dyn People` as a `PeopleSource`.
 //!
-//! Pattern: Adapter over the program's contract, driven with a tokio handle from the interface
-//! thread. Provisional: in process, not RPC, until the Cap'n Proto servers exist (`DESIGN.md`).
+//! Pattern: Adapter over the program's contract (`People` and `RoleBook`, in practice the client of
+//! `people.capnp`), driven with a tokio handle from the interface thread: every call blocks that
+//! thread until the server has answered (`DESIGN.md`).
 //!
 //! Revision: the store's `updated` time and a fingerprint of the content. `People::update` takes no
 //! revision, so `save` compares and then writes; this is **not atomic** (another writer can slip in
@@ -27,7 +28,7 @@ use super::marks::is_marked;
 use super::sheet::{first_email, sensitive_mark, sheet_of};
 
 /// The contract of the people program, for the workbench. Do not call it from inside the runtime:
-/// it blocks the calling thread until the core has answered.
+/// it blocks the calling thread until the provider has answered.
 pub struct PeopleAdapter {
     people: Arc<dyn People>,
     roles: Arc<dyn RoleBook>,

@@ -30,7 +30,7 @@ fn all_options_are_read_and_nothing_is_the_default() {
 fn mistakes_are_said() {
     assert!(parse(&args("--nope")).unwrap_err().contains("unknown"));
     assert!(
-        parse(&args("--store"))
+        parse(&args("--socket"))
             .unwrap_err()
             .contains("needs a value")
     );
