@@ -85,10 +85,10 @@ async fn a_configuration_that_was_stored_always_starts_again() {
         Err(fs_people_core::Error::InexactNumber(_))
     ));
     // Stored by an older version, before this rule.
-    let mut envelope = fs_store::Envelope::new("RoleConfig", "Configured roles");
+    let mut envelope = fs_objects::Envelope::new("RoleConfig", "Configured roles");
     envelope.context = Some("people".into());
     let content: Value = serde_json::from_str(&config).unwrap();
-    let object = fs_store::StoredObject::new(envelope, "application/json", content);
+    let object = fs_objects::StoredObject::new(envelope, "application/json", content);
     store.put(object, common::ME).await.unwrap();
     assert!(r.restore_role_config().await.unwrap().skipped().is_empty());
     assert!(r.role("x").await.unwrap().is_some());
@@ -148,16 +148,16 @@ async fn a_double_comes_back_through_store_undo_and_export() {
 }
 
 async fn old_card_with_negative_zero(
-    store: &std::sync::Arc<dyn fs_store::Store>,
+    store: &std::sync::Arc<dyn fs_objects::Store>,
     kind: &str,
-) -> (fs_store::ObjectId, fs_people_core::Card) {
+) -> (fs_objects::ObjectId, fs_people_core::Card) {
     let mut card = fs_people_core::Card::new(kind, "Old");
     card.extra.insert("example.org:z".into(), json!(-0.0));
-    let mut envelope = fs_store::Envelope::new("Profile", "Old");
+    let mut envelope = fs_objects::Envelope::new("Profile", "Old");
     envelope.context = Some("people".into());
     let id = envelope.id;
     let object =
-        fs_store::StoredObject::new(envelope, "application/jscontact+json", card.to_value())
+        fs_objects::StoredObject::new(envelope, "application/jscontact+json", card.to_value())
             .with_index("uid", card.uid.as_str())
             .with_index("kind", kind);
     store.put(object, common::ME).await.unwrap();

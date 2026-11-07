@@ -76,7 +76,7 @@ fn borrowed(list: &[String]) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use capnp::message::Builder;
-    use fs_store::ObjectId;
+    use fs_objects::ObjectId;
 
     use super::*;
 

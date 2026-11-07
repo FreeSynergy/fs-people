@@ -3,7 +3,7 @@
 //! Pattern: Value object — read from an AS2 `Relationship` in the store. It is **not** part of the
 //! card, so exporting a card never reveals a role (ADR 0029). Mirrors `RoleAssignment` of `people.capnp`.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 use serde_json::{Map, Value};
 
 /// A person holding a role, personally or within a group.

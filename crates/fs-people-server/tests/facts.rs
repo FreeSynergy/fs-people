@@ -7,7 +7,7 @@ use common::{
     problem_of, revision_now, roles_of, unknown_id, update_if, with_server, with_store,
 };
 use fs_interfaces::rpc::write_uuid;
-use fs_store::{Envelope, StoredObject};
+use fs_objects::{Envelope, StoredObject};
 
 const SECRET: &str = r#"{"@type":"Card","version":"1.0","uid":"s","name":{"full":"Secret"},"freesynergy.net:sensitive":["pd:HealthRecord"]}"#;
 

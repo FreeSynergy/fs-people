@@ -4,7 +4,7 @@
 //!
 //! [`MatchStrategy`]: super::MatchStrategy
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 /// What a proposal is based on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

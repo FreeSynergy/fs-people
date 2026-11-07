@@ -5,7 +5,7 @@
 
 use std::collections::BTreeSet;
 
-use fs_store::{Cond, Envelope, ObjectId, Op, Query, StoredObject};
+use fs_objects::{Cond, Envelope, ObjectId, Op, Query, StoredObject};
 use serde_json::json;
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE, SAME_AS};
@@ -66,7 +66,7 @@ impl PeopleRepo {
                     .is_some_and(|v| v.iter().any(|r| r == SAME_AS))
         });
         if !is_link {
-            return Err(fs_store::Error::NotFound(relationship).into());
+            return Err(fs_objects::Error::NotFound(relationship).into());
         }
         self.objects.delete(relationship, &self.actor).await?;
         Ok(())

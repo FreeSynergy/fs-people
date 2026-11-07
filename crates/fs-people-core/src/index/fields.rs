@@ -2,12 +2,12 @@
 //!
 //! Pattern: Adapter — projects the typed card onto the flat `IndexFields` map the store can query.
 
-use fs_store::IndexFields;
+use fs_objects::IndexFields;
 
 use super::normalise::{fold, normalise_email, normalise_phone, normalise_uid};
 use crate::card::Card;
 
-/// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `nickname`, `org`, `member`. (`describes` is an envelope field since fs-store 0.2.)
+/// Index fields of a card: `uid`, `kind`, `name_sort`, `email`, `phone`, `nickname`, `org`, `member`. (`describes` is an envelope field since fs-objects 0.2.)
 pub fn index_fields(card: &Card) -> IndexFields {
     let mut f = IndexFields::new();
     let mut add = |k: &str, v: String| {

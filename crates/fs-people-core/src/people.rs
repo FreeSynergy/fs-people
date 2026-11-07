@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use fs_interfaces::{Capabilities, Unsupported};
-use fs_store::{ObjectId, StoreId, StoredObject};
+use fs_objects::{ObjectId, StoreId, StoredObject};
 
 use crate::card::Card;
 use crate::error::Result;

@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use fs_store::{ObjectId, Query, StoredObject};
+use fs_objects::{ObjectId, Query, StoredObject};
 use serde_json::Value;
 
 use super::consts::{CONTEXT, RELATIONSHIP_TYPE};

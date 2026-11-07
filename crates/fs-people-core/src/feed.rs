@@ -8,7 +8,7 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use fs_interfaces::Unsupported;
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use crate::error::Result;
 

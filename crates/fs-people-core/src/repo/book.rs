@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
-use fs_store::{ObjectId, StoreId, StoredObject};
+use fs_objects::{ObjectId, StoreId, StoredObject};
 
 use super::handle::PeopleRepo;
 use super::release::ReleasedExport;
