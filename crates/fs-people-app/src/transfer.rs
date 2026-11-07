@@ -10,7 +10,7 @@ use fs_people_core::{ListFilter, People, VCardFormat};
 use tokio::runtime::Handle;
 
 use crate::source::{is_marked, reason_text};
-use fs_components_app::write_new_file;
+use fs_components_app::{write_new_file, write_new_private_file};
 
 /// Asked of the core at a time while exporting.
 const EXPORT_PAGE: usize = 500;
@@ -83,11 +83,12 @@ pub fn import_file(
 pub struct ExportReport {
     /// People written.
     pub written: usize,
-    /// People marked sensitive and left out, with their `uid` (ADR 0029).
+    /// People marked sensitive and left out, by their `uid` alone: a name may be what is sensitive, and
+    /// this goes to the terminal and its logs (ADR 0029).
     pub left_out: Vec<String>,
-    /// People marked sensitive and written, because their `uid` was named.
+    /// People marked sensitive and written, because their `uid` was named; by `uid` alone.
     pub released: Vec<String>,
-    /// People who could not be expressed as vCard, with the reason.
+    /// People who could not be expressed as vCard, by `uid`, with the reason.
     pub failed: Vec<String>,
 }
 
@@ -140,7 +141,6 @@ pub fn export_all(
             .block_on(people.list(&filter))
             .map_err(|e| reason_text(&e))?;
         for object in &page {
-            let name = &object.envelope.name;
             let uid = object.content["uid"].as_str().unwrap_or_default();
             let id = object.envelope.id.to_string();
             let named = |given: &&String| given.as_str() == uid || **given == id;
@@ -148,10 +148,10 @@ pub fn export_all(
             unmatched.retain(|given| !named(given));
             if is_marked(object) {
                 if !is_released {
-                    report.left_out.push(format!("{name} ({uid})"));
+                    report.left_out.push(uid.to_string());
                     continue;
                 }
-                report.released.push(format!("{name} ({uid})"));
+                report.released.push(uid.to_string());
             }
             // The core asks for the release by `uid`, and what stays behind of a list it names.
             let mut going = released.to_vec();
@@ -165,7 +165,7 @@ pub fn export_all(
                     report.left_out.extend(card.withheld);
                     report.written += 1;
                 }
-                Err(e) => report.failed.push(format!("{name}: {e}")),
+                Err(e) => report.failed.push(format!("{uid}: {e}")),
             }
         }
         offset += page.len();
@@ -178,6 +178,10 @@ pub fn export_all(
             "--export-sensitive {nobody} names nobody; nothing was written"
         ));
     }
-    write_new_file(path, text.as_bytes())?;
+    if report.released.is_empty() {
+        write_new_file(path, text.as_bytes())?;
+    } else {
+        write_new_private_file(path, text.as_bytes())?;
+    }
     Ok(report)
 }
