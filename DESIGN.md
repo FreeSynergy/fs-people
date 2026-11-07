@@ -1,6 +1,6 @@
 # fs-people – Design
 
-`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI), its **server** (`crates/fs-people-server`) and its frontend (`crates/fs-people-app`).
+`fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI), its **server** (`crates/fs-people-server`), its **client** (`crates/fs-people-client`) and its frontend (`crates/fs-people-app`).
 A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
 (ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the work surface is the workbench `people` in `fs-components`, which knows neither this core nor its types; `fs-people-app` connects the two.
 
@@ -30,6 +30,7 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | Relations (what someone is to me): JSContact `relatedTo` on the card, `relate` / `unrelate` / `relations` | done |
 | AI marking (ADR 0054): `mark_ai` = `kind: application` (RFC 9553 §2.1.4, travels with the card) + role `ai` (plain software is `application` too). Restricts nothing | done |
 | Server `fs-people-server`: every method of `People`, `Persons`, `Roles`; `subscribe` (with `ended`), `supportReport`; typed problems (`people/not-found` 404, `people/conflict` 409, `people/invalid` 422, `people/sensitive` 403, `people/encryption-required` 409, `people/stored-data` 500, shared `invalid-request` 422, `too-large` 413, `unsupported` 501); binary with `--socket`, `--data`, `--actor` | done, draft |
+| Client `fs-people-client` (`RpcPeople`): `People` and `RoleBook` of the core over the socket of `people.capnp`; the connection lives on a thread of its own; problems of the server become the variants of `fs_people_core::Error` again | done, draft; what it leaves `Unsupported` is under *Client* below |
 | Live feed: `PeopleFeed`, `PersonListener`, `PersonChange`; cards only, never roles or links | done |
 | `list`: kind, role and term combine with AND (`ListFilter`) | done |
 | Writes through the traits take turns (`writes` in `PeopleRepo`), so a read-modify-write is not lost when the backend yields; the inherent methods do not, and compose each other | done |
@@ -37,14 +38,18 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | A write of the server runs to its end, also if the client goes away (`run_to_end`) | done |
 | Numbers: what plain `serde_json` cannot keep exactly is refused at intake with a clear 422 (an integer beyond `i64` / `u64`, a float whose value does not come back, `-0`): cards, `details`, a role configuration when stored (not when restored, so a stored one cannot stop a start); in an import, per item in `failed`, also one that no parser reads such as `1e400`. A `-0` an older card already holds blocks no edit. `validate/numbers.rs` reads the text, as the parser changes the number. `serde_json` has `float_roundtrip`, without which the parser can be one step off a double (6 % of random ones). The feature `arbitrary_precision` was tried and removed: features unify across the build, it broke vCard export and undo, and other readers could not read the result | done |
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
-| Tests | 109 in the core, 49 for the server (the app has its own: `crates/fs-people-app/tests`): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
+| Tests | 109 in the core, 49 for the server (the client has 16 and the app its own: `crates/fs-people-client/tests`, `crates/fs-people-app/tests`, all against the real server on a real socket over the real store): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | ADR 0043 refactor | done: every file <= 200 lines (`check_rust_rules.py`: 0 errors, 0 warnings), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Frontend `fs-people-app` (first version, provisional)
 
-Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default in memory), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
+Imports no `blinc_*` crate (ADR 0009). Arguments: `--socket <path>` (required: the socket of a running `fs-people-server --socket <path>`), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
 
-**In process, not RPC (provisional, do not forget):** `PeopleAdapter` holds `Arc<dyn People>` and `Arc<dyn RoleBook>` in the same process and drives them with a tokio handle, blocking the interface thread like `fs-wiki-app`. When the Cap'n Proto server of `people.capnp` exists, the adapter must call it instead. Until then the program opens the store itself, and the workbench's calls freeze the window for as long as the store takes.
+**Over the socket (since the client exists):** `PeopleAdapter` holds `Arc<dyn People>` and `Arc<dyn RoleBook>`, and `main.rs` puts an `RpcPeople` (`fs-people-client`) behind both. The app starts no server and opens no store: without `--socket` it stops and names `fs-people-server --socket`; `--store` is refused with a pointer to the server's `--data`. The actor is the server's `--actor`, no longer fixed in the app. `transfer.rs` (import, export) goes through the same client.
+
+Dependencies of the app: `fs-people-core` only for types and traits (`Card`, `People`, `RoleBook`, `ListFilter`, `Error`, `VCardFormat`, `card_of`), `fs-store` only for the types `ObjectId` and `StoredObject` and the variant of `Error::Store` it reads; neither is used to hold or open data. The edit logic on a `Card` (`source/apply.rs`, `marks.rs`) stays in the app: it works on the JSON of the card the server sent.
+
+Known limits: every call still blocks the interface thread until the server has answered (the adapter calls `block_on`), so a slow server freezes the window as before; there is no `subscribe` in the app, a change by someone else shows after the next reload only.
 
 | Area | State |
 |---|---|
@@ -78,6 +83,22 @@ Wanted from the core:
 * `import` stops at the first store error and loses the report of the people before it (they are stored; the summary cannot count them). Fixed on `origin/server`, not on main yet.
 * `export_vcard` keeps `VERSION:3.0` for a card imported from vCard 3.0 (seen in a real export), while its documentation says 4.0.
 
+## Client `fs-people-client`
+
+`RpcPeople::connect(socket)` blocks until the server has answered `supportReport`, then holds the connection on its own thread. Dropping it closes the connection and joins the thread.
+
+Implemented, exactly what the app uses: `People::{capabilities, get, list, create, update, delete, search, import_vcard, export_released}` and `RoleBook::{role, roles_of}`. **Everything else answers the `Unsupported` of the provider rule** (the trait defaults, not overridden): `People::{get_card, get_by_uid, find_by_describes, find_by_email, find_by_phone, import, export, relate, unrelate, relations, create_group, add_member, remove_member, members, groups_of, find_same_person_proposals, confirm_same_person, unlink, linked_to, import_jscontact, export_vcard}` and `RoleBook::{define_role, undefine_role, load_role_config, roles, assign_role, unassign_role, people_with_role, people_with_personal_role, mark_ai, is_ai}`. (The server offers most of them; the client does not write what no frontend calls yet.) Note that `capabilities()` is the server's report, so it can say `supported` for something this client still answers `Unsupported`.
+
+What does not arrive over the wire, and what the client does about it:
+
+* **`StoredObject`** is built from the `Person`: the envelope via `read_envelope`, the JSContact text parsed as `content`, `content_type` `application/jscontact+json`. `original` (ADR 0030) and `index` are `None` / empty: the contract has no place for them. `fs-store` has no revision field; the app's revision is `updated` plus a fingerprint of the content, and `updated` comes in **milliseconds** (the wire's resolution), so two writes within a millisecond are told apart by the fingerprint alone.
+* **`ListFilter.limit` / `offset`** do not exist in the contract. The client reads pages (cursor) until the cursor is empty or `offset + limit` people are there, then cuts. A deep `offset` therefore reads the pages before it, and the server cuts each page from a whole list.
+* **`search(term)`** is `list` with `term`: the contract has no search call.
+* **`capabilities()`** is a snapshot taken at `connect`; the server is not asked again.
+* **Errors** are read back from type, status and text of the problem, because the wire carries no fields. Safe: `not-found` (the id comes from the call, `UnknownRole` for a role), `conflict`, `unsupported`, `stored-data`, `partly-deleted`, `sensitive`, `sensitive-members`, `encryption-required` (the id is read from the text), `too-large` (the first number of the text; 0 if none). `invalid` is read into `Error::Invalid` issues if the text has the core's form, else `Error::Store(Invalid)`. A transport failure (server gone) is `Error::Store(Backend("people server: ..."))`, as there is no variant for it. A text format change on the server breaks the reading back; the table is tested (`problems_table.rs`) and the common types over the real socket.
+* **`RoleDefinition.extra`** has no place on the wire (a gap of the contract, see below).
+
+
 ## Structure and pattern map (ADR 0043)
 
 Public contract: the trait `People`; `PeopleRepo` is its implementation (Repository + Facade) and keeps all
@@ -86,6 +107,11 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 | Module | Pattern | Why |
 |---|---|---|
+| `fs-people-client/peer.rs`, `people_impl.rs`, `roles_impl.rs` | Adapter | `People` and `RoleBook` of the core in front of the Cap'n Proto client; the frontend depends on the traits, not on the wire. Interface first: `connect` was committed before the calls and the tests |
+| `fs-people-client/worker.rs` | Command queue (active object) | capnp-rpc clients are `!Send`: one thread with a current-thread runtime and `LocalSet` owns the connection; callers send a closure and wait on a `oneshot`; calls overlap there |
+| `fs-people-client/calls/*`, `read.rs` | Adapter | one request and one reply read back as values of the core (`StoredObject`, `RoleAssignment`, `RoleDefinition`, `ImportReport`) |
+| `fs-people-client/problems.rs` | Adapter | the inverse of `errors.rs` of the server: RFC 9457 type and status to the variant of `Error` |
+| `fs-people-app/source/*`, `transfer.rs`, `main.rs` | Adapter / Template method / Facade consumer | workbench `PeopleSource` over `dyn People`; import and export flows; wiring to the socket |
 | `fs-people-server/{people_service,roles_service,persons/*}.rs` | Adapter + Factory | wire in, one trait call, wire out; depends on the traits only. `persons/service.rs` is the dispatch, `cards`, `links`, `lists` behind it |
 | `fs-people-server/wire/*`, `errors.rs` | Adapter | values on the wire, limits of a message, core errors as RFC 9457 problems |
 | `fs-people-server/formats.rs` | Registry | media type to format of the core; an unknown type is `Unsupported` |
