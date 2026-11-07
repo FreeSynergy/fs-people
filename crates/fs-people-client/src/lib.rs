@@ -19,6 +19,7 @@
 
 mod calls;
 mod offered;
+mod pages;
 mod peer;
 mod people_impl;
 mod problems;
@@ -27,6 +28,9 @@ mod problems_table;
 mod read;
 mod remote;
 mod roles_impl;
+mod walk;
 
 pub use fs_interfaces::rpc::client::{CALL_TIMEOUT, CONNECT_TIMEOUT, Timeouts};
+pub use pages::{Cursor, PersonPage, PersonPages};
 pub use peer::RpcPeople;
+pub use walk::PageWalk;

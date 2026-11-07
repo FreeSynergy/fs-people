@@ -11,6 +11,7 @@ use fs_store::{ObjectId, StoredObject};
 
 use crate::RpcPeople;
 use crate::calls::persons::{self, card_text};
+use crate::pages::{Cursor, PersonPage, PersonPages};
 
 const VCARD: &str = "text/vcard";
 
@@ -74,5 +75,16 @@ impl People for RpcPeople {
             move |r| async move { persons::export(&r.persons, id, media_type, released).await },
         )
         .await
+    }
+}
+
+#[async_trait]
+impl PersonPages for RpcPeople {
+    async fn first(&self, _filter: &ListFilter) -> Result<PersonPage> {
+        Err(fs_interfaces::Unsupported::new("people", "pages: not yet").into())
+    }
+
+    async fn next(&self, _filter: &ListFilter, _cursor: &Cursor) -> Result<PersonPage> {
+        Err(fs_interfaces::Unsupported::new("people", "pages: not yet").into())
     }
 }
