@@ -109,7 +109,10 @@ impl PeopleRepo {
     }
 
     async fn group_card(&self, group: ObjectId) -> Result<Card> {
-        let g = self.get_card(group).await?.ok_or(Error::NotFound(group))?;
+        let g = self
+            .get_card(group)
+            .await?
+            .ok_or(Error::ListNotFound(group))?;
         if !g.is_group() {
             return Err(Error::Conflict(format!("{group} is not a group")));
         }

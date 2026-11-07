@@ -64,7 +64,7 @@ fn reason(error: &Error) -> SourceError {
         Error::Store(fs_store::Error::EncryptionRequired(_)) => SourceError::failed(format!(
             "this card is marked sensitive and this store is not encrypted, so it was refused ({error})"
         )),
-        Error::NotFound(_) => SourceError::not_found(error.to_string()),
+        Error::NotFound(_) | Error::ListNotFound(_) => SourceError::not_found(error.to_string()),
         Error::Unsupported(_) => SourceError::unsupported(error.to_string()),
         _ => SourceError::failed(error.to_string()),
     }

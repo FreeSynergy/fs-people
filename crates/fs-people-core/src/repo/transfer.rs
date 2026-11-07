@@ -10,6 +10,7 @@ use super::handle::PeopleRepo;
 use super::types::ImportReport;
 use crate::error::{Error, Result};
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
+use crate::subject::{Kind, Subject};
 use crate::validate::validate;
 
 /// How much text a report keeps per list, however large the file; with what each entry costs on top
@@ -101,7 +102,10 @@ impl PeopleRepo {
         if export.withheld.is_empty() {
             Ok(export.text)
         } else {
-            Err(Error::SensitiveMembers(export.withheld))
+            Err(Error::SensitiveMembers(
+                Subject::new(Kind::List, id),
+                export.withheld,
+            ))
         }
     }
 

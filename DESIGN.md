@@ -6,7 +6,7 @@ A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelo
 
 ## State
 
-Version 0.4.0 (updateIf, revision, roles as IRIs, server): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.36.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
+Version 0.5.0 (typed problem extensions, `SupportReport.instance`): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.43.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.4 (git tag). The report names the store (`StoreId` from `People::identity`, never in the log); problems carry typed extensions (section "Problem extensions").
 
 | Area | State |
 |---|---|
@@ -89,6 +89,9 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 | Module | Pattern | Why |
 |---|---|---|
 | `fs-people-server/{people_service,roles_service,persons/*}.rs` | Adapter + Factory | wire in, one trait call, wire out; depends on the traits only. `persons/service.rs` is the dispatch, `cards`, `links`, `lists` behind it |
+| `fs-people-server/facts.rs` | none | a pure function: the facts of a core error as problem extensions, so a client reads `id`, `kind`, `issue` instead of cutting the detail text |
+| `repo/backend.rs` | Adapter | `StoreAdapter` also gives `StoreInfo` (identity) to `PeopleRepo::identity` |
+| `fs-people-core/subject.rs` | Value object | whom an error is about (`Kind`, id); `Error::subject` reads it off the variant |
 | `fs-people-server/wire/*`, `errors.rs` | Adapter | values on the wire, limits of a message, core errors as RFC 9457 problems |
 | `fs-people-server/formats.rs` | Registry | media type to format of the core; an unknown type is `Unsupported` |
 | `fs-people-server/feed.rs`, `feed.rs` (core) | Observer | `PeopleFeed` to the shared forwarder; a read error ends the feed with `ended` |
@@ -124,6 +127,27 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **A sensitive marking that names no category fails closed.** `Card::is_sensitive` is true for any marking at all. `create` refuses one that is not a list of names; an import keeps the card as it came, names it in `ImportReport::unclear`, and the envelope carries `freesynergy.net:unclear` (not a DPV category) so the store and every reader treat it as sensitive. A plain store refuses it, which the report gives as failed with its reason; the file is still there, so nothing is lost. `update` does not refuse it, so such a card can still be corrected.
 * **Delete.** The store has no transaction over several objects. The order is: off every list, as only the card knows its `uid`; then the card; then links and roles. A write goes to its end also if the client goes away (`run_to_end`). What stays possible, because a store call fails or the process dies between two steps: (1) the person is still there, off some lists: `people/partly-deleted` (500) says so if a list changed, a plain store error if nothing did. (2) The card is gone and links or roles remain: `people/partly-deleted` says so; until the same call again a link or role names a card that is gone, and `create` refuses that id. After a crash nobody is told, and nothing repairs it at the next start.
 
+## Problem extensions (v0.5.0)
+
+The detail text is unchanged. Next to it the server states the facts as extensions (`fs-interfaces` v0.43.0, keys `id`, `kind`,
+`issue`; the others belong to the type). A client checks `id` against what it asked for. `kind` is `person`, `list` or `role`.
+
+| Problem type (`.../problems/people/...`) | Core error | Extensions |
+|---|---|---|
+| `not-found` | no card, no list, no role, or a stored object without a card | `id`, `kind` (`person`, `list`, `role`); a missing assignment or link: `id` only |
+| `conflict` | `Changed` (updateIf, a card changed since it was read) | `id`, `kind` (`person`). Other conflicts (duplicate `uid`, role in use, ...) name no object: none |
+| `invalid` | card against RFC 9553 | `issue` once per reason, as `path: reason` (`/version: ...`) |
+| `invalid` | number that cannot be kept exactly (`the number ...`) | `value` (the number as written) |
+| `invalid` | JSON the core cannot read, store refuses a value | `issue` (the reason without the `json: ` prefix) |
+| `sensitive` | sensitive card, not released | `id`, `kind`, `who` (`uid: name`) |
+| `sensitive-link` | sensitive card in a same-person link | `id`, `kind` (`person`) |
+| `sensitive-members` | list export that would leave sensitive members behind | `id`, `kind` (`list`), `member` once per member held back |
+| `partly-deleted` | delete stopped halfway | `id`, `kind` (`person`), `issue` (where it stopped, without `; delete again to finish it`) |
+| `stored-data` | something stored cannot be read | `issue` (the reason without `stored data: `) |
+| `encryption-required`, `unsupported`, `too-large`, `invalid-request` | | none of ours |
+
+So a client no longer needs `split_once(": ")`, `strip_prefix("stored data: ")`, `strip_suffix("; delete again to finish it")`, the `is sensitive and needs an explicit release` suffix, `card violates RFC 9553: `, `the number ` or `json: `.
+
 ## Migration for dependents
 
 * `PeopleRepo::store()` is removed: the repository no longer holds the whole `Store`, only the narrow traits. Keep your
@@ -136,7 +160,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.36.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
+* `fs-store` (git tag v0.4.0). `fs-interfaces` (git tag v0.43.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.

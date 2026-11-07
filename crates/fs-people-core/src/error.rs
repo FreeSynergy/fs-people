@@ -5,6 +5,8 @@
 
 use fs_store::ObjectId;
 
+use crate::subject::Subject;
+
 /// The largest card as JSON: with its envelope it still has to fit one answer of the contract, and
 /// small edits (relations, members) must not grow it past that.
 pub const MAX_CARD_BYTES: usize = 16 * 1024 * 1024;
@@ -39,6 +41,9 @@ pub enum Error {
     /// No person with this id.
     #[error("person {0} not found")]
     NotFound(ObjectId),
+    /// No list with this id.
+    #[error("person {0} not found")]
+    ListNotFound(ObjectId),
     /// vCard text could not be read or written.
     #[error("vCard: {0}")]
     VCard(String),
@@ -49,11 +54,11 @@ pub enum Error {
     #[error("{1}; delete again to finish it")]
     PartlyDeleted(ObjectId, String),
     /// A sensitive card, not exported without explicit release (ADR 0029).
-    #[error("{0} is sensitive and needs an explicit release")]
-    NotReleased(String),
+    #[error("{1} is sensitive and needs an explicit release")]
+    NotReleased(Subject, String),
     /// Who is on a list and sensitive, not taken along without explicit release (ADR 0029).
-    #[error("sensitive members need an explicit release: {}", .0.join(", "))]
-    SensitiveMembers(Vec<String>),
+    #[error("sensitive members need an explicit release: {}", .1.join(", "))]
+    SensitiveMembers(Subject, Vec<String>),
     /// ADR 0029: sensitive cards are never linked.
     #[error("person {0} carries sensitive categories and must not be linked (ADR 0029)")]
     Sensitive(ObjectId),

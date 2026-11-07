@@ -11,6 +11,8 @@ use fs_interfaces::rpc::{Problem, failed, run_to_end, too_large, unsupported};
 use fs_people_core::Error;
 use fs_store::Error as StoreError;
 
+use crate::facts::with_facts;
+
 const NOT_FOUND: &str = "https://freesynergy.net/problems/people/not-found";
 const CONFLICT: &str = "https://freesynergy.net/problems/people/conflict";
 const INVALID: &str = "https://freesynergy.net/problems/people/invalid";
@@ -22,60 +24,53 @@ const SENSITIVE_MEMBERS: &str = "https://freesynergy.net/problems/people/sensiti
 const STORED_DATA: &str = "https://freesynergy.net/problems/people/stored-data";
 
 /// A core error as an RPC error.
+#[allow(clippy::needless_pass_by_value)] // used as `map_err(rpc_error)`
 pub(crate) fn rpc_error(e: Error) -> capnp::Error {
     let text = e.to_string();
-    match e {
-        Error::Unsupported(not_possible) => unsupported(&not_possible),
-        Error::TooLarge(_) => too_large(text),
-        Error::NotFound(_) | Error::UnknownRole(_) | Error::Store(StoreError::NotFound(_)) => {
-            Problem::new(NOT_FOUND, "Not found", text, 404).into_error()
-        }
+    let problem = |kind: &str, title: &str, status: u16| {
+        with_facts(Problem::new(kind, title, text.clone(), status), &e).into_error()
+    };
+    match &e {
+        Error::Unsupported(not_possible) => unsupported(not_possible),
+        Error::TooLarge(_) => too_large(text.clone()),
+        Error::NotFound(_)
+        | Error::ListNotFound(_)
+        | Error::UnknownRole(_)
+        | Error::Store(StoreError::NotFound(_)) => problem(NOT_FOUND, "Not found", 404),
         Error::Conflict(_)
         | Error::Changed(_)
         | Error::Store(StoreError::Conflict(_) | StoreError::OriginalImmutable(_)) => {
-            Problem::new(CONFLICT, "Conflict", text, 409).into_error()
+            problem(CONFLICT, "Conflict", 409)
         }
         // Only text from the request reaches `Json`; stored data arrives as `Stored`.
         Error::Invalid(_)
         | Error::InexactNumber(_)
         | Error::Json(_)
         | Error::Store(StoreError::Invalid(_)) => {
-            Problem::new(INVALID, "Against the rules of the contract", text, 422).into_error()
+            problem(INVALID, "Against the rules of the contract", 422)
         }
-        Error::NotReleased(_) => Problem::new(
-            SENSITIVE,
-            "A sensitive card needs an explicit release",
-            text,
-            403,
-        )
-        .into_error(),
-        Error::SensitiveMembers(_) => Problem::new(
+        Error::NotReleased(..) => {
+            problem(SENSITIVE, "A sensitive card needs an explicit release", 403)
+        }
+        Error::SensitiveMembers(..) => problem(
             SENSITIVE_MEMBERS,
             "Sensitive members are not taken along",
-            text,
             403,
-        )
-        .into_error(),
-        Error::Sensitive(_) => {
-            Problem::new(SENSITIVE_LINK, "Sensitive cards are not linked", text, 403).into_error()
-        }
-        Error::Store(StoreError::EncryptionRequired(_)) => Problem::new(
+        ),
+        Error::Sensitive(_) => problem(SENSITIVE_LINK, "Sensitive cards are not linked", 403),
+        Error::Store(StoreError::EncryptionRequired(_)) => problem(
             ENCRYPTION_REQUIRED,
             "This store does not take sensitive cards",
-            text,
             409,
-        )
-        .into_error(),
+        ),
         // An import reports its bad vCards itself, so this is a stored card that has no vCard form.
         Error::Stored(_) | Error::VCard(_) | Error::Store(StoreError::Serde(_)) => {
-            Problem::new(STORED_DATA, "Stored data cannot be read", text, 500).into_error()
+            problem(STORED_DATA, "Stored data cannot be read", 500)
         }
         // The person went and something of them stayed: a consumer has to be able to tell, and to
         // call again, without reading a message.
-        Error::PartlyDeleted(..) => {
-            Problem::new(PARTLY_DELETED, "Deleted, not everything of it", text, 500).into_error()
-        }
-        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => failed(text),
+        Error::PartlyDeleted(..) => problem(PARTLY_DELETED, "Deleted, not everything of it", 500),
+        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => failed(text.clone()),
     }
 }
 

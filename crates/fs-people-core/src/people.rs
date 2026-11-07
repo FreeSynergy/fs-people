@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use fs_interfaces::{Capabilities, Unsupported};
-use fs_store::{ObjectId, StoredObject};
+use fs_store::{ObjectId, StoreId, StoredObject};
 
 use crate::card::Card;
 use crate::error::Result;
@@ -28,6 +28,11 @@ pub(crate) fn not_possible<T>(capability: &str) -> Result<T> {
 pub trait People: Send + Sync {
     /// What this provider can do, per capability id.
     fn capabilities(&self) -> Capabilities;
+    /// The identity of the store behind this provider, if it has one: made once when the store is
+    /// created, never in the log. A provider without a store (a fake) answers `None`.
+    fn identity(&self) -> Option<StoreId> {
+        None
+    }
     /// The stored object of a person, if it exists.
     async fn get(&self, id: ObjectId) -> Result<Option<StoredObject>>;
     /// People in name order, filtered and paged.

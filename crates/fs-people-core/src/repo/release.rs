@@ -13,6 +13,7 @@ use crate::card::Card;
 use crate::error::{Error, Result};
 use crate::format::Exporter;
 use crate::index::normalise_uid;
+use crate::subject::{Kind, Subject};
 
 /// A card as text, and who was left out of it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,10 +37,8 @@ impl PeopleRepo {
         let mut card = card_of(&stored)?;
         let released: Vec<String> = released.iter().map(|uid| normalise_uid(uid)).collect();
         if is_marked(&stored) && !released.contains(&normalise_uid(&card.uid)) {
-            return Err(Error::NotReleased(format!(
-                "{}: {}",
-                card.uid, stored.envelope.name
-            )));
+            let who = format!("{}: {}", card.uid, stored.envelope.name);
+            return Err(Error::NotReleased(subject_of(id, &card), who));
         }
         let mut withheld = Vec::new();
         for (uid, name) in self.sensitive_members_of(&card).await? {
@@ -71,4 +70,14 @@ impl PeopleRepo {
         }
         Ok(found)
     }
+}
+
+/// The card `id` as the subject of an error: a list or a person.
+pub(super) fn subject_of(id: ObjectId, card: &Card) -> Subject {
+    let kind = if card.is_group() {
+        Kind::List
+    } else {
+        Kind::Person
+    };
+    Subject::new(kind, id)
 }

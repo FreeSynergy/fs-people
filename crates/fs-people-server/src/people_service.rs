@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use capnp_rpc::new_client;
 use fs_interfaces::people_capnp::people;
+use fs_interfaces::rpc::write_uuid;
 use fs_people_core::{People, PeopleFeed, RoleBook};
 
 use crate::feed::subscribe;
@@ -55,7 +56,11 @@ impl people::Server for PeopleServer {
         mut results: people::SupportReportResults,
     ) -> Done {
         let report = self.people.capabilities();
-        report.write(CONTRACT_VERSION, results.get().init_report());
+        let mut out = results.get().init_report();
+        report.write(CONTRACT_VERSION, out.reborrow());
+        // The store's id, as the store says it: empty where the provider has no store.
+        let instance = self.people.identity().map(|id| id.as_uuid());
+        write_uuid(out.init_instance(), instance);
         Ok(())
     }
 

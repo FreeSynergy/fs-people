@@ -176,6 +176,9 @@ async fn a_half_done_delete_is_a_problem_of_its_own_and_a_second_call_finishes_i
             "https://freesynergy.net/problems/people/partly-deleted"
         );
         assert_eq!(problem.status, 500);
+        assert_eq!(problem.ext("id"), Some(a.to_string().as_str()));
+        assert_eq!(problem.ext("kind"), Some("person"));
+        assert!(problem.ext("issue").is_some());
         assert!(
             problem.detail.contains("delete again"),
             "{}",

@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use fs_store::traits::{ObjectQuery, ObjectRepository};
-use fs_store::{ObjectId, Store};
+use fs_store::{ObjectId, Store, StoreInfo};
 use tokio::sync::Mutex;
 
 use super::backend::StoreAdapter;
@@ -22,6 +22,7 @@ pub struct PeopleRepo {
     pub(super) reads: Arc<dyn ObjectQuery>,
     pub(super) matcher: Arc<dyn MatchStrategy>,
     pub(super) registry: Arc<dyn RoleDirectory>,
+    pub(super) info: Option<Arc<dyn StoreInfo>>,
     pub(super) feed: Arc<Registry>,
     /// One write at a time through the traits; clones share it.
     pub(super) writes: Arc<Mutex<()>>,
@@ -34,7 +35,7 @@ impl PeopleRepo {
     /// (written to the log).
     pub fn new(store: Arc<dyn Store>, actor: impl Into<String>) -> Self {
         let adapter = Arc::new(StoreAdapter(store));
-        Self::with_backend(adapter.clone(), adapter, actor)
+        Self::with_backend(adapter.clone(), adapter.clone(), actor).with_info(adapter)
     }
 
     /// People over the narrow store traits only (a remote or fake backend can supply them).
@@ -48,11 +49,19 @@ impl PeopleRepo {
             reads,
             matcher: Arc::new(SharedContactPoint),
             registry: Arc::new(RoleRegistry::known()),
+            info: None,
             feed: Arc::default(),
             writes: Arc::default(),
             actor: actor.into(),
             instance: "local.invalid".into(),
         }
+    }
+
+    /// Say whose store this is: [`People::identity`](crate::People::identity) answers from it.
+    #[must_use]
+    pub fn with_info(mut self, info: Arc<dyn StoreInfo>) -> Self {
+        self.info = Some(info);
+        self
     }
 
     /// Instance domain for external IRIs `https://<instance>/people/<id>` (ADR 0027).

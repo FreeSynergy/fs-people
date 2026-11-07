@@ -24,13 +24,13 @@ async fn a_sensitive_card_leaves_only_with_a_release() {
     let uid = r.get_card(id).await.unwrap().unwrap().uid;
     let refused = r.export(&VCardFormat, id).await.unwrap_err();
     assert!(
-        matches!(&refused, Error::NotReleased(who) if who.contains("Secret")),
+        matches!(&refused, Error::NotReleased(_, who) if who.contains("Secret")),
         "{refused}"
     );
     assert!(matches!(
         r.export_released(&JsContactFormat, id, &["other".to_string()])
             .await,
-        Err(Error::NotReleased(_))
+        Err(Error::NotReleased(..))
     ));
     let upper = uid.to_uppercase();
     let released = r
@@ -76,6 +76,6 @@ async fn an_older_mark_in_the_content_alone_counts_at_export_too() {
     assert!(!without.text.contains(&uid), "{}", without.text);
     assert!(matches!(
         r.export(&JsContactFormat, older_id).await,
-        Err(Error::NotReleased(_))
+        Err(Error::NotReleased(..))
     ));
 }

@@ -29,6 +29,7 @@ mod repo;
 mod revision;
 mod role_book;
 pub mod roles;
+mod subject;
 pub mod validate;
 pub mod vcard;
 
@@ -51,3 +52,4 @@ pub use roles::{
     AI_ROLE, AI_ROLE_IRI, ROLE_BASE, RoleAssignment, RoleDefinition, RoleDirectory, RoleField,
     RoleKind, RoleRegistry, RoleScheme, RoleScope, full_id, is_ai_role, stored_forms,
 };
+pub use subject::{Kind, Subject};

@@ -118,7 +118,7 @@ async fn a_sensitive_member_can_be_added_on_request_but_does_not_leave_with_the_
     assert_eq!(carried.envelope.sensitive, ["pd:HealthRecord"]);
 
     let refused = r.export(&JsContactFormat, list).await.unwrap_err();
-    assert!(matches!(&refused, Error::SensitiveMembers(names) if names[0].contains("Secret")));
+    assert!(matches!(&refused, Error::SensitiveMembers(_, names) if names[0].contains("Secret")));
 
     let without = r
         .export_released(&JsContactFormat, list, &[])

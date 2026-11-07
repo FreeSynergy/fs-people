@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
-use fs_store::{ObjectId, StoredObject};
+use fs_store::{ObjectId, StoreId, StoredObject};
 
 use super::handle::PeopleRepo;
 use super::release::ReleasedExport;
@@ -24,6 +24,9 @@ use crate::revision::Revision;
 impl People for PeopleRepo {
     fn capabilities(&self) -> Capabilities {
         capabilities()
+    }
+    fn identity(&self) -> Option<StoreId> {
+        self.info.as_ref().map(|info| info.identity())
     }
     async fn relate(&self, id: ObjectId, other_uid: &str, relation: &str) -> Result<StoredObject> {
         let _turn = self.writes.lock().await;
