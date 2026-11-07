@@ -12,7 +12,7 @@ use fs_interfaces::people_capnp::{
 };
 use fs_interfaces::rpc::{read_envelope, read_object_id};
 use fs_people_core::{
-    Error, ImportReport, Result, RoleAssignment, RoleDefinition, RoleField, RoleScope,
+    Error, ImportReport, Result, RoleAssignment, RoleDefinition, RoleField, RoleKind, RoleScope,
 };
 use fs_store::StoredObject;
 use serde_json::Value;
@@ -104,8 +104,30 @@ pub(crate) fn definition(r: role_definition::Reader<'_>) -> Result<RoleDefinitio
         owner: text(r.get_owner())?,
         scope,
         card_kind: optional(r.get_card_kind())?,
+        kind: kind(&text(r.get_type())?)?,
+        broader: single(list(r.get_broader())?, "broader")?,
+        close_match: single(list(r.get_close_match())?, "closeMatch")?,
+        standard_refs: list(r.get_standard_refs())?,
         ..RoleDefinition::default()
     })
+}
+
+/// The role type: empty and `skos:Concept` are the same (contract), `org:Role` the other.
+fn kind(t: &str) -> Result<RoleKind> {
+    match t {
+        "" | "skos:Concept" => Ok(RoleKind::Concept),
+        "org:Role" => Ok(RoleKind::OrgRole),
+        other => Err(unreadable(format!("unknown role type {other}"))),
+    }
+}
+
+/// The one address a term holds in the core so far; a second would be dropped silently, so it is
+/// an unreadable answer instead.
+fn single(mut values: Vec<String>, term: &str) -> Result<Option<String>> {
+    if values.len() > 1 {
+        return Err(unreadable(format!("{term} holds more than one address")));
+    }
+    Ok(values.pop())
 }
 
 fn list(l: capnp::Result<capnp::text_list::Reader<'_>>) -> Result<Vec<String>> {
