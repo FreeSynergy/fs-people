@@ -7,7 +7,8 @@ use fs_interfaces::rpc::Problem;
 use fs_people_core::Error;
 use fs_store::{Error as StoreError, ObjectId};
 
-use crate::problems::{BASE, Subject, error_of};
+use crate::problems::{Subject, error_of};
+use fs_interfaces::rpc::client::problems::PROBLEM_BASE as BASE;
 
 fn said(kind: &str, status: u16, detail: &str, subject: &Subject) -> Error {
     titled(kind, "t", status, detail, subject)

@@ -7,11 +7,12 @@
 //! call (`Subject`).
 
 use fs_interfaces::Unsupported;
-use fs_interfaces::rpc::{Problem, is_unimplemented};
+use fs_interfaces::rpc::Problem;
+use fs_interfaces::rpc::client::problems::{
+    Failure, first_number, local_type, object_id_in, unsupported_of, without_store_prefix,
+};
 use fs_people_core::{Error, Issue};
 use fs_store::{Error as StoreError, ObjectId};
-
-pub(crate) const BASE: &str = "https://freesynergy.net/problems/";
 
 /// What a call was about, for the variants that name it.
 #[derive(Clone, Debug)]
@@ -26,22 +27,21 @@ pub(crate) enum Subject {
 
 /// The error of the core for what the server (or the wire) said.
 pub(crate) fn error_of(e: &capnp::Error, subject: &Subject) -> Error {
-    match Problem::from_error(e) {
-        Some(problem) => from_problem(&problem, subject),
-        None if is_unimplemented(e) => Unsupported::new(
+    match Failure::of(e) {
+        Failure::Problem(problem) => from_problem(&problem, subject),
+        Failure::Unimplemented => Unsupported::new(
             "people",
             "the server does not know this method of the contract",
         )
         .into(),
-        None => Error::Store(StoreError::Backend(format!("people server: {e}"))),
+        Failure::Other(text) => Error::Store(StoreError::Backend(format!("people server: {text}"))),
     }
 }
 
 fn from_problem(p: &Problem, subject: &Subject) -> Error {
     let detail = p.detail.as_str();
-    let kind = p.problem_type.strip_prefix(BASE).unwrap_or(&p.problem_type);
-    match kind {
-        "unsupported" => unsupported(detail),
+    match local_type(p) {
+        "unsupported" => unsupported_of(detail, "people").into(),
         "people/not-found" => not_found(detail, subject),
         "people/conflict" => Error::Conflict(detail.to_string()),
         "people/invalid" => invalid(detail),
@@ -81,11 +81,6 @@ fn from_problem(p: &Problem, subject: &Subject) -> Error {
     }
 }
 
-fn unsupported(detail: &str) -> Error {
-    let (capability, reason) = detail.split_once(": ").unwrap_or(("people", detail));
-    Unsupported::new(capability, reason).into()
-}
-
 fn not_found(detail: &str, subject: &Subject) -> Error {
     match subject {
         Subject::Person(id) => Error::NotFound(*id),
@@ -107,10 +102,7 @@ fn not_released(detail: &str) -> Error {
 /// `people/sensitive-link`: a sensitive card that must not be linked. The id is in the text of the
 /// server, else the call names it; the type alone says which error this is.
 fn not_linked(detail: &str, subject: &Subject) -> Error {
-    let named = detail
-        .split_whitespace()
-        .find_map(|w| w.parse::<ObjectId>().ok());
-    match (named, subject) {
+    match (object_id_in(detail), subject) {
         (Some(id), _) => Error::Sensitive(id),
         (None, Subject::Person(id)) => Error::Sensitive(*id),
         (None, _) => Error::Stored(format!("a sensitive card was refused a link: {detail}")),
@@ -146,30 +138,16 @@ fn invalid(detail: &str) -> Error {
     if let Some(message) = detail.strip_prefix("json: ") {
         return Error::Json(<serde_json::Error as serde::de::Error>::custom(message));
     }
-    let inner = detail
-        .strip_prefix("object store: invalid input: ")
-        .unwrap_or(detail);
-    Error::Store(StoreError::Invalid(inner.to_string()))
+    Error::Store(StoreError::Invalid(
+        without_store_prefix(detail).to_string(),
+    ))
 }
 
 /// The text names the object: `object store: object <id> is marked sensitive but ...`.
 fn encryption_required(detail: &str, subject: &Subject) -> Error {
-    let named = detail
-        .split_whitespace()
-        .find_map(|word| word.parse::<ObjectId>().ok());
-    match (named, subject) {
+    match (object_id_in(detail), subject) {
         (Some(id), _) => Error::Store(StoreError::EncryptionRequired(id)),
         (None, Subject::Person(id)) => Error::Store(StoreError::EncryptionRequired(*id)),
         _ => Error::Conflict(detail.to_string()),
     }
-}
-
-/// The first run of digits, 0 if there is none.
-fn first_number(text: &str) -> usize {
-    let digits: String = text
-        .chars()
-        .skip_while(|c| !c.is_ascii_digit())
-        .take_while(char::is_ascii_digit)
-        .collect();
-    digits.parse().unwrap_or(0)
 }
