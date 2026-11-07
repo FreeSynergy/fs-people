@@ -7,6 +7,8 @@ use std::sync::Arc;
 use fs_people_core::{Card, PeopleRepo};
 use fs_store::{Store, TursoStore};
 
+pub mod yielding;
+
 pub const ME: &str = "https://local.invalid/users/owner";
 /// The demo cards; `FS_PEOPLE_DEMO` names a copy to read instead of the documentation tree.
 pub const DEMO: &str = match option_env!("FS_PEOPLE_DEMO") {
