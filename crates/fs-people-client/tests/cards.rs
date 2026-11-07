@@ -149,16 +149,37 @@ async fn a_plain_store_refusing_a_sensitive_card_says_so() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn the_report_of_the_server_is_what_capabilities_tells() {
+async fn capabilities_promise_no_more_than_the_client_keeps() {
     let served = Served::start().await;
-    let can = served.client().capabilities();
+    let people = served.client();
+    let can = people.capabilities();
     for id in [
         "person.create",
         "person.update",
         "person.delete",
         "person.read",
+        "person.find",
         "person.import",
+        "person.export",
+        "role.read",
     ] {
         assert!(can.is_supported(id), "{id}");
     }
+    // What the server offers and the client does not: not possible, with a reason that says so.
+    for id in [
+        "person.subscribe",
+        "relation.write",
+        "cardgroup.write",
+        "same.link",
+        "role.assign",
+        "ai.mark",
+    ] {
+        let why = can
+            .why_not(id)
+            .unwrap_or_else(|| panic!("{id} is promised"));
+        assert!(why.reason().contains("client"), "{id}: {}", why.reason());
+    }
+    // And the methods agree with the report.
+    let refused = people.create_group("G").await.unwrap_err();
+    assert!(matches!(refused, Error::Unsupported(_)));
 }

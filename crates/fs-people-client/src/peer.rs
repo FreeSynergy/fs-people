@@ -15,6 +15,7 @@ use fs_people_core::{Error, Result};
 use fs_store::Error as StoreError;
 use tokio::sync::oneshot;
 
+use crate::offered::offered;
 use crate::reply::Reply;
 use crate::timeouts::Timeouts;
 use crate::worker::{Job, Remote, Worker, start};
@@ -57,7 +58,7 @@ impl RpcPeople {
         let (worker, capabilities) = start(socket.to_path_buf(), timeouts.connect)?;
         Ok(Self {
             worker,
-            capabilities,
+            capabilities: offered(&capabilities),
             timeouts,
         })
     }
