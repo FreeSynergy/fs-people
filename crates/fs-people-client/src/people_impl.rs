@@ -9,7 +9,7 @@ use fs_interfaces::Capabilities;
 use fs_people_core::{
     Card, Exporter, ImportReport, ListFilter, People, ReleasedExport, Result, Revision,
 };
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 use crate::RpcPeople;
 use crate::calls::lists;

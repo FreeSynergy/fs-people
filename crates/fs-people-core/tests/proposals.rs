@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use common::{ME, person, repo, setup};
 use fs_people_core::{Error, MatchKind, MatchReason, PeopleRepo};
-use fs_store::{ObjectId, Store, TursoStore};
+use fs_objects::{ObjectId, Store, TursoStore};
 use serde_json::json;
 
 #[tokio::test]
@@ -44,7 +44,7 @@ async fn same_person_proposals_and_confirmation() {
     // proposing writes nothing
     assert_eq!(
         store
-            .count(&fs_store::Query::new().of_type("Relationship"))
+            .count(&fs_objects::Query::new().of_type("Relationship"))
             .await
             .unwrap(),
         0
@@ -112,8 +112,8 @@ async fn sensitive_cards_are_never_proposed_or_linked() {
 
 #[tokio::test]
 async fn sensitive_card_needs_encrypted_store() {
-    // ADR 0029 is enforced by fs-store: a plain file store refuses sensitive cards.
-    let dir = std::env::temp_dir().join(format!("fs-contacts-{}", fs_store::ObjectId::new()));
+    // ADR 0029 is enforced by fs-objects: a plain file store refuses sensitive cards.
+    let dir = std::env::temp_dir().join(format!("fs-contacts-{}", fs_objects::ObjectId::new()));
     std::fs::create_dir_all(&dir).unwrap();
     let store: Arc<dyn Store> = Arc::new(TursoStore::open(dir.join("c.db")).await.unwrap());
     let r = PeopleRepo::new(store, ME);
@@ -121,7 +121,7 @@ async fn sensitive_card_needs_encrypted_store() {
     c.mark_sensitive(["pd:SexualPreference"]);
     assert!(matches!(
         r.create(c).await,
-        Err(Error::Store(fs_store::Error::EncryptionRequired(_)))
+        Err(Error::Store(fs_objects::Error::EncryptionRequired(_)))
     ));
     std::fs::remove_dir_all(dir).ok();
 }

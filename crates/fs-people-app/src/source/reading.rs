@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use fs_people_client::{PageWalk, PersonPages};
 use fs_people_core::{ListFilter, Result};
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 
 /// The filter of a search term; a blank term selects everybody.
 fn filter_of(term: &str) -> ListFilter {

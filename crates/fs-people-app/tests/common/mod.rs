@@ -18,7 +18,7 @@ use fs_people_app::PeopleAdapter;
 use fs_people_client::RpcPeople;
 use fs_people_core::{Card, People, PeopleRepo, card_of};
 use fs_people_server::PeopleServer;
-use fs_store::{ObjectId, Store, TursoStore};
+use fs_objects::{ObjectId, Store, TursoStore};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 

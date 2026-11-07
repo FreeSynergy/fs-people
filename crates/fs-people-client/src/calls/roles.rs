@@ -5,7 +5,7 @@
 use fs_interfaces::people_capnp::roles::Client;
 use fs_interfaces::rpc::write_object_id;
 use fs_people_core::{Result, RoleAssignment, RoleDefinition};
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use crate::problems::{Subject, error_of};
 use crate::read::{assignment, definition, unreadable};

@@ -6,7 +6,7 @@
 
 use fs_components_workbenches::people::{PersonField, PersonRow, PersonSection, PersonSheet};
 use fs_people_core::{Card, Error, RoleBook, card_of, is_ai_role};
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 use tokio::runtime::Handle;
 
 use super::marks::is_marked;

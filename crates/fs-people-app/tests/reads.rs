@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use common::{Scratch, World, person};
 use fs_interfaces::Capabilities;
 use fs_people_core::{Exporter, ListFilter, People, ReleasedExport, Result};
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 struct Counting {
     inner: Arc<dyn People>,

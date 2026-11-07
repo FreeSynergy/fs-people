@@ -14,7 +14,7 @@ use common::{ME, Served};
 use fs_interfaces::Capabilities;
 use fs_people_client::{RpcPeople, Timeouts};
 use fs_people_core::{Error, ListFilter, People, PeopleRepo, Result};
-use fs_store::{StoredObject, TursoStore};
+use fs_objects::{StoredObject, TursoStore};
 
 const SHORT: Duration = Duration::from_millis(300);
 
@@ -26,7 +26,7 @@ impl People for Hanging {
     fn capabilities(&self) -> Capabilities {
         Capabilities::new("hanging")
     }
-    async fn get(&self, _: fs_store::ObjectId) -> Result<Option<StoredObject>> {
+    async fn get(&self, _: fs_objects::ObjectId) -> Result<Option<StoredObject>> {
         Ok(None)
     }
     async fn list(&self, _: &ListFilter) -> Result<Vec<StoredObject>> {
@@ -68,7 +68,7 @@ async fn a_call_that_is_never_answered_ends_with_the_deadline() {
         .expect("the client's own deadline comes first");
     let said = got.unwrap_err();
     assert!(
-        matches!(said, Error::Store(fs_store::Error::Backend(_))),
+        matches!(said, Error::Store(fs_objects::Error::Backend(_))),
         "{said:?}"
     );
     assert!(
@@ -78,7 +78,7 @@ async fn a_call_that_is_never_answered_ends_with_the_deadline() {
     // The connection is still good for what is answered.
     assert!(
         people
-            .get(fs_store::ObjectId::new())
+            .get(fs_objects::ObjectId::new())
             .await
             .unwrap()
             .is_none()

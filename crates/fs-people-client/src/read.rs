@@ -15,7 +15,7 @@ use fs_people_core::{
     Error, ImportReport, Result, Revision, RoleAssignment, RoleDefinition, RoleField, RoleKind,
     RoleScope,
 };
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 use serde_json::Value;
 
 /// A reply that does not read.

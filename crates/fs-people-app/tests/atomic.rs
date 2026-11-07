@@ -14,7 +14,7 @@ use fs_components_workbenches::people::PeopleSource;
 use fs_people_app::PeopleAdapter;
 use fs_people_client::RpcPeople;
 use fs_people_core::{Card, People, Result, card_of};
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 /// The real client whose `get` lets another writer in right after it has read.
 struct Interfering {

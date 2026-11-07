@@ -5,7 +5,7 @@
 
 use fs_interfaces::people_capnp::persons::Client;
 use fs_people_core::{ListFilter, Result};
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 
 use crate::pages::{Cursor, PersonPage};
 use crate::problems::{Subject, error_of};

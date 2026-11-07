@@ -10,7 +10,7 @@ use std::sync::Arc;
 use common::{Served, add};
 use fs_people_client::{Cursor, PageWalk, PersonPages};
 use fs_people_core::{Card, Error, ListFilter, People};
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 async fn fill(people: &dyn People, prefix: &str, count: usize) -> Vec<ObjectId> {
     let mut ids = Vec::new();
@@ -95,7 +95,7 @@ async fn a_cursor_that_the_server_did_not_hand_out_is_a_clear_error() {
             .next(&ListFilter::default(), &Cursor::from_bytes(bytes))
             .await;
         match got {
-            Err(Error::Store(fs_store::Error::Invalid(text))) => {
+            Err(Error::Store(fs_objects::Error::Invalid(text))) => {
                 assert!(text.contains("cursor"), "{text}");
             }
             other => panic!("expected an invalid cursor, got {other:?}"),

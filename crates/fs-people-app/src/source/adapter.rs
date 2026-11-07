@@ -17,7 +17,7 @@ use fs_components_workbenches::people::{
 };
 use fs_people_client::{PersonPages, RevisedPeople};
 use fs_people_core::{Card, Error, People, Revision, RoleBook, card_of};
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
 use super::apply::apply_draft;
@@ -92,7 +92,7 @@ fn id_of(key: &str) -> Result<ObjectId, SourceError> {
 /// What the core said, in the workbench's terms. A store refusing a sensitive card is said plainly.
 fn reason(error: &Error) -> SourceError {
     match error {
-        Error::Store(fs_store::Error::EncryptionRequired(_)) => SourceError::failed(fill(
+        Error::Store(fs_objects::Error::EncryptionRequired(_)) => SourceError::failed(fill(
             said::NEEDS_ENCRYPTION,
             &[("error", &error.to_string())],
         )),

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use fs_people_core::Card;
 use fs_people_core::card::SENSITIVE_KEY;
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 use serde_json::Value;
 
 /// Is this stored person marked sensitive in any form?

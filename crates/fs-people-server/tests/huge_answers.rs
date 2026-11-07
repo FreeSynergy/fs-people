@@ -14,7 +14,7 @@ use fs_people_core::{
     RoleAssignment, RoleBook, RoleDefinition, RoleScope, SameAsProposal,
 };
 use fs_people_server::PeopleServer;
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 use serde_json::{Map, json};
 
 const MANY: usize = 2_000_000;

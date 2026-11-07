@@ -3,7 +3,7 @@
 //! Pattern: Repository (composite) — a group is a normal card of `kind: group`; membership is
 //! the `members` map, so no second object kind is needed.
 
-use fs_store::{Cond, ObjectId, Op, Query, StoredObject};
+use fs_objects::{Cond, ObjectId, Op, Query, StoredObject};
 use serde_json::Value;
 
 use super::consts::PROFILE_TYPE;

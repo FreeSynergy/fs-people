@@ -7,7 +7,7 @@ mod common;
 use common::{Served, add, person};
 use fs_people_client::RevisedPeople;
 use fs_people_core::{Card, Error, People, Revision, card_of};
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 /// The revision the server gives (the client cannot derive it: the wire keeps time in milliseconds).
 async fn read(people: &dyn RevisedPeople, id: ObjectId) -> (Revision, Card) {

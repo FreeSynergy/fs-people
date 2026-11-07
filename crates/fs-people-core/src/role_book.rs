@@ -5,7 +5,7 @@
 //! Rust form of `Roles` in `people.capnp` (fs-interfaces).
 
 use async_trait::async_trait;
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 use serde_json::{Map, Value};
 
 use crate::error::Result;

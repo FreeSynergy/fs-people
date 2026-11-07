@@ -9,7 +9,7 @@ use std::future::Future;
 
 use fs_interfaces::rpc::{Problem, failed, run_to_end, too_large, unsupported};
 use fs_people_core::Error;
-use fs_store::Error as StoreError;
+use fs_objects::Error as StoreError;
 
 const NOT_FOUND: &str = "https://freesynergy.net/problems/people/not-found";
 const CONFLICT: &str = "https://freesynergy.net/problems/people/conflict";

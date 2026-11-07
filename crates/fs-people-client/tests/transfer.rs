@@ -89,7 +89,7 @@ async fn a_card_is_exported_and_a_sensitive_one_only_on_release() {
 async fn exporting_a_missing_person_is_not_found() {
     let served = Served::start().await;
     let people = served.client();
-    let nobody = fs_store::ObjectId::new();
+    let nobody = fs_objects::ObjectId::new();
     let got = people.export_released(&VCardFormat, nobody, &[]).await;
     assert!(
         matches!(got, Err(Error::NotFound(id)) if id == nobody),

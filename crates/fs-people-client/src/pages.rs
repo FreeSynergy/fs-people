@@ -11,7 +11,7 @@
 
 use async_trait::async_trait;
 use fs_people_core::{ListFilter, Result};
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 
 /// Where the next page starts: opaque, handed back as it came. It belongs to the filter it was
 /// given with, but the server checks only its form: a cursor of the wrong form is refused, a made-up

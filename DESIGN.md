@@ -1,20 +1,20 @@
 # fs-people – Design
 
 `fs-people` is the people program of FreeSynergy. This repo holds the **program core** (`crates/fs-people-core`, no GUI), its **server** (`crates/fs-people-server`), its **client** (`crates/fs-people-client`) and its frontend (`crates/fs-people-app`).
-A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-store`
+A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelope, stored through `fs-objects`
 (ADR 0014, 0019, 0020). Every program is at least a workbench (ADR 0037); the work surface is the workbench `people` in `fs-components`, which knows neither this core nor its types; `fs-people-app` connects the two.
 
 ## State
 
-Version 0.4.0 (updateIf, revision, roles as IRIs, server, client): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.36.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
+Version 0.4.0 (updateIf, revision, roles as IRIs, server, client): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.36.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-objects 0.2 (git tag).
 
 | Area | State |
 |---|---|
 | Typed `Card` (serde) with lossless unknown/vendor properties (`extra` maps on the card and every sub-object) | done; all 20 demo cards round-trip byte-equal as JSON |
 | Validation (RFC 9553: `@type`, `version` "1.0", `uid`, `kind` enum or `<domain>:<value>`, UTC date-times, required members of sub-objects, `members` only for groups) | done |
-| Contract `People` (trait, object-safe) + store-backed `PeopleRepo` (create / update / delete / get / get_by_uid / list / search / groups / links / import / export) | done; `PeopleRepo` depends on `dyn ObjectRepository` + `dyn ObjectQuery` only (narrow fs-store traits) |
+| Contract `People` (trait, object-safe) + store-backed `PeopleRepo` (create / update / delete / get / get_by_uid / list / search / groups / links / import / export) | done; `PeopleRepo` depends on `dyn ObjectRepository` + `dyn ObjectQuery` only (narrow fs-objects traits) |
 | Envelope derivation: type `Profile`, `name` (ADR 0032: `name.full`, else components, nickname, org, e-mail, uid), `context=people`, IRI `https://<instance>/people/<id>`, `sensitive` from the card | done |
-| Index fields: `uid`, `kind`, `name_sort`, `email` (lowercase), `phone` (E.164-ish), `nickname`, `org` (lowercase), `member` | done; `describes` moved to the envelope (fs-store 0.2) |
+| Index fields: `uid`, `kind`, `name_sort`, `email` (lowercase), `phone` (E.164-ish), `nickname`, `org` (lowercase), `member` | done; `describes` moved to the envelope (fs-objects 0.2) |
 | Envelope `describes` (AS2 `Profile.describes`) from the vendor property `freesynergy.net:describes`; `find_by_describes` | done |
 | Search by name / nickname / e-mail / phone / organisation (substring, case-insensitive) | done **in the store**: one query with an OR-group of `Op::Contains` (name, `name_sort`, nickname, e-mail, org, phone digits); Unicode case-insensitive, `%` `_` literal |
 | Listing / ordering | `list` ordered by the `name_sort` index ("surname, given") case-insensitively, limit/offset in the store (no Rust sort) |
@@ -22,7 +22,7 @@ Version 0.4.0 (updateIf, revision, roles as IRIs, server, client): provider of t
 | vCard 4.0 import/export via `calcard` (also reads 2.1/3.0); original kept per card (`text/vcard`, ADR 0030); re-import skips known `uid`s | done |
 | Groups / folders: `kind: group` + `members` (ADR 0037); add/remove member, resolve members, groups of a card | done |
 | Same-person proposals (ADR 0019/0029) as a `MatchStrategy` (default `SharedContactPoint`, swappable with `with_match_strategy`): shared normalised e-mail or phone, same `kind`, never for sensitive cards, groups, or already linked pairs; confirm creates an AS2 `Relationship` (`owl:sameAs`); unlink; deleting a card removes its links | done |
-| Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
+| Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-objects`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-people-core --example demo`: import demo contacts, list, search, export vCard | done |
 | Interface `People` + `RoleBook` (provider rule, ADR 0045): every method exists, what a provider does not override answers `Error::Unsupported`; `capabilities()` reports the same | done, draft |
 | Roles (ADR 0052): one card, several roles. A role file is a SKOS concept scheme in JSON-LD (`@context` with `@base`, `type: skos:ConceptScheme`, `names`, `roles[]`); the full id of a role is base + short id (ours: `https://freesynergy.net/ns/roles/`). Files lie side by side in `RoleRegistry` (one scheme per base, `load` replaces only the same base, checked first, swapped atomically, `store_role_config` keeps one object per base); your own roles are `define_role` objects. Found by full id, a short id means one of ours. `owner` is an id. Shipped: `ai`, `user`, `member`, `customer`, `supplier`, `lead`, `prospect` (en+de); `customer`/`supplier`/`lead`/`prospect` are `skos:Concept` without `cardKind`, so cards of kind `org` may hold them | done, provisional |
@@ -50,7 +50,7 @@ Imports no `blinc_*` crate (ADR 0009). Arguments: `--socket <path>` (required: t
 
 **Over the socket (since the client exists):** `PeopleAdapter` holds `Arc<dyn People>`, `Arc<dyn RoleBook>`, `Arc<dyn PersonPages>` and `Arc<dyn RevisedPeople>`, and `main.rs` puts an `RpcPeople` (`fs-people-client`) behind all four. The app starts no server and opens no store: without `--socket` it stops and names `fs-people-server --socket`; `--store` is refused with a pointer to the server's `--data`. The actor is the server's `--actor`, no longer fixed in the app. `transfer.rs` (import, export) goes through the same client.
 
-Dependencies of the app: `fs-people-core` only for types and traits (`Card`, `People`, `RoleBook`, `ListFilter`, `Error`, `VCardFormat`, `card_of`), `fs-store` only for the types `ObjectId` and `StoredObject` and the variant of `Error::Store` it reads; neither is used to hold or open data. The edit logic on a `Card` (`source/apply.rs`, `marks.rs`) stays in the app: it works on the JSON of the card the server sent.
+Dependencies of the app: `fs-people-core` only for types and traits (`Card`, `People`, `RoleBook`, `ListFilter`, `Error`, `VCardFormat`, `card_of`), `fs-objects` only for the types `ObjectId` and `StoredObject` and the variant of `Error::Store` it reads; neither is used to hold or open data. The edit logic on a `Card` (`source/apply.rs`, `marks.rs`) stays in the app: it works on the JSON of the card the server sent.
 
 Known limits: every call still blocks the interface thread until the server has answered (the adapter calls `block_on`), so a slow server freezes the window as before; there is no `subscribe` in the app, a change by someone else shows after the next reload only.
 
@@ -93,7 +93,7 @@ Implemented, exactly what the app uses: `People::{capabilities, get, list, creat
 
 What does not arrive over the wire, and what the client does about it:
 
-* **`StoredObject`** is built from the `Person`: the envelope via `read_envelope`, the JSContact text parsed as `content`, `content_type` `application/jscontact+json`. `original` (ADR 0030) and `index` are `None` / empty: the contract has no place for them. `fs-store` has no revision field and the revision cannot be derived from the object read here (`updated` comes in **milliseconds**, the revision is made from microseconds), so `RevisedPeople::get_revised` hands on `Person.revision` as it came (a narrow trait beside `People`, to move up to the core with a second user). `update_checked` is `updateIf`: a refusal whose detail starts `conflict:` (the marker the contract defines, not a sentence for people) is `Error::Changed(id)`, any other `people/conflict` stays `Error::Conflict`.
+* **`StoredObject`** is built from the `Person`: the envelope via `read_envelope`, the JSContact text parsed as `content`, `content_type` `application/jscontact+json`. `original` (ADR 0030) and `index` are `None` / empty: the contract has no place for them. `fs-objects` has no revision field and the revision cannot be derived from the object read here (`updated` comes in **milliseconds**, the revision is made from microseconds), so `RevisedPeople::get_revised` hands on `Person.revision` as it came (a narrow trait beside `People`, to move up to the core with a second user). `update_checked` is `updateIf`: a refusal whose detail starts `conflict:` (the marker the contract defines, not a sentence for people) is `Error::Changed(id)`, any other `people/conflict` stays `Error::Conflict`.
 * **`ListFilter.limit` / `offset`** do not exist in the contract. The client reads pages (cursor) until the cursor is empty or `offset + limit` people are there, then cuts. A deep `offset` therefore reads the pages before it, and the server cuts each page from a whole list.
 * **`search(term)`** is `list` with `term`: the contract has no search call.
 * **`PersonPages`** is the page-wise reading: `first(filter)` and `next(filter, cursor)` answer a `PersonPage { items, next: Option<Cursor> }`; the total is unknown. `limit` and `offset` of the filter are not used there. The server checks only the form of a cursor (a version byte and an 8-byte position): one of the wrong form is `Error::Store(Invalid)` ("invalid cursor"); a made-up cursor of the right form, or the cursor of another filter, is taken silently as a place and gives the wrong page (pinned in `tests/pages.rs`). **Wish for `fs-interfaces`:** the filter, and a signature, belong in the cursor, so a foreign cursor is refused; the filter belongs there, not in the client. The cursor is a place in the ordered list today (`fs-interfaces` `rpc/page.rs`): a person added before the boundary between two pages comes round once more at the start of the next page, one removed before it makes the next person be skipped (both pinned in `tests/pages.rs`); a stable key is planned there before 1.0.
@@ -170,12 +170,12 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.36.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
+* `fs-objects` (git tag v0.2.0). `fs-interfaces` (git tag v0.36.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
 * `fs-components-app`, `fs-components-workbenches` (frontend only; git `rev`, provisional until a tag exists).
-* `serde`, `serde_json`, `chrono` (timestamps), `thiserror`, `async-trait` (MIT OR Apache-2.0, already used by fs-store); dev: `tokio`, `proptest`.
+* `serde`, `serde_json`, `chrono` (timestamps), `thiserror`, `async-trait` (MIT OR Apache-2.0, already used by fs-objects); dev: `tokio`, `proptest`.
 * All transitive licences are MIT / Apache-2.0 / BSD / ISC / Unicode-3.0 / Unlicense (a few have an LGPL *alternative*, never required).
 
 ## Decisions
@@ -215,7 +215,7 @@ Unsupported in the role files (nothing pretends otherwise): export of an `org:Ro
 * **Details of a role (provisional):** `assign` refuses `details` for a role not owned by `fs-people`: the owner of a role holds its fields (`people.capnp`). For a role already held, the same or no details answer the assignment, other details are a conflict: nothing is dropped and nothing replaced; end the assignment first.
 * **Scope of an assignment (provisional):** a non-empty `scope` must be an IRI, which also keeps it apart from the internal "personal". `RoleDefinition.scope` decides: `group` needs one, `personal` has none, `public` can be either. `markAi` does not ask, an AI is one everywhere.
 * **`peopleWith` with an empty scope (provisional):** means personal, as in `RoleAssignment.scope`; a non-IRI, also the literal `personal`, is refused. "Everywhere" has no query there: `PersonFilter.role` answers that, as a filter over people. If a consumer needs the ids across all scopes, the contract needs an explicit form.
-* **Sensitive cards in the binary:** the binary opens an unencrypted store, so `fs-store` refuses them (`people/encryption-required`). The key provider comes with the key vault (ADR 0024).
+* **Sensitive cards in the binary:** the binary opens an unencrypted store, so `fs-objects` refuses them (`people/encryption-required`). The key provider comes with the key vault (ADR 0024).
 * **Role definition format (provisional, proposal of `docs/en/interfaces/roles.md`, not yet decided by the owner):** SKOS in JSON-LD as in the State table. Assumptions: the base `https://freesynergy.net/ns/roles/` (who controls the domain is not checked); `broader` and `closeMatch` are one address each; `ai` is `skos:Concept`, `user` and `member` `org:Role`; owners `fs-identity` (user), `fs-crm` (customer, lead, prospect), `fs-erp` (supplier) are ids taken from the documentation's "later CRM/ERP"; a short id given to `define_role` or in the old array means one of ours. Types of fields and SHACL are not read.
 * **Registry rules:** a short id has no `:`, `/`, `#` and is not empty; a full id may exist once across all bases (`Conflict`); loads read, change and write under one write lock. `RoleDefinition.id` and `RoleAssignment.role` are always full ids.
 * **AI recognition across forms:** `is_ai` and `mark_ai` accept the role stored as `ai` or as the full id. Consumers compare with `is_ai_role`, never with the literal `"ai"`.
@@ -224,7 +224,7 @@ Unsupported in the role files (nothing pretends otherwise): export of an `org:Ro
 * **An array is resolved when saved:** the old array (short ids) adds to the roles in force; what is saved and loaded is the resulting file of our base, not the array, and holders are checked against exactly that set. So running and after a restart the same roles hold. A stored array from before is still merged over the shipped roles on restore.
 * **Owner migration:** a sentence becomes an id ("CRM (later)" -> `crm-later`); if nothing readable is left ("?") it becomes `unknown`. Dropping the file would lose a whole configuration for one bad field, and `unknown` invents no program; it is not `fs-people`, so no details are kept for that role. Only reporting was the alternative; it would leave the roles out of force.
 * **Friends and partners are relations (vCard `RELATED`), not roles; clubs need research:** not built.
-* **The trait returns `StoredObject` of `fs-store`:** a provider without a store has to build one. To be decided before 1.0.
+* **The trait returns `StoredObject` of `fs-objects`:** a provider without a store has to build one. To be decided before 1.0.
 * **`supportReport` is the standard** for what a provider offers (strategy decision); a method `capabilities` is not added to `People`.
 * **Gaps of `people.capnp` (for the owner of the contract):**
   * `RoleDefinition` has no place for the lossless `extra` of the core: a role read over the wire loses it. It stays in what the store and a configuration hold.
@@ -236,7 +236,7 @@ Unsupported in the role files (nothing pretends otherwise): export of an `org:Ro
 * **`Registry` of the feed** has the same shape as the one in `fs-tasks-core`; it belongs into a shared crate once a third program needs it (ADR 0043 §4).
 * **Group cards vs `fs-groups`:** `create_group` / `members` stay as JSContact lists of people; belonging and rights go to `fs-groups` (ADR 0050).
 
-## fs-store 0.2 – what is used, what is still missing
+## fs-objects 0.2 – what is used, what is still missing
 
 Used: `order_by_index("name_sort")` (case-insensitive list order and paging), `Cond`/`Op::Contains` OR-group (search), `Cond::Describes`
 and envelope `describes`, OR-group of two `Eq` conditions for the `Relationship` lookup (one query instead of two).

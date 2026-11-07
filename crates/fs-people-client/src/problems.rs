@@ -12,7 +12,7 @@ use fs_interfaces::rpc::client::problems::{
     Failure, first_number, local_type, object_id_in, unsupported_of, without_store_prefix,
 };
 use fs_people_core::{Error, Issue};
-use fs_store::{Error as StoreError, ObjectId};
+use fs_objects::{Error as StoreError, ObjectId};
 
 /// What a call was about, for the variants that name it.
 #[derive(Clone, Debug)]

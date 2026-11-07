@@ -11,7 +11,7 @@ use fs_interfaces::rpc::{bind_socket, serve};
 use fs_people_client::RpcPeople;
 use fs_people_core::{Card, People, PeopleRepo};
 use fs_people_server::PeopleServer;
-use fs_store::{Store, TursoStore};
+use fs_objects::{Store, TursoStore};
 use tokio::sync::oneshot;
 
 pub const ME: &str = "https://local.invalid/users/owner";
@@ -110,6 +110,6 @@ pub fn person(name: &str, email: &str) -> Card {
 }
 
 /// Create through the client; answers the object id.
-pub async fn add(people: &dyn People, card: Card) -> fs_store::ObjectId {
+pub async fn add(people: &dyn People, card: Card) -> fs_objects::ObjectId {
     people.create(card).await.unwrap().envelope.id
 }

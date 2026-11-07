@@ -6,9 +6,9 @@ mod common;
 
 use common::{Served, add, person};
 use fs_people_core::{Error, ListFilter, People};
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
-fn names(found: &[fs_store::StoredObject]) -> Vec<&str> {
+fn names(found: &[fs_objects::StoredObject]) -> Vec<&str> {
     found.iter().map(|o| o.envelope.name.as_str()).collect()
 }
 
@@ -141,7 +141,7 @@ async fn a_plain_store_refusing_a_sensitive_card_says_so() {
     assert!(
         matches!(
             refused,
-            Error::Store(fs_store::Error::EncryptionRequired(_))
+            Error::Store(fs_objects::Error::EncryptionRequired(_))
         ),
         "{refused:?}"
     );
