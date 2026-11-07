@@ -5,7 +5,7 @@
 //! named, so nobody thinks it is gone.
 
 use fs_components_workbenches::people::{PersonField, PersonSection, PersonSheet};
-use fs_people_core::{AI_ROLE, Card, Error, RoleBook};
+use fs_people_core::{Card, Error, RoleBook, is_ai_role};
 use fs_store::StoredObject;
 use tokio::runtime::Handle;
 
@@ -139,7 +139,7 @@ fn role_section(
             return (PersonSection::new(field::ROLES, fields), false);
         }
     };
-    let is_ai = held.iter().any(|a| a.role == AI_ROLE);
+    let is_ai = held.iter().any(|a| is_ai_role(&a.role));
     let fields = held
         .iter()
         .map(|assignment| {

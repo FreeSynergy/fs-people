@@ -1,10 +1,11 @@
 //! The wire form of the contract's values.
 //!
-//! Pattern: Adapter (declarations) — people, the report of an import and roles, one file each.
+//! Pattern: Adapter (declarations) — people, the report of an import and roles and their SKOS terms, one file each.
 
 mod person;
 mod report;
 mod role;
+mod terms;
 
 pub(crate) use person::{
     count, ids_count, intake, proposals_count, read_card, read_filter, relations_count, required,

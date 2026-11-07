@@ -7,6 +7,9 @@
 //! optimistic lock): a writer hands back the revision it read, and the card is replaced only if it
 //! still has it.
 //!
+//! The revision changes at every write that changes the state; an undo in the store may bring an
+//! earlier one back; the same state always has the same revision, so no write is lost by that.
+//!
 //! The revision is not stored: it is derived from what is stored, so there is nothing to migrate and no
 //! second place that can disagree. It is the store's `updated` (microseconds) and the card as JSON
 //! (FNV-1a), so two writes within one tick still differ, and a card written to the same content differs

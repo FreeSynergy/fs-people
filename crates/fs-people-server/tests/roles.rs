@@ -32,6 +32,12 @@ fn fill_coach(mut d: fs_interfaces::people_capnp::role_definition::Builder<'_>) 
     d.set_card_kind("individual");
 }
 
+const BASE: &str = "https://freesynergy.net/ns/roles/";
+
+fn iris(short: &[&str]) -> Vec<String> {
+    short.iter().map(|id| format!("{BASE}{id}")).collect()
+}
+
 async fn all_ids(roles: &roles::Client) -> Vec<String> {
     let answer = roles.list_request().send().promise.await.unwrap();
     let items = answer.get().unwrap().get_items().unwrap();
@@ -45,14 +51,21 @@ async fn all_ids(roles: &roles::Client) -> Vec<String> {
 async fn definitions_arrive_as_they_were_defined() {
     with_server(|root| async move {
         let roles = roles_of(&root).await;
-        assert_eq!(all_ids(&roles).await, ["ai", "customer", "member", "user"]);
+        assert_eq!(
+            all_ids(&roles).await,
+            iris(&[
+                "ai", "customer", "lead", "member", "prospect", "supplier", "user"
+            ])
+        );
 
         let mut define = roles.define_request();
         fill_coach(define.get().init_definition());
         define.send().promise.await.unwrap();
         assert_eq!(
             all_ids(&roles).await,
-            ["ai", "coach", "customer", "member", "user"]
+            iris(&[
+                "ai", "coach", "customer", "lead", "member", "prospect", "supplier", "user"
+            ])
         );
 
         let mut get = roles.get_request();
@@ -104,7 +117,7 @@ async fn definitions_arrive_as_they_were_defined() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn a_configuration_is_checked_then_swapped() {
+async fn a_configuration_is_checked_then_added_or_swapped() {
     with_server(|root| async move {
         let roles = roles_of(&root).await;
         let mut bad = roles.load_config_request();
@@ -114,13 +127,31 @@ async fn a_configuration_is_checked_then_swapped() {
         let mut broken = roles.load_config_request();
         broken.get().set_json("no json");
         expect_problem(broken.send().promise.await, INVALID);
-        assert_eq!(all_ids(&roles).await.len(), 4, "nothing changed");
+        assert_eq!(all_ids(&roles).await.len(), 7, "nothing changed");
 
         let good = json!([{"id": "x", "names": {"en": "X"}, "owner": "o", "scope": "public"}]);
         let mut load = roles.load_config_request();
         load.get().set_json(good.to_string().as_str());
         load.send().promise.await.unwrap();
-        assert_eq!(all_ids(&roles).await, ["x"]);
+        let mut all = iris(&["ai", "customer", "lead", "member", "prospect", "supplier"]);
+        all.extend(iris(&["user", "x"]));
+        assert_eq!(
+            all_ids(&roles).await,
+            all,
+            "the array form is added to the shipped roles"
+        );
+
+        // A scheme file replaces the scheme of its base: only what it lists stays.
+        let scheme = json!({
+            "@context": [{"@base": BASE}], "id": "", "type": "skos:ConceptScheme",
+            "names": {"en": "Mine"},
+            "roles": [{"id": "y", "type": "skos:Concept", "names": {"en": "Y"},
+                       "owner": "o", "scope": "public"}]
+        });
+        let mut load = roles.load_config_request();
+        load.get().set_json(scheme.to_string().as_str());
+        load.send().promise.await.unwrap();
+        assert_eq!(all_ids(&roles).await, iris(&["y"]));
     })
     .await;
 }
@@ -156,7 +187,11 @@ async fn assignments_come_and_go() {
         let answer = of.send().promise.await.unwrap();
         let items = answer.get().unwrap().get_items().unwrap();
         assert_eq!(items.len(), 1);
-        assert_eq!(items.get(0).get_role().unwrap().to_str().unwrap(), "member");
+        assert_eq!(
+            items.get(0).get_role().unwrap().to_str().unwrap(),
+            format!("{BASE}member"),
+            "the answer carries the full id; the short one was accepted in the request"
+        );
         assert_eq!(items.get(0).get_details().unwrap().to_str().unwrap(), "{}");
         assert_eq!(read_uuid(items.get(0).get_id().unwrap()), Some(id));
         assert_eq!(read_uuid(items.get(0).get_person().unwrap()), Some(ada));

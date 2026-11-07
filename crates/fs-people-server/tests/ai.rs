@@ -21,7 +21,10 @@ async fn ai_marking_shows_in_kind_and_role() {
         write_uuid(mark.get().init_person(), Some(ada));
         let answer = mark.send().promise.await.unwrap();
         let held = answer.get().unwrap().get_assignment().unwrap();
-        assert_eq!(held.get_role().unwrap().to_str().unwrap(), "ai");
+        assert_eq!(
+            held.get_role().unwrap().to_str().unwrap(),
+            "https://freesynergy.net/ns/roles/ai"
+        );
 
         let mut is_ai = roles.is_ai_request();
         write_uuid(is_ai.get().init_person(), Some(ada));
