@@ -35,7 +35,14 @@ async fn an_older_configuration_with_a_sentence_as_owner_is_read_and_migrated() 
     let old = json!([{"id": "coach", "names": {"en": "Coach"}, "owner": "CRM (later)", "scope": "group"}]);
     put_stored(&store, old).await;
     let again = PeopleRepo::new(store, ME);
-    assert!(again.restore_role_config().await.unwrap().skipped().is_empty());
+    assert!(
+        again
+            .restore_role_config()
+            .await
+            .unwrap()
+            .skipped()
+            .is_empty()
+    );
     let coach = again.role("coach").await.unwrap().unwrap();
     assert_eq!(coach.owner, "crm-later");
     // Newly typed input stays strict.

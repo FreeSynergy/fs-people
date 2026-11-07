@@ -143,6 +143,11 @@ pub(super) fn owner_id(owner: &str) -> String {
         .filter(|w| !w.is_empty())
         .map(str::to_lowercase)
         .collect();
+    // Nothing readable left ("?"): a marked gap is better than losing the whole file, and it says
+    // what it is. It is not `fs-people`, so no details are kept for the role (the safe side).
+    if words.is_empty() {
+        return "unknown".into();
+    }
     words.join("-")
 }
 

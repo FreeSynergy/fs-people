@@ -59,7 +59,9 @@ async fn a_held_role_survives_an_array_and_a_restart() {
 async fn the_second_scenario_is_the_same_running_and_restarted() {
     let (r, store) = setup().await;
     let ai = json!({"id": "ai", "names": {"en": "AI"}, "owner": "fs-people", "scope": "public"});
-    r.store_role_config(&ours(&[ai, own("mine")])).await.unwrap();
+    r.store_role_config(&ours(&[ai, own("mine")]))
+        .await
+        .unwrap();
     assert!(r.role("member").await.unwrap().is_none());
     r.store_role_config(&json!([own("coach")]).to_string())
         .await
@@ -68,7 +70,14 @@ async fn the_second_scenario_is_the_same_running_and_restarted() {
     assert_eq!(running.len(), 3);
 
     let again = PeopleRepo::new(store, ME);
-    assert!(again.restore_role_config().await.unwrap().skipped().is_empty());
+    assert!(
+        again
+            .restore_role_config()
+            .await
+            .unwrap()
+            .skipped()
+            .is_empty()
+    );
     assert_eq!(ids(again.roles().await.unwrap()), running);
     assert!(again.role("member").await.unwrap().is_none());
 }
