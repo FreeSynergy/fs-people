@@ -7,12 +7,20 @@ use std::sync::Arc;
 
 use fs_people_core::{ListFilter, Result};
 
-use crate::pages::{PersonPage, PersonPages};
+use crate::pages::{Cursor, PersonPage, PersonPages};
+
+/// Where the walk stands.
+enum Place {
+    Start,
+    At(Cursor),
+    End,
+}
 
 /// A walk over the pages of one filter. Dropping it forgets the place; a new filter is a new walk.
 pub struct PageWalk {
-    _pages: Arc<dyn PersonPages>,
-    _filter: ListFilter,
+    pages: Arc<dyn PersonPages>,
+    filter: ListFilter,
+    place: Place,
 }
 
 impl PageWalk {
@@ -20,8 +28,9 @@ impl PageWalk {
     #[must_use]
     pub fn new(pages: Arc<dyn PersonPages>, filter: ListFilter) -> Self {
         Self {
-            _pages: pages,
-            _filter: filter,
+            pages,
+            filter,
+            place: Place::Start,
         }
     }
 
@@ -29,8 +38,13 @@ impl PageWalk {
     ///
     /// # Errors
     /// As [`PersonPages::first`] and [`PersonPages::next`].
-    #[allow(clippy::unused_async)]
     pub async fn next_page(&mut self) -> Result<Option<PersonPage>> {
-        todo!("step 4: walk")
+        let page = match &self.place {
+            Place::End => return Ok(None),
+            Place::Start => self.pages.first(&self.filter).await?,
+            Place::At(cursor) => self.pages.next(&self.filter, cursor).await?,
+        };
+        self.place = page.next.clone().map_or(Place::End, Place::At);
+        Ok(Some(page))
     }
 }

@@ -80,11 +80,15 @@ impl People for RpcPeople {
 
 #[async_trait]
 impl PersonPages for RpcPeople {
-    async fn first(&self, _filter: &ListFilter) -> Result<PersonPage> {
-        Err(fs_interfaces::Unsupported::new("people", "pages: not yet").into())
+    async fn first(&self, filter: &ListFilter) -> Result<PersonPage> {
+        let filter = filter.clone();
+        self.call(move |r| async move { persons::page(&r.persons, &filter, None).await })
+            .await
     }
 
-    async fn next(&self, _filter: &ListFilter, _cursor: &Cursor) -> Result<PersonPage> {
-        Err(fs_interfaces::Unsupported::new("people", "pages: not yet").into())
+    async fn next(&self, filter: &ListFilter, cursor: &Cursor) -> Result<PersonPage> {
+        let (filter, cursor) = (filter.clone(), cursor.clone());
+        self.call(move |r| async move { persons::page(&r.persons, &filter, Some(&cursor)).await })
+            .await
     }
 }

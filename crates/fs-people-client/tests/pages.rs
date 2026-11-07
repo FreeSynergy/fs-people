@@ -104,27 +104,34 @@ async fn a_cursor_that_the_server_did_not_hand_out_is_a_clear_error() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_change_between_two_pages_moves_the_boundary_but_loses_nothing_after_it() {
+async fn a_person_added_before_the_boundary_comes_round_once_more() {
+    let served = Served::start().await;
+    let people = served.client();
+    fill(&people, "P", 150).await;
+    let filter = ListFilter::default();
+    let first = people.first(&filter).await.unwrap();
+    // The cursor is a place in the list today (`fs-interfaces` page.rs): a person who sorts before
+    // everything moves the boundary by one, so the last of page one comes again. Nothing errs.
+    add(&people, Card::individual("A new first")).await;
+    let second = people.next(&filter, &first.next.unwrap()).await.unwrap();
+    assert_eq!(second.items.len(), 51);
+    assert_eq!(second.items[0].envelope.id, first.items[99].envelope.id);
+    assert!(second.next.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_person_removed_before_the_boundary_skips_the_next_one() {
     let served = Served::start().await;
     let people = served.client();
     let ids = fill(&people, "P", 150).await;
     let filter = ListFilter::default();
     let first = people.first(&filter).await.unwrap();
-    let cursor = first.next.clone().unwrap();
-
-    // A new person who sorts before everything: the boundary moves by one (the cursor is a place
-    // in the list today, `fs-interfaces` page.rs), so the last of page one comes again.
-    add(&people, Card::individual("A new first")).await;
-    let second = people.next(&filter, &cursor).await.unwrap();
-    assert_eq!(second.items.len(), 51);
-    assert_eq!(second.items[0].envelope.id, first.items[99].envelope.id);
-    assert!(second.next.is_none());
-
-    // One removed from the first page: one person of the second page is skipped, nobody errs.
     people.delete(ids[0]).await.unwrap();
-    let after = people.next(&filter, &cursor).await.unwrap();
-    assert_eq!(after.items.len(), 49);
-    assert!(after.next.is_none());
+    let second = people.next(&filter, &first.next.unwrap()).await.unwrap();
+    // 149 are left; the place 100 is now the 101st of the old list: P 100 was skipped.
+    assert_eq!(second.items.len(), 49);
+    assert_eq!(second.items[0].envelope.name, "P 101");
+    assert!(second.next.is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
