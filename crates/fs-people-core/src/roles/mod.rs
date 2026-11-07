@@ -14,6 +14,6 @@ mod scheme;
 pub use assignment::RoleAssignment;
 pub use definition::{RoleDefinition, RoleField, RoleKind, RoleScope};
 pub use directory::RoleDirectory;
-pub use ident::{AI_ROLE, AI_ROLE_IRI, ROLE_BASE, full_id, stored_forms};
+pub use ident::{AI_ROLE, AI_ROLE_IRI, ROLE_BASE, full_id, is_ai_role, stored_forms};
 pub use registry::RoleRegistry;
 pub use scheme::RoleScheme;

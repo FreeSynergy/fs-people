@@ -13,6 +13,7 @@ mod envelope;
 mod find;
 mod groups;
 mod handle;
+mod holders;
 mod links;
 mod proposals;
 mod relations;

@@ -47,4 +47,7 @@ pub use repo::{
 };
 pub use revision::Revision;
 pub use role_book::RoleBook;
-pub use roles::{AI_ROLE, RoleAssignment, RoleDefinition, RoleField, RoleRegistry, RoleScope};
+pub use roles::{
+    AI_ROLE, AI_ROLE_IRI, ROLE_BASE, RoleAssignment, RoleDefinition, RoleDirectory, RoleField,
+    RoleKind, RoleRegistry, RoleScheme, RoleScope, full_id, is_ai_role, stored_forms,
+};

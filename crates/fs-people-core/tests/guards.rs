@@ -3,7 +3,7 @@
 mod common;
 
 use common::{person, repo, setup};
-use fs_people_core::{Card, Error, RoleDefinition, RoleRegistry, RoleScope};
+use fs_people_core::{Card, Error, RoleDefinition, RoleRegistry, RoleScope, full_id};
 use fs_store::{Envelope, ObjectId};
 use serde_json::{Map, json};
 
@@ -149,7 +149,7 @@ async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
         json!([{"id": "coach", "names": {"en": "Configured"}, "owner": "o", "scope": "group"}]);
     r.store_role_config(&config.to_string()).await.unwrap();
     let ids: Vec<_> = r.roles().await.unwrap().into_iter().map(|d| d.id).collect();
-    assert_eq!(ids, ["coach"], "one id, one definition");
+    assert_eq!(ids, [full_id("coach")], "one id, one definition");
 
     let bad = json!([{"id": "x", "names": {}, "owner": "o"}]);
     assert!(matches!(

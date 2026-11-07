@@ -25,8 +25,8 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-people-core --example demo`: import demo contacts, list, search, export vCard | done |
 | Interface `People` + `RoleBook` (provider rule, ADR 0045): every method exists, what a provider does not override answers `Error::Unsupported`; `capabilities()` reports the same | done, draft |
-| Roles (ADR 0052): one card, several roles. Definitions are objects: configuration (`roles/known.json`, swapped atomically after checking, `load_role_config`) and your own (`define_role`, in the store). No role list in the code | done |
-| Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), never on the card, so no export reveals them (ADR 0029) | done |
+| Roles (ADR 0052): one card, several roles. A role file is a SKOS concept scheme in JSON-LD (`@context` with `@base`, `type: skos:ConceptScheme`, `names`, `roles[]`); the full id of a role is base + short id (ours: `https://freesynergy.net/ns/roles/`). Files lie side by side in `RoleRegistry` (one scheme per base, `load` replaces only the same base, checked first, swapped atomically, `store_role_config` keeps one object per base); your own roles are `define_role` objects. Found by full id, a short id means one of ours. `owner` is an id. Shipped: `ai`, `user`, `member`, `customer`, `supplier`, `lead`, `prospect` (en+de); `customer`/`supplier`/`lead`/`prospect` are `skos:Concept` without `cardKind`, so cards of kind `org` may hold them | done, provisional |
+| Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), the role stored as full id (an older short id is read as ours and answered as the full id; queries ask both forms), never on the card, so no export reveals them (ADR 0029) | done |
 | Relations (what someone is to me): JSContact `relatedTo` on the card, `relate` / `unrelate` / `relations` | done |
 | AI marking (ADR 0054): `mark_ai` = `kind: application` (RFC 9553 §2.1.4, travels with the card) + role `ai` (plain software is `application` too). Restricts nothing | done |
 | Server `fs-people-server`: every method of `People`, `Persons`, `Roles`; `subscribe` (with `ended`), `supportReport`; typed problems (`people/not-found` 404, `people/conflict` 409, `people/invalid` 422, `people/sensitive` 403 (release missing), `people/sensitive-link` 403 (sensitive card is not linked), `people/encryption-required` 409, `people/stored-data` 500, shared `invalid-request` 422, `too-large` 413, `unsupported` 501); binary with `--socket`, `--data`, `--actor` | done, draft |
@@ -91,10 +91,14 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 | `fs-people-server/wire/*`, `errors.rs` | Adapter | values on the wire, limits of a message, core errors as RFC 9457 problems |
 | `fs-people-server/formats.rs` | Registry | media type to format of the core; an unknown type is `Unsupported` |
 | `fs-people-server/feed.rs`, `feed.rs` (core) | Observer | `PeopleFeed` to the shared forwarder; a read error ends the feed with `ended` |
-| `repo/role_config.rs` | Memento | the last accepted configuration as one object in the store |
+| `repo/role_config.rs` | Memento | the last accepted file of each base address as one object in the store |
 | `repo/role_facade.rs` | Facade | `RoleBook` and `PeopleFeed` over the inherent methods, writes take turns |
 | `role_book.rs`, `repo/{roles,assign}.rs` | Repository (interface + implementation) | role definitions and assignments, split from `People` so a provider of cards alone still fits |
-| `roles/registry.rs` | Registry, swapped atomically | configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
+| `roles/directory.rs` | Strategy (trait `RoleDirectory`) | callers ask the trait, tests run against it; why: shipped, own and test sources stay interchangeable |
+| `roles/registry.rs` | Registry, swapped atomically | one scheme per base; configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
+| `roles/scheme.rs` | Adapter | the JSON-LD role file into plain definitions with full ids; the old array form is read as a file of our base |
+| `roles/ident.rs` | Newtype-like functions | short id, base, full id, `is_ai_role`: the one place that knows both forms |
+| `repo/holders.rs` | Repository (queries) | who holds a role, asking every stored form |
 | `roles/{definition,assignment}.rs` | Value objects | the same form for shipped and own roles |
 | `card/relations.rs`, `repo/relations.rs` | Command | small edits of `relatedTo` |
 | `revision.rs`, `People::update_checked` | Newtype + Repository (optimistic lock) | `Revision` has `==` and nothing else, so no code can read it as a counter or an order (the contract says: compare for equality only); the trait method is the compare-and-set, the check and the write one step under the write turn. Derived from the stored time and card, not stored; the same for a sensitive card, and a refusal does not name the revision found (ADR 0029) |
@@ -165,6 +169,8 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Groups** are normal cards of `kind: group`; `members` maps member `uid` -> `true` (RFC 9553). Folder = group = mailing list (ADR 0037).
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
+
+Unsupported in the role files (nothing pretends otherwise): export of an `org:Role` assignment as `org:Membership`; the context file `roles.jsonld` (the string in `@context` is not fetched, only `@base` is read); SHACL and value types of `fields`; `closeMatch` and `broader` are stored and returned, never followed or checked; hierarchy queries; friends, partners (relations) and clubs (research open); a lead's move to prospect or customer (end one assignment, start the next).
 
 ## Open points of the `people` interface
 

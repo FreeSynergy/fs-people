@@ -10,7 +10,7 @@ use serde_json::Map;
 use super::handle::PeopleRepo;
 use super::role_rules::check_kind;
 use crate::error::{Error, Result};
-use crate::roles::{AI_ROLE, RoleAssignment};
+use crate::roles::{AI_ROLE, RoleAssignment, is_ai_role};
 
 const AI_KIND: &str = "application";
 
@@ -44,6 +44,6 @@ impl PeopleRepo {
             return Ok(false);
         };
         let roles = self.roles_of(person).await?;
-        Ok(card.kind() == AI_KIND && roles.iter().any(|a| a.role == AI_ROLE))
+        Ok(card.kind() == AI_KIND && roles.iter().any(|a| is_ai_role(&a.role)))
     }
 }

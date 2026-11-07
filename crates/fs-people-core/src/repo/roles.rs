@@ -9,11 +9,12 @@ use super::consts::{CONTEXT, ROLE_DEFINITION_TYPE};
 use super::envelope::stored_value;
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
-use crate::roles::RoleDefinition;
+use crate::roles::{RoleDefinition, RoleDirectory, full_id, stored_forms};
 
 impl PeopleRepo {
     /// Store a role of your own. Refused if the id is already taken.
-    pub async fn define_role(&self, definition: RoleDefinition) -> Result<()> {
+    pub async fn define_role(&self, mut definition: RoleDefinition) -> Result<()> {
+        definition.id = full_id(&definition.id);
         definition.check()?;
         if self.role(&definition.id).await?.is_some() {
             return Err(Error::Conflict(format!(
@@ -40,7 +41,7 @@ impl PeopleRepo {
 
     /// Remove a role of your own. Refused while someone holds it, or if it comes from configuration.
     pub async fn undefine_role(&self, id: &str) -> Result<()> {
-        if self.registry.snapshot().contains_key(id) {
+        if self.registry.find(id).is_some() {
             return Err(Error::Conflict(format!(
                 "role {id} comes from configuration"
             )));
@@ -48,7 +49,7 @@ impl PeopleRepo {
         let Some(stored) = self.stored_role(id).await? else {
             return Err(Error::UnknownRole(id.to_string()));
         };
-        if !self.people_with_role(id, None).await?.is_empty() {
+        if !self.people_with_role(&full_id(id), None).await?.is_empty() {
             return Err(Error::Conflict(format!("role {id} is still in use")));
         }
         self.objects.delete(stored.envelope.id, &self.actor).await?;
@@ -63,12 +64,12 @@ impl PeopleRepo {
 
     /// The definition of a role, configured or your own.
     pub async fn role(&self, id: &str) -> Result<Option<RoleDefinition>> {
-        if let Some(def) = self.registry.snapshot().get(id) {
-            return Ok(Some(def.clone()));
+        if let Some(def) = self.registry.find(id) {
+            return Ok(Some(def));
         }
         self.stored_role(id)
             .await?
-            .map(|o| stored_value(&o.content))
+            .map(|o| stored_def(&o))
             .transpose()
     }
 
@@ -77,12 +78,11 @@ impl PeopleRepo {
         let q = Query::new()
             .of_type(ROLE_DEFINITION_TYPE)
             .in_context(CONTEXT);
-        let configured = self.registry.snapshot();
-        let mut out: Vec<RoleDefinition> = configured.values().cloned().collect();
+        let mut out = self.registry.all();
         for o in self.reads.query(&q).await? {
-            let own: RoleDefinition = stored_value(&o.content)?;
+            let own = stored_def(&o)?;
             // Configuration wins, as in `role`: one id, one definition.
-            if !configured.contains_key(&own.id) {
+            if self.registry.find(&own.id).is_none() {
                 out.push(own);
             }
         }
@@ -91,11 +91,24 @@ impl PeopleRepo {
     }
 
     pub(super) async fn stored_role(&self, id: &str) -> Result<Option<StoredObject>> {
-        let q = Query::new()
-            .of_type(ROLE_DEFINITION_TYPE)
-            .in_context(CONTEXT)
-            .with_index("role_id", id)
-            .limit(1);
-        Ok(self.reads.query(&q).await?.into_iter().next())
+        // Older data may hold the short id of one of our roles.
+        for form in stored_forms(id) {
+            let q = Query::new()
+                .of_type(ROLE_DEFINITION_TYPE)
+                .in_context(CONTEXT)
+                .with_index("role_id", form)
+                .limit(1);
+            if let Some(found) = self.reads.query(&q).await?.into_iter().next() {
+                return Ok(Some(found));
+            }
+        }
+        Ok(None)
     }
+}
+
+/// The definition in a stored object, with the full id.
+fn stored_def(o: &StoredObject) -> Result<RoleDefinition> {
+    let mut def: RoleDefinition = stored_value(&o.content)?;
+    def.id = full_id(&def.id);
+    Ok(def)
 }

@@ -3,7 +3,7 @@
 mod common;
 
 use common::{person, repo};
-use fs_people_core::{Error, RoleDefinition, RoleRegistry, RoleScope};
+use fs_people_core::{Error, RoleDefinition, RoleRegistry, RoleScope, full_id};
 use serde_json::{Map, json};
 
 const CLUB: &str = "https://local.invalid/groups/club";
@@ -31,7 +31,7 @@ async fn one_person_has_many_roles_without_a_second_record() {
         .map(|a| a.role)
         .collect();
     held.sort();
-    assert_eq!(held, ["customer", "member"]);
+    assert_eq!(held, ["customer", "member"].map(full_id));
     assert_eq!(r.list(&Default::default()).await.unwrap().len(), 1);
     assert_eq!(
         r.people_with_role("member", Some(CLUB)).await.unwrap(),
@@ -92,10 +92,16 @@ async fn a_role_never_leaves_with_the_card() {
 #[tokio::test]
 async fn own_roles_are_defined_like_ours_and_survive_as_objects() {
     let r = repo().await;
-    let coach = RoleDefinition::new("coach", "Coach", "my club", RoleScope::Group);
+    let coach = RoleDefinition::new("coach", "Coach", "my-club", RoleScope::Group);
     r.define_role(coach.clone()).await.unwrap();
     assert_eq!(r.role("coach").await.unwrap(), Some(coach.clone()));
-    assert!(r.roles().await.unwrap().iter().any(|d| d.id == "coach"));
+    assert!(
+        r.roles()
+            .await
+            .unwrap()
+            .iter()
+            .any(|d| d.id == full_id("coach"))
+    );
     assert!(matches!(
         r.define_role(coach).await,
         Err(Error::Conflict(_))

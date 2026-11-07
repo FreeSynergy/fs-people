@@ -33,3 +33,9 @@ pub fn stored_forms(id: &str) -> Vec<String> {
     forms.extend(short.map(str::to_string));
     forms
 }
+
+/// Whether `role` names the AI role, in the short or the full form. Consumers that recognise an AI
+/// by its role (marking, guards) compare with this, never with a literal.
+pub fn is_ai_role(role: &str) -> bool {
+    role == AI_ROLE || role == AI_ROLE_IRI
+}
