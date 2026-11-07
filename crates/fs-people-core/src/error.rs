@@ -42,7 +42,7 @@ pub enum Error {
     #[error("person {0} not found")]
     NotFound(ObjectId),
     /// No list with this id.
-    #[error("person {0} not found")]
+    #[error("list {0} not found")]
     ListNotFound(ObjectId),
     /// vCard text could not be read or written.
     #[error("vCard: {0}")]

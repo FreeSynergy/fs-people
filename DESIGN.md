@@ -8,6 +8,8 @@ A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelo
 
 Version 0.5.0 (typed problem extensions, `SupportReport.instance`): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.43.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.4 (git tag). The report names the store (`StoreId` from `People::identity`, never in the log); problems carry typed extensions (section "Problem extensions").
 
+`SupportReport.instance` is the identity of the provider's store (`fs-store` `StoreId`). It is not a secret, but it makes the server recognisable: whoever can reach the socket sees it, and it does not go to the hub or into contents unless somebody decides so.
+
 | Area | State |
 |---|---|
 | Typed `Card` (serde) with lossless unknown/vendor properties (`extra` maps on the card and every sub-object) | done; all 20 demo cards round-trip byte-equal as JSON |
@@ -141,7 +143,7 @@ The detail text is unchanged. Next to it the server states the facts as extensio
 | `invalid` | JSON the core cannot read, store refuses a value | `issue` (the reason without the `json: ` prefix) |
 | `sensitive` | sensitive card, not released | `id`, `kind`, `who` (`uid: name`) |
 | `sensitive-link` | sensitive card in a same-person link | `id`, `kind` (`person`) |
-| `sensitive-members` | list export that would leave sensitive members behind | `id`, `kind` (`list`), `member` once per member held back |
+| `sensitive-members` | list export that would leave sensitive members behind | `id`, `kind` (`list`), `member` once per member held back (at most 63: `with_ext` keeps 64 extensions and 64 KiB; beyond that the rest is left out without a note, and a second export with a release reports the others) |
 | `partly-deleted` | delete stopped halfway | `id`, `kind` (`person`), `issue` (where it stopped, without `; delete again to finish it`) |
 | `stored-data` | something stored cannot be read | `issue` (the reason without `stored data: `) |
 | `encryption-required`, `unsupported`, `too-large`, `invalid-request` | | none of ours |
