@@ -1534,6 +1534,7 @@ dependencies = [
  "fs-people-core",
  "fs-people-server",
  "fs-store",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",

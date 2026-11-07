@@ -45,12 +45,7 @@ fn from_problem(p: &Problem, subject: &Subject) -> Error {
         "people/not-found" => not_found(detail, subject),
         "people/conflict" => Error::Conflict(detail.to_string()),
         "people/invalid" => invalid(detail),
-        "people/sensitive" => Error::NotReleased(
-            detail
-                .strip_suffix(" is sensitive and needs an explicit release")
-                .unwrap_or(detail)
-                .to_string(),
-        ),
+        "people/sensitive" => sensitive(p, subject),
         "people/sensitive-members" => Error::SensitiveMembers(
             detail
                 .split_once(": ")
@@ -98,27 +93,63 @@ fn not_found(detail: &str, subject: &Subject) -> Error {
     }
 }
 
-/// `card violates RFC 9553: <path>: <message>; ...` is read back into its issues; any other text
-/// the server found invalid stays a text.
-fn invalid(detail: &str) -> Error {
-    let issues: Option<Vec<Issue>> =
-        detail
-            .strip_prefix("card violates RFC 9553: ")
-            .and_then(|list| {
-                list.split("; ")
-                    .map(|one| {
-                        let (path, message) = one.split_once(": ")?;
-                        Some(Issue {
-                            path: path.to_string(),
-                            message: message.to_string(),
-                        })
-                    })
-                    .collect()
-            });
-    match issues {
-        Some(issues) => Error::Invalid(issues),
-        None => Error::Store(StoreError::Invalid(detail.to_string())),
+/// The server sends one type for two errors: a card that needs a release (`NotReleased`) and a
+/// card that must not be linked (`Sensitive`). Only the title and the text tell them apart.
+fn sensitive(p: &Problem, subject: &Subject) -> Error {
+    let detail = p.detail.as_str();
+    let linked = p.title == "Sensitive cards are not linked"
+        || detail.ends_with("must not be linked (ADR 0029)");
+    if linked {
+        let named = detail
+            .split_whitespace()
+            .find_map(|w| w.parse::<ObjectId>().ok());
+        match (named, subject) {
+            (Some(id), _) => return Error::Sensitive(id),
+            (None, Subject::Person(id)) => return Error::Sensitive(*id),
+            _ => {}
+        }
     }
+    Error::NotReleased(
+        detail
+            .strip_suffix(" is sensitive and needs an explicit release")
+            .unwrap_or(detail)
+            .to_string(),
+    )
+}
+
+/// Everything the server calls invalid has the text of its variant, which is read back from it:
+/// `card violates RFC 9553: <path>: <message>; ...` (issues), `the number N cannot be kept exactly;
+/// ...`, `json: ...`, and the store's `object store: invalid input: ...`. A text of none of these
+/// forms stays a text of the store, which is what the server reduced it to.
+fn invalid(detail: &str) -> Error {
+    if let Some(list) = detail.strip_prefix("card violates RFC 9553: ") {
+        let issues: Option<Vec<Issue>> = list
+            .split("; ")
+            .map(|one| {
+                let (path, message) = one.split_once(": ")?;
+                Some(Issue {
+                    path: path.to_string(),
+                    message: message.to_string(),
+                })
+            })
+            .collect();
+        if let Some(issues) = issues {
+            return Error::Invalid(issues);
+        }
+    }
+    if let Some(number) = detail
+        .strip_prefix("the number ")
+        .and_then(|rest| rest.strip_suffix(" cannot be kept exactly; write it as a string"))
+    {
+        return Error::InexactNumber(number.to_string());
+    }
+    if let Some(message) = detail.strip_prefix("json: ") {
+        return Error::Json(<serde_json::Error as serde::de::Error>::custom(message));
+    }
+    let inner = detail
+        .strip_prefix("object store: invalid input: ")
+        .unwrap_or(detail);
+    Error::Store(StoreError::Invalid(inner.to_string()))
 }
 
 /// The text names the object: `object store: object <id> is marked sensitive but ...`.
