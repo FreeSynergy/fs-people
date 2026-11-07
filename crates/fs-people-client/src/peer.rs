@@ -14,6 +14,8 @@ use fs_people_core::{Error, Result};
 use fs_store::Error as StoreError;
 use tokio::sync::oneshot;
 
+use crate::reply::Reply;
+use crate::timeouts::Timeouts;
 use crate::worker::{Job, Remote, Worker, start};
 
 /// The people program as seen over its socket. Implements `People` and `RoleBook`.
@@ -23,6 +25,7 @@ use crate::worker::{Job, Remote, Worker, start};
 pub struct RpcPeople {
     worker: Worker,
     capabilities: Capabilities,
+    timeouts: Timeouts,
 }
 
 impl RpcPeople {
@@ -34,10 +37,21 @@ impl RpcPeople {
     /// # Errors
     /// Nothing listens there, the server runs as another user, or it does not answer the contract.
     pub fn connect(socket: &Path) -> io::Result<Self> {
+        Self::connect_with(socket, Timeouts::default())
+    }
+
+    /// [`connect`](Self::connect) with other deadlines than [`CONNECT_TIMEOUT`](crate::CONNECT_TIMEOUT)
+    /// and [`CALL_TIMEOUT`](crate::CALL_TIMEOUT). A server that stays silent ends the wait with an
+    /// error that names the deadline.
+    ///
+    /// # Errors
+    /// As for [`connect`](Self::connect), and the server did not answer in time.
+    pub fn connect_with(socket: &Path, timeouts: Timeouts) -> io::Result<Self> {
         let (worker, capabilities) = start(socket.to_path_buf())?;
         Ok(Self {
             worker,
             capabilities,
+            timeouts,
         })
     }
 
@@ -62,7 +76,8 @@ impl RpcPeople {
         let (reply, answer) = oneshot::channel();
         let job: Job = Box::new(move |remote| {
             Box::pin(async move {
-                let _ = reply.send(work(remote).await);
+                let reply = Reply::started(reply);
+                reply.send(work(remote).await);
             })
         });
         self.worker.jobs.send(job).map_err(|_| gone())?;
