@@ -251,3 +251,8 @@ Still wanted:
 
 * `Error::Conflict(String)` carries no object: a taken `uid` or a role in use names no id; give it a `Subject`.
 * `broader`/`closeMatch` in role definitions are not normalised to full IRIs; a stored role file freezes the roles shipped with the version that wrote it.
+
+## Merge lock for consumers of the AI role (strategy, 2026-11-07)
+
+`roles-skos` is **already on `main`** (since v0.4.0): `RoleAssignment.role` and `RoleDefinition.id` are full IRIs (`https://freesynergy.net/ns/roles/ai`), short ids are still accepted in queries. Every consumer that decides "is this member an AI" (ADR 0054: consent, agents are never admin) must use `fs_people_core::is_ai_role()` and must never compare the short id `ai`. Read from the code on 2026-11-07, not tested end to end: `fs-groups` takes the decision through the injected trait `AiMarking` (no string compare of its own in `main`), `fs-messenger-guard` lists `ai` only among its test inputs for unknown values. Whether the host that implements `AiMarking` and the guard compare the short id is **not checked**: switch and check them in the next plan.
+
