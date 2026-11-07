@@ -115,6 +115,10 @@ pub const NOT_FOUND: Kind = (404, "https://freesynergy.net/problems/people/not-f
 pub const CONFLICT: Kind = (409, "https://freesynergy.net/problems/people/conflict");
 pub const INVALID: Kind = (422, "https://freesynergy.net/problems/people/invalid");
 pub const SENSITIVE: Kind = (403, "https://freesynergy.net/problems/people/sensitive");
+pub const SENSITIVE_LINK: Kind = (
+    403,
+    "https://freesynergy.net/problems/people/sensitive-link",
+);
 pub const STORED_DATA: Kind = (500, "https://freesynergy.net/problems/people/stored-data");
 pub const BAD_REQUEST: Kind = (422, "https://freesynergy.net/problems/invalid-request");
 pub const TOO_LARGE: Kind = (413, "https://freesynergy.net/problems/too-large");

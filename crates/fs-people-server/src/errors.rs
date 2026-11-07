@@ -17,6 +17,7 @@ const INVALID: &str = "https://freesynergy.net/problems/people/invalid";
 const SENSITIVE: &str = "https://freesynergy.net/problems/people/sensitive";
 const ENCRYPTION_REQUIRED: &str = "https://freesynergy.net/problems/people/encryption-required";
 const PARTLY_DELETED: &str = "https://freesynergy.net/problems/people/partly-deleted";
+const SENSITIVE_LINK: &str = "https://freesynergy.net/problems/people/sensitive-link";
 const SENSITIVE_MEMBERS: &str = "https://freesynergy.net/problems/people/sensitive-members";
 const STORED_DATA: &str = "https://freesynergy.net/problems/people/stored-data";
 
@@ -55,7 +56,7 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
         )
         .into_error(),
         Error::Sensitive(_) => {
-            Problem::new(SENSITIVE, "Sensitive cards are not linked", text, 403).into_error()
+            Problem::new(SENSITIVE_LINK, "Sensitive cards are not linked", text, 403).into_error()
         }
         Error::Store(StoreError::EncryptionRequired(_)) => Problem::new(
             ENCRYPTION_REQUIRED,
