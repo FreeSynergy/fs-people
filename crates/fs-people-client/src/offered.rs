@@ -27,5 +27,18 @@ pub(crate) const NOT_OFFERED: [&str; 12] = [
 
 /// The report of the server, cut to what this client implements.
 pub(crate) fn offered(reported: &Capabilities) -> Capabilities {
-    reported.clone()
+    let mut caps = Capabilities::new(reported.provider());
+    for entry in reported.entries() {
+        if entry.supported && NOT_OFFERED.contains(&entry.capability.as_str()) {
+            caps.unsupported(
+                entry.capability.as_str(),
+                "the server offers it, the client of the people program does not yet",
+            );
+        } else if entry.supported {
+            caps.supported(entry.capability.as_str());
+        } else {
+            caps.unsupported(entry.capability.as_str(), entry.reason.as_str());
+        }
+    }
+    caps
 }
