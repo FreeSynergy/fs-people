@@ -12,9 +12,6 @@ use tokio::runtime::Handle;
 use crate::source::{is_marked, reason_text};
 use fs_components_app::{write_new_file, write_new_private_file};
 
-/// Asked of the core at a time while exporting.
-const EXPORT_PAGE: usize = 500;
-
 /// What an import did.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ImportSummary {
@@ -130,47 +127,37 @@ pub fn export_all(
     let mut report = ExportReport::default();
     let mut text = String::new();
     let mut unmatched: Vec<&String> = released.iter().collect();
-    let mut offset = 0;
-    loop {
-        let filter = ListFilter {
-            limit: Some(EXPORT_PAGE),
-            offset,
-            ..ListFilter::default()
-        };
-        let page = runtime
-            .block_on(people.list(&filter))
-            .map_err(|e| reason_text(&e))?;
-        for object in &page {
-            let uid = object.content["uid"].as_str().unwrap_or_default();
-            let id = object.envelope.id.to_string();
-            let named = |given: &&String| given.as_str() == uid || **given == id;
-            let is_released = released.iter().any(|given| named(&given));
-            unmatched.retain(|given| !named(given));
-            if is_marked(object) {
-                if !is_released {
-                    report.left_out.push(uid.to_string());
-                    continue;
-                }
-                report.released.push(uid.to_string());
+    // One read of the whole list: the contract pages it by cursor, which the client walks, whereas
+    // `offset` would make it read every page before it again.
+    let page = runtime
+        .block_on(people.list(&ListFilter::default()))
+        .map_err(|e| reason_text(&e))?;
+    for object in &page {
+        let uid = object.content["uid"].as_str().unwrap_or_default();
+        let id = object.envelope.id.to_string();
+        let named = |given: &&String| given.as_str() == uid || **given == id;
+        let is_released = released.iter().any(|given| named(&given));
+        unmatched.retain(|given| !named(given));
+        if is_marked(object) {
+            if !is_released {
+                report.left_out.push(uid.to_string());
+                continue;
             }
-            // The core asks for the release by `uid`, and what stays behind of a list it names.
-            let mut going = released.to_vec();
-            if is_released {
-                going.push(uid.to_string());
-            }
-            let exported = people.export_released(&VCardFormat, object.envelope.id, &going);
-            match runtime.block_on(exported) {
-                Ok(card) => {
-                    text.push_str(&card.text);
-                    report.left_out.extend(card.withheld);
-                    report.written += 1;
-                }
-                Err(e) => report.failed.push(format!("{uid}: {e}")),
-            }
+            report.released.push(uid.to_string());
         }
-        offset += page.len();
-        if page.len() < EXPORT_PAGE {
-            break;
+        // The core asks for the release by `uid`, and what stays behind of a list it names.
+        let mut going = released.to_vec();
+        if is_released {
+            going.push(uid.to_string());
+        }
+        let exported = people.export_released(&VCardFormat, object.envelope.id, &going);
+        match runtime.block_on(exported) {
+            Ok(card) => {
+                text.push_str(&card.text);
+                report.left_out.extend(card.withheld);
+                report.written += 1;
+            }
+            Err(e) => report.failed.push(format!("{uid}: {e}")),
         }
     }
     if let Some(nobody) = unmatched.first() {
