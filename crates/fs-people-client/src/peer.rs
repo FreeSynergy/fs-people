@@ -8,6 +8,7 @@
 use std::future::Future;
 use std::io;
 use std::path::Path;
+use std::time::Duration;
 
 use fs_interfaces::Capabilities;
 use fs_people_core::{Error, Result};
@@ -17,6 +18,12 @@ use tokio::sync::oneshot;
 use crate::reply::Reply;
 use crate::timeouts::Timeouts;
 use crate::worker::{Job, Remote, Worker, start};
+
+fn silent(limit: Duration) -> Error {
+    Error::Store(StoreError::Backend(format!(
+        "people server did not answer within {limit:?}"
+    )))
+}
 
 /// The people program as seen over its socket. Implements `People` and `RoleBook`.
 ///
@@ -47,7 +54,7 @@ impl RpcPeople {
     /// # Errors
     /// As for [`connect`](Self::connect), and the server did not answer in time.
     pub fn connect_with(socket: &Path, timeouts: Timeouts) -> io::Result<Self> {
-        let (worker, capabilities) = start(socket.to_path_buf())?;
+        let (worker, capabilities) = start(socket.to_path_buf(), timeouts.connect)?;
         Ok(Self {
             worker,
             capabilities,
@@ -73,11 +80,14 @@ impl RpcPeople {
                 "people server: the connection is gone".into(),
             ))
         };
+        let limit = self.timeouts.call;
         let (reply, answer) = oneshot::channel();
         let job: Job = Box::new(move |remote| {
             Box::pin(async move {
                 let reply = Reply::started(reply);
-                reply.send(work(remote).await);
+                // The timer is the connection thread's, so the caller's runtime needs no clock.
+                let done = tokio::time::timeout(limit, work(remote)).await;
+                reply.send(done.unwrap_or_else(|_| Err(silent(limit))));
             })
         });
         self.worker.jobs.send(job).map_err(|_| gone())?;

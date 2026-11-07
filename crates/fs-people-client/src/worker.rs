@@ -1,9 +1,9 @@
 //! The thread that owns the Cap'n Proto connection.
 //!
-//! Pattern: Command queue (active object) — a capnp-rpc client is `!Send`, so it lives on one thread
-//! with a current-thread runtime and a `LocalSet`. Callers on any thread send a [`Job`] (a closure
-//! that gets the capabilities and answers through its own channel); the thread runs each as a local
-//! task, so calls overlap. Dropping the [`Worker`] ends the loop, closes the connection and joins.
+//! Pattern: Command — a capnp-rpc client is `!Send`, so it lives on one thread with a current-thread
+//! runtime and a `LocalSet`; a call is made into a [`Job`], a command (a closure that gets the
+//! capabilities and answers through its own channel) that any thread builds and only that thread
+//! executes, each as a local task, so calls overlap. Dropping the [`Worker`] ends the loop, closes the connection and joins.
 
 use std::future::Future;
 use std::io;
@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use fs_interfaces::Capabilities;
 use fs_interfaces::people_capnp::{people, persons, roles};
@@ -69,7 +70,7 @@ async fn handshake(socket: &Path) -> io::Result<(Remote, Capabilities, impl Size
 }
 
 /// Start the thread and wait until it is connected.
-pub(crate) fn start(socket: PathBuf) -> io::Result<(Worker, Capabilities)> {
+pub(crate) fn start(socket: PathBuf, limit: Duration) -> io::Result<(Worker, Capabilities)> {
     let (jobs, mut queue) = unbounded_channel::<Job>();
     let (ready, answer) = mpsc::channel::<io::Result<Capabilities>>();
     let thread = std::thread::Builder::new()
@@ -84,9 +85,16 @@ pub(crate) fn start(socket: PathBuf) -> io::Result<(Worker, Capabilities)> {
             };
             let local = tokio::task::LocalSet::new();
             local.block_on(&runtime, async {
-                let (remote, capabilities, connection) = match handshake(&socket).await {
-                    Ok(done) => done,
-                    Err(e) => return drop(ready.send(Err(e))),
+                let shaken = tokio::time::timeout(limit, handshake(&socket)).await;
+                let (remote, capabilities, connection) = match shaken {
+                    Ok(Ok(done)) => done,
+                    Ok(Err(e)) => return drop(ready.send(Err(e))),
+                    Err(_) => {
+                        return drop(ready.send(Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            format!("people server did not answer within {limit:?}"),
+                        ))));
+                    }
                 };
                 let _ = ready.send(Ok(capabilities));
                 while let Some(job) = queue.recv().await {

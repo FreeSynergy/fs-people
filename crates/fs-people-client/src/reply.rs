@@ -32,6 +32,14 @@ impl<T> Reply<T> {
     }
 }
 
+impl<T> Drop for Reply<T> {
+    fn drop(&mut self) {
+        if let Some(to) = self.0.take() {
+            let _ = to.send(Err(interrupted()));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tokio::sync::oneshot::channel;

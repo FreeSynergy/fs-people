@@ -22,6 +22,23 @@ async fn a_vcard_is_imported_once_and_known_uids_are_skipped() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn an_empty_vcard_and_a_broken_one_are_reported_or_stored_not_lost() {
+    let served = Served::start().await;
+    let people = served.client();
+    // The server gives a card without a UID one of its own, so the empty one is stored.
+    let empty = format!("{TWO}BEGIN:VCARD\r\nVERSION:4.0\r\nEND:VCARD\r\n");
+    let report = people.import_vcard(&empty).await.unwrap();
+    assert_eq!(report.created.len() + report.failed.len(), 3, "{report:?}");
+    // A card that never ends is not a card: it is named in `failed`.
+    let broken = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Broken\r\n";
+    let report = people.import_vcard(broken).await.unwrap();
+    assert!(
+        report.created.is_empty() && !report.failed.is_empty(),
+        "{report:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn what_cannot_be_stored_is_in_the_report_and_the_others_arrive() {
     let dir = tempfile::tempdir().unwrap();
     let served = Served::start_with_file(&dir.path().join("p.db")).await;
