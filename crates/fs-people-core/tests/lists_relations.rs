@@ -4,7 +4,7 @@ mod common;
 
 use common::{person, repo};
 use fs_people_core::{Card, Error, PeopleRepo};
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 use serde_json::json;
 
 async fn a_list_with_ada(r: &PeopleRepo) -> (ObjectId, ObjectId, String) {

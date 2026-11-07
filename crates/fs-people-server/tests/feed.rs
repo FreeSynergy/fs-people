@@ -14,7 +14,7 @@ use fs_interfaces::common_capnp::{change, change_listener};
 use fs_interfaces::rpc::{read_envelope, read_uuid, write_uuid};
 use fs_people_core::{Card, Error, ListFilter, People, PeopleRepo, Result as CoreResult};
 use fs_people_server::PeopleServer;
-use fs_store::{ObjectId, Store, StoredObject, TursoStore};
+use fs_objects::{ObjectId, Store, StoredObject, TursoStore};
 
 #[derive(Clone, Default)]
 struct Seen(Rc<RefCell<Vec<String>>>);

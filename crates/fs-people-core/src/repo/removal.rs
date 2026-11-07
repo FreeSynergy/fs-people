@@ -4,7 +4,7 @@
 //! objects: off every list, as only the card knows its `uid`; the card; links and roles. Each failure
 //! says how far it got, and the same call again finishes the job.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};

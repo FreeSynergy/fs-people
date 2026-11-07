@@ -4,7 +4,7 @@
 //! sensitive cards, no already linked pairs) and delegates "who looks alike" to the injected
 //! `MatchStrategy`.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use super::envelope::card_of;
 use super::handle::PeopleRepo;

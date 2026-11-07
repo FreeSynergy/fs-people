@@ -19,7 +19,7 @@
 
 use std::fmt;
 
-use fs_store::StoredObject;
+use fs_objects::StoredObject;
 
 /// What a card was when it was read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -2,7 +2,7 @@
 //!
 //! Pattern: Command (client) — the small edits of `card/relations.rs` applied through `update`.
 
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};

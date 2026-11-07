@@ -5,7 +5,7 @@
 
 use std::collections::BTreeSet;
 
-use fs_store::{Cond, Op, Query, StoredObject};
+use fs_objects::{Cond, Op, Query, StoredObject};
 
 use super::consts::{CONTEXT, PROFILE_TYPE};
 use super::handle::PeopleRepo;

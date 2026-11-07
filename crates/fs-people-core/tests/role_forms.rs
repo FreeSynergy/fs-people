@@ -7,14 +7,14 @@ use fs_people_core::{
     AI_ROLE, AI_ROLE_IRI, CONTEXT, Card, Error, PeopleRepo, RELATIONSHIP_TYPE, RoleDefinition,
     RoleScope, full_id,
 };
-use fs_store::{Envelope, ObjectId, StoredObject};
+use fs_objects::{Envelope, ObjectId, StoredObject};
 use serde_json::{Map, json};
 
 const MINE: &str = "https://example.org/roles/kal/";
 const CLUB: &str = "https://local.invalid/groups/club";
 
 /// An assignment as older versions stored it: the short id of the role in the index.
-async fn put_old_assignment(store: &dyn fs_store::Store, person: ObjectId, role: &str) {
+async fn put_old_assignment(store: &dyn fs_objects::Store, person: ObjectId, role: &str) {
     let mut env = Envelope::new(RELATIONSHIP_TYPE, "older");
     env.context = Some(CONTEXT.into());
     let content = json!({"type": RELATIONSHIP_TYPE, "relationship": role, "details": {}});

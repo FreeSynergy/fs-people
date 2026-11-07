@@ -4,7 +4,7 @@ mod common;
 
 use common::{ME, person, setup};
 use fs_people_core::{Card, Error, PeopleRepo, RoleDefinition, RoleRegistry, RoleScope};
-use fs_store::{Envelope, StoredObject};
+use fs_objects::{Envelope, StoredObject};
 use serde_json::{Map, json};
 
 const CLUB: &str = "https://x/groups/club";

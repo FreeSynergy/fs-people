@@ -5,7 +5,7 @@
 //! release per recipient, which the caller names by `uid`. Marked members of a list stay behind, and the
 //! report names them. The card itself refuses: there is nothing to send without it.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 use super::envelope::{card_of, is_marked};
 use super::handle::PeopleRepo;

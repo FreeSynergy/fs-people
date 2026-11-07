@@ -1,7 +1,7 @@
 //! `fs-people-core`: program core of FreeSynergy people (no GUI).
 //!
 //! A person is a JSContact `Card` (RFC 9553) in an AS2 `Profile` envelope stored through
-//! `fs-store` (ADR 0014, 0019, 0020). Start with the [`People`] trait; [`PeopleRepo`] is
+//! `fs-objects` (ADR 0014, 0019, 0020). Start with the [`People`] trait; [`PeopleRepo`] is
 //! its store-backed implementation. See `DESIGN.md` for the pattern map.
 //!
 //! Pattern: Facade — this file only declares modules and re-exports the public API.

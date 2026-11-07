@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use common::repo;
 use fs_interfaces::Capabilities;
 use fs_people_core::{Card, Error, ListFilter, People, Result, RoleBook, full_id};
-use fs_store::{ObjectId, StoredObject};
+use fs_objects::{ObjectId, StoredObject};
 
 /// A read-only provider, for example an address book it cannot write to.
 struct ReadOnly;

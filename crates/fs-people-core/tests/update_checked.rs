@@ -49,7 +49,7 @@ async fn a_wrong_revision_writes_nothing_and_does_not_name_the_right_one() {
     let current = People::update(&r, first.envelope.id, renamed(&card, "Ada B"))
         .await
         .unwrap();
-    let log_before = store.count(&fs_store::Query::new()).await.unwrap();
+    let log_before = store.count(&fs_objects::Query::new()).await.unwrap();
 
     let err = r
         .update_checked(first.envelope.id, stale, renamed(&card, "Ada C"))
@@ -70,7 +70,7 @@ async fn a_wrong_revision_writes_nothing_and_does_not_name_the_right_one() {
     assert_eq!(now.content, current.content, "nothing was written");
     assert_eq!(Revision::of(&now), Revision::of(&current));
     assert_eq!(
-        store.count(&fs_store::Query::new()).await.unwrap(),
+        store.count(&fs_objects::Query::new()).await.unwrap(),
         log_before
     );
 }
@@ -78,7 +78,7 @@ async fn a_wrong_revision_writes_nothing_and_does_not_name_the_right_one() {
 #[tokio::test(flavor = "current_thread")]
 async fn an_unknown_person_is_not_found() {
     let r = common::repo().await;
-    let ghost = fs_store::Envelope::new("x", "x").id;
+    let ghost = fs_objects::Envelope::new("x", "x").id;
     let err = r
         .update_checked(ghost, Revision::from(1), Card::individual("Nobody"))
         .await

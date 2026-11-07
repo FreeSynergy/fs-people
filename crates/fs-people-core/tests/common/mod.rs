@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use fs_people_core::{Card, PeopleRepo};
-use fs_store::{Store, TursoStore};
+use fs_objects::{Store, TursoStore};
 
 pub mod yielding;
 
