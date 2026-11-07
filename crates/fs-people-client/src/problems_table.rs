@@ -114,28 +114,19 @@ fn an_inexact_number_and_a_json_error_come_back_as_themselves() {
 }
 
 #[test]
-fn the_two_meanings_of_sensitive_are_told_apart_by_title_and_text() {
+fn the_two_meanings_of_sensitive_are_told_apart_by_the_type_alone() {
     let id = ObjectId::new();
     let none = Subject::None;
-    let text =
+    let linked =
         format!("person {id} carries sensitive categories and must not be linked (ADR 0029)");
-    let e = titled(
-        "people/sensitive",
-        "Sensitive cards are not linked",
-        403,
-        &text,
-        &none,
-    );
+    let e = said("people/sensitive-link", 403, &linked, &none);
     assert!(matches!(e, Error::Sensitive(i) if i == id), "{e:?}");
-    assert_eq!(e.to_string(), text);
+    assert_eq!(e.to_string(), linked);
+    // The same words under the other type are not read as a link: only the type decides.
+    let e = said("people/sensitive", 403, &linked, &none);
+    assert!(matches!(&e, Error::NotReleased(_)), "{e:?}");
     let text = "urn:uuid:1: Ada is sensitive and needs an explicit release";
-    let e = titled(
-        "people/sensitive",
-        "A sensitive card needs an explicit release",
-        403,
-        text,
-        &none,
-    );
+    let e = said("people/sensitive", 403, text, &none);
     assert!(
         matches!(&e, Error::NotReleased(w) if w == "urn:uuid:1: Ada"),
         "{e:?}"
