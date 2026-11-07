@@ -40,12 +40,18 @@ impl Served {
     }
 
     async fn over(store: Arc<dyn Store>) -> Self {
+        let repo = Arc::new(PeopleRepo::new(store, ME));
+        Self::serving(repo.clone(), repo).await
+    }
+
+    /// A server whose `People` is this provider and whose roles and feed come from `repo`: for a
+    /// provider that does what the real one cannot show, such as never answering.
+    pub async fn serving(people: Arc<dyn People>, repo: Arc<PeopleRepo>) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let socket = dir.path().join("people.sock");
-        let repo = Arc::new(PeopleRepo::new(store, ME));
         let (stop, stopped) = oneshot::channel::<()>();
         let (ready, listening) = std::sync::mpsc::channel();
-        let (path, provider) = (socket.clone(), repo.clone());
+        let (path, repo_here) = (socket.clone(), repo.clone());
         let thread = std::thread::spawn(move || {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -54,7 +60,7 @@ impl Served {
             let local = tokio::task::LocalSet::new();
             local.block_on(&runtime, async move {
                 let bound = bind_socket(&path).await.unwrap();
-                let root = PeopleServer::new(provider.clone(), provider.clone(), provider);
+                let root = PeopleServer::new(people, repo_here.clone(), repo_here);
                 ready.send(()).unwrap();
                 let shutdown = async {
                     let _ = stopped.await;

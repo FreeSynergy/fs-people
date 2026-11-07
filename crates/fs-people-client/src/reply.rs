@@ -31,3 +31,38 @@ impl<T> Reply<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tokio::sync::oneshot::channel;
+
+    use super::*;
+
+    #[test]
+    fn a_job_dropped_after_it_started_answers_that_it_was_interrupted() {
+        let (to, mut from) = channel::<Result<u8>>();
+        drop(Reply::started(to));
+        let got = from.try_recv().unwrap().unwrap_err();
+        assert_eq!(got.to_string(), interrupted().to_string());
+        assert!(got.to_string().contains("without an answer"), "{got}");
+    }
+
+    #[test]
+    fn a_job_that_answers_is_not_interrupted() {
+        let (to, mut from) = channel::<Result<u8>>();
+        Reply::started(to).send(Ok(7));
+        assert_eq!(from.try_recv().unwrap().unwrap(), 7);
+    }
+
+    #[test]
+    fn a_panic_in_the_job_is_an_interruption_not_a_lost_connection() {
+        let (to, mut from) = channel::<Result<u8>>();
+        let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _reply = Reply::started(to);
+            panic!("boom");
+        }));
+        assert!(caught.is_err());
+        let got = from.try_recv().unwrap().unwrap_err();
+        assert!(got.to_string().contains("without an answer"), "{got}");
+    }
+}
