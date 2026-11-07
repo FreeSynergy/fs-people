@@ -1,7 +1,7 @@
 //! Roles on the wire.
 //!
 //! Pattern: Adapter — `RoleDefinition` and `RoleAssignment` between Rust and `people.capnp`. Empty
-//! text means "none". The `extra` members of a definition have no place on the wire (`DESIGN.md`).
+//! text means "none"; `type` and the term lists follow the SKOS terms of the core (`broader` and `closeMatch` hold one address there so far). The `extra` members of a definition have no place on the wire (`DESIGN.md`).
 
 use std::collections::BTreeMap;
 
@@ -14,6 +14,7 @@ use fs_people_core::{RoleAssignment, RoleDefinition, RoleField, RoleScope};
 use serde_json::{Map, Value};
 
 use super::person::count;
+use super::terms::{read_kind, read_list, single, write_terms};
 
 type Texts = BTreeMap<String, String>;
 
@@ -73,6 +74,10 @@ pub(crate) fn read_definition(r: role_definition::Reader<'_>) -> capnp::Result<R
             Wire::Public => RoleScope::Public,
         },
         card_kind: optional(r.get_card_kind()?)?,
+        kind: read_kind(r.get_type()?)?,
+        broader: single(read_list(r.get_broader()?)?, "broader")?,
+        close_match: single(read_list(r.get_close_match()?)?, "closeMatch")?,
+        standard_refs: read_list(r.get_standard_refs()?)?,
         ..RoleDefinition::default()
     })
     .and_then(|definition| {
@@ -115,6 +120,7 @@ pub(crate) fn write_definition(
         RoleScope::Public => Wire::Public,
     });
     out.set_card_kind(d.card_kind.as_deref().unwrap_or(""));
+    write_terms(out, d)?;
     Ok(())
 }
 

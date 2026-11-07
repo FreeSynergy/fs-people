@@ -4,7 +4,7 @@
 //! methods keep working for callers that do not import the trait). A write first takes its turn:
 //! edits read a card and put it back, the store can yield in between, and two callers at once must not
 //! lose a change (`handle.rs`). The inherent methods compose each other, so the turn is taken here;
-//! only an import takes it itself, per card.
+//! only an import takes it itself, per card. `update_checked` compares the revision under the same turn.
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
@@ -14,10 +14,11 @@ use super::handle::PeopleRepo;
 use super::release::ReleasedExport;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::format::{Exporter, Importer};
 use crate::matching::SameAsProposal;
 use crate::people::People;
+use crate::revision::Revision;
 
 #[async_trait]
 impl People for PeopleRepo {
@@ -55,6 +56,22 @@ impl People for PeopleRepo {
     }
     async fn update(&self, id: ObjectId, card: Card) -> Result<StoredObject> {
         let _turn = self.writes.lock().await;
+        PeopleRepo::update(self, id, card).await
+    }
+    async fn update_checked(
+        &self,
+        id: ObjectId,
+        expected: Revision,
+        card: Card,
+    ) -> Result<StoredObject> {
+        // The turn makes compare and write one step: nobody else writes in between.
+        let _turn = self.writes.lock().await;
+        let stored = PeopleRepo::get(self, id)
+            .await?
+            .ok_or(Error::NotFound(id))?;
+        if Revision::of(&stored) != expected {
+            return Err(Error::Changed(id));
+        }
         PeopleRepo::update(self, id, card).await
     }
     async fn delete(&self, id: ObjectId) -> Result<()> {

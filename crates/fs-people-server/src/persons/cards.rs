@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use fs_interfaces::people_capnp::persons as wire;
 use fs_interfaces::rpc::{check_answer, read_object_id};
-use fs_people_core::{ListFilter, People};
+use fs_people_core::{ListFilter, People, Revision};
 
 use crate::errors::{finish, rpc_error};
 use crate::formats::{exporter, importer};
@@ -39,6 +39,21 @@ pub(super) async fn update(
     let card = read_card(p.get_jscontact()?)?;
     let people = people.clone();
     let stored = finish(async move { people.update(id, card).await }).await?;
+    write_person(results.get().init_person(), &stored);
+    Ok(())
+}
+
+pub(super) async fn update_if(
+    people: &Arc<dyn People>,
+    params: wire::UpdateIfParams,
+    mut results: wire::UpdateIfResults,
+) -> Done {
+    let p = params.get()?;
+    let id = read_object_id(p.get_id()?)?;
+    let revision = Revision::from(p.get_revision());
+    let card = read_card(p.get_jscontact()?)?;
+    let people = people.clone();
+    let stored = finish(async move { people.update_checked(id, revision, card).await }).await?;
     write_person(results.get().init_person(), &stored);
     Ok(())
 }

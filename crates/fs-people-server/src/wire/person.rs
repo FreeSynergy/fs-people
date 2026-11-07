@@ -16,7 +16,7 @@ use fs_interfaces::rpc::{
     write_envelope, write_object_id,
 };
 use fs_people_core::validate::check_card_numbers;
-use fs_people_core::{Card, ListFilter, MatchKind, SameAsProposal};
+use fs_people_core::{Card, ListFilter, MatchKind, Revision, SameAsProposal};
 use fs_store::{ObjectId, StoredObject};
 
 /// Room for one list entry with its pointers; only for the check that an answer fits.
@@ -52,6 +52,7 @@ fn weight(o: &StoredObject) -> usize {
 pub(crate) fn write_person(mut out: person::Builder<'_>, o: &StoredObject) {
     write_envelope(out.reborrow().init_envelope(), &o.envelope);
     out.set_jscontact(o.content.to_string().as_str());
+    out.set_revision(Revision::of(o).get());
 }
 
 /// Read the JSContact text of a request.

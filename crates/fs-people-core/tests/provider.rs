@@ -8,7 +8,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use common::repo;
 use fs_interfaces::Capabilities;
-use fs_people_core::{Card, Error, ListFilter, People, Result, RoleBook};
+use fs_people_core::{Card, Error, ListFilter, People, Result, RoleBook, full_id};
 use fs_store::{ObjectId, StoredObject};
 
 /// A read-only provider, for example an address book it cannot write to.
@@ -73,5 +73,11 @@ async fn the_store_backed_provider_reports_what_it_can() {
 async fn the_shipped_roles_load() {
     let r = repo().await;
     let ids: Vec<_> = r.roles().await.unwrap().into_iter().map(|d| d.id).collect();
-    assert_eq!(ids, ["ai", "customer", "member", "user"]);
+    assert_eq!(
+        ids,
+        [
+            "ai", "customer", "lead", "member", "prospect", "supplier", "user"
+        ]
+        .map(full_id)
+    );
 }

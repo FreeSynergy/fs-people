@@ -92,7 +92,10 @@ async fn check(socket: &Path) {
     write_uuid(of.get().init_person(), id);
     let answer = of.send().promise.await.unwrap();
     let held = answer.get().unwrap().get_items().unwrap();
-    assert_eq!(held.get(0).get_role().unwrap().to_str().unwrap(), "referee");
+    assert_eq!(
+        held.get(0).get_role().unwrap().to_str().unwrap(),
+        "https://freesynergy.net/ns/roles/referee"
+    );
 
     let mut get = roles.get_request();
     get.get().set_id("referee");
@@ -105,8 +108,8 @@ async fn check(socket: &Path) {
     shipped.get().set_id("customer");
     let answer = shipped.send().promise.await.unwrap();
     assert!(
-        !answer.get().unwrap().get_found(),
-        "the configuration was not swapped"
+        answer.get().unwrap().get_found(),
+        "an array file is added to the shipped roles, it does not replace them"
     );
 }
 

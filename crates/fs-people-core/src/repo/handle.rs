@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use super::backend::StoreAdapter;
 use crate::feed::Registry;
 use crate::matching::{MatchStrategy, SharedContactPoint};
-use crate::roles::RoleRegistry;
+use crate::roles::{RoleDirectory, RoleRegistry};
 
 /// People over an object store. Cheap to clone; clones share their subscribers.
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub struct PeopleRepo {
     pub(super) objects: Arc<dyn ObjectRepository>,
     pub(super) reads: Arc<dyn ObjectQuery>,
     pub(super) matcher: Arc<dyn MatchStrategy>,
-    pub(super) registry: RoleRegistry,
+    pub(super) registry: Arc<dyn RoleDirectory>,
     pub(super) feed: Arc<Registry>,
     /// One write at a time through the traits; clones share it.
     pub(super) writes: Arc<Mutex<()>>,
@@ -47,7 +47,7 @@ impl PeopleRepo {
             objects,
             reads,
             matcher: Arc::new(SharedContactPoint),
-            registry: RoleRegistry::known(),
+            registry: Arc::new(RoleRegistry::known()),
             feed: Arc::default(),
             writes: Arc::default(),
             actor: actor.into(),
@@ -69,10 +69,10 @@ impl PeopleRepo {
         self
     }
 
-    /// Use these configured roles instead of the shipped ones (default: [`RoleRegistry::known`]).
+    /// Use this directory of roles instead of the shipped ones (default: [`RoleRegistry::known`]).
     #[must_use]
-    pub fn with_roles(mut self, registry: RoleRegistry) -> Self {
-        self.registry = registry;
+    pub fn with_roles(mut self, directory: impl RoleDirectory + 'static) -> Self {
+        self.registry = Arc::new(directory);
         self
     }
 

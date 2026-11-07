@@ -13,6 +13,7 @@ mod envelope;
 mod find;
 mod groups;
 mod handle;
+mod holders;
 mod links;
 mod proposals;
 mod relations;
@@ -29,4 +30,4 @@ pub use consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE, RELATIONSHIP_TYPE, ROLE_DE
 pub use envelope::card_of;
 pub use handle::PeopleRepo;
 pub use release::ReleasedExport;
-pub use types::{ImportReport, ListFilter};
+pub use types::{ImportReport, ListFilter, RoleRestore};

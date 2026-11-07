@@ -1,34 +1,69 @@
-[
-  {
-    "id": "ai",
-    "names": {"en": "AI"},
-    "description": {"en": "A marked participant: everyone can see that this is not a human. Nothing else follows from it (ADR 0054)."},
-    "standard": "JSContact kind application (RFC 9553, section 2.1.4)",
-    "owner": "fs-people",
-    "scope": "public",
-    "cardKind": "application"
-  },
-  {
-    "id": "user",
-    "names": {"en": "User"},
-    "description": {"en": "Someone who can sign in to a system."},
-    "standard": "SCIM User (RFC 7643)",
-    "owner": "identity wrapper",
-    "scope": "group"
-  },
-  {
-    "id": "member",
-    "names": {"en": "Member"},
-    "description": {"en": "Someone who belongs to a group."},
-    "standard": "org:Membership, AS2 Group, SCIM Group",
-    "owner": "fs-groups",
-    "scope": "group"
-  },
-  {
-    "id": "customer",
-    "names": {"en": "Customer"},
-    "description": {"en": "Someone who buys from a group or organisation. No standard exists yet: a gap."},
-    "owner": "CRM (later)",
-    "scope": "group"
-  }
-]
+{
+  "@context": ["https://freesynergy.net/ns/roles.jsonld",
+               {"@base": "https://freesynergy.net/ns/roles/"}],
+  "id": "",
+  "type": "skos:ConceptScheme",
+  "names": {"en": "FreeSynergy roles", "de": "FreeSynergy-Rollen"},
+  "roles": [
+    {
+      "id": "ai",
+      "type": "skos:Concept",
+      "names": {"en": "AI", "de": "KI"},
+      "description": {"en": "A marked participant: everyone can see that this is not a human. Nothing else follows from it (ADR 0054)."},
+      "standard": "JSContact kind application (RFC 9553, section 2.1.4)",
+      "owner": "fs-people",
+      "scope": "public",
+      "cardKind": "application"
+    },
+    {
+      "id": "user",
+      "type": "org:Role",
+      "names": {"en": "User", "de": "Benutzer"},
+      "description": {"en": "Someone who can sign in to a system."},
+      "standard": "SCIM User (RFC 7643)",
+      "owner": "fs-identity",
+      "scope": "group"
+    },
+    {
+      "id": "member",
+      "type": "org:Role",
+      "names": {"en": "Member", "de": "Mitglied"},
+      "description": {"en": "Someone who belongs to a group."},
+      "standard": "org:Membership, AS2 Group, SCIM Group",
+      "owner": "fs-groups",
+      "scope": "group"
+    },
+    {
+      "id": "customer",
+      "type": "skos:Concept",
+      "names": {"en": "Customer", "de": "Kunde"},
+      "description": {"en": "Someone who buys from a group or organisation. No standard exists yet: a gap."},
+      "owner": "fs-crm",
+      "scope": "group"
+    },
+    {
+      "id": "supplier",
+      "type": "skos:Concept",
+      "names": {"en": "Supplier", "de": "Lieferant"},
+      "description": {"en": "Someone who sells to a group or organisation. No standard exists yet: a gap."},
+      "owner": "fs-erp",
+      "scope": "group"
+    },
+    {
+      "id": "lead",
+      "type": "skos:Concept",
+      "names": {"en": "Lead", "de": "Lead"},
+      "description": {"en": "Someone who may become interested in what a group or organisation offers. No standard exists: a gap. Not a stage of customer."},
+      "owner": "fs-crm",
+      "scope": "group"
+    },
+    {
+      "id": "prospect",
+      "type": "skos:Concept",
+      "names": {"en": "Prospect", "de": "Interessent"},
+      "description": {"en": "Someone who has shown interest in what a group or organisation offers. No standard exists: a gap. Not a stage of customer."},
+      "owner": "fs-crm",
+      "scope": "group"
+    }
+  ]
+}

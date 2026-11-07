@@ -24,6 +24,9 @@ impl wire::Server for PersonsImpl {
     async fn update(self: Rc<Self>, p: wire::UpdateParams, r: wire::UpdateResults) -> Done {
         cards::update(&self.people, p, r).await
     }
+    async fn update_if(self: Rc<Self>, p: wire::UpdateIfParams, r: wire::UpdateIfResults) -> Done {
+        cards::update_if(&self.people, p, r).await
+    }
     async fn delete(self: Rc<Self>, p: wire::DeleteParams, _: wire::DeleteResults) -> Done {
         cards::delete(&self.people, p).await
     }

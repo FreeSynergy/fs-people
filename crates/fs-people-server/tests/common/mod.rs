@@ -150,3 +150,30 @@ pub fn problem_of<T>(answer: Result<T, capnp::Error>) -> Problem {
 pub fn unknown_id() -> Uuid {
     fs_store::Envelope::new("x", "x").id.as_uuid()
 }
+
+/// The revision the server wrote into a person.
+pub fn revision_of(person: person::Reader<'_>) -> u64 {
+    person.get_revision()
+}
+
+/// `updateIf` with this revision and card; the answer or the failure.
+pub async fn update_if(
+    persons: &persons::Client,
+    id: Uuid,
+    revision: u64,
+    card: &str,
+) -> Result<capnp::capability::Response<persons::update_if_results::Owned>, capnp::Error> {
+    let mut req = persons.update_if_request();
+    fs_interfaces::rpc::write_uuid(req.get().init_id(), Some(id));
+    req.get().set_revision(revision);
+    req.get().set_jscontact(card);
+    req.send().promise.await
+}
+
+/// Read a person by id: the revision it has now.
+pub async fn revision_now(persons: &persons::Client, id: Uuid) -> u64 {
+    let mut get = persons.get_request();
+    fs_interfaces::rpc::write_uuid(get.get().init_id(), Some(id));
+    let answer = get.send().promise.await.unwrap();
+    answer.get().unwrap().get_person().unwrap().get_revision()
+}

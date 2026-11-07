@@ -72,6 +72,10 @@ pub enum Error {
     /// No role with this id.
     #[error("role {0} is not defined")]
     UnknownRole(String),
+    /// `update_checked`: the card was written by someone else since the revision was read. Nothing was
+    /// written. The text does not name the revision found (ADR 0029: it says nothing more than "changed").
+    #[error("conflict: person {0} was changed since it was read; nothing was written")]
+    Changed(ObjectId),
     /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
     #[error("{0}")]
     Conflict(String),

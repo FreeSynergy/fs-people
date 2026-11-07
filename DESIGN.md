@@ -6,7 +6,7 @@ A person is a **JSContact `Card`** (RFC 9553) inside an AS2 **`Profile`** envelo
 
 ## State
 
-Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.34.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
+Version 0.4.0 (updateIf, revision, roles as IRIs, server, client): provider of the `people` contract (`people.capnp` in `fs-interfaces` v0.36.0, draft, consumers: 0 of 2), served over a Unix socket. Built on fs-store 0.2 (git tag).
 
 | Area | State |
 |---|---|
@@ -25,12 +25,13 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | Sensitive marking: vendor property `freesynergy.net:sensitive` (DPV category list) on the card or any nested object -> `envelope.sensitive` | done; encryption itself is `fs-store`'s job (it refuses sensitive objects in an unencrypted store, tested) |
 | Example `cargo run -p fs-people-core --example demo`: import demo contacts, list, search, export vCard | done |
 | Interface `People` + `RoleBook` (provider rule, ADR 0045): every method exists, what a provider does not override answers `Error::Unsupported`; `capabilities()` reports the same | done, draft |
-| Roles (ADR 0052): one card, several roles. Definitions are objects: configuration (`roles/known.json`, swapped atomically after checking, `load_role_config`) and your own (`define_role`, in the store). No role list in the code | done |
-| Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), never on the card, so no export reveals them (ADR 0029) | done |
+| Roles (ADR 0052): one card, several roles. A role file is a SKOS concept scheme in JSON-LD (`@context` with `@base`, `type: skos:ConceptScheme`, `names`, `roles[]`); the full id of a role is base + short id (ours: `https://freesynergy.net/ns/roles/`). Files lie side by side in `RoleRegistry` (one scheme per base, `load` replaces only the same base, checked first, swapped atomically, `store_role_config` keeps one object per base); your own roles are `define_role` objects. Found by full id, a short id means one of ours. `owner` is an id. Shipped: `ai`, `user`, `member`, `customer`, `supplier`, `lead`, `prospect` (en+de); `customer`/`supplier`/`lead`/`prospect` are `skos:Concept` without `cardKind`, so cards of kind `org` may hold them | done, provisional |
+| Role assignments: AS2 `Relationship` objects of their own (index `person`, `role`, `scope`), the role stored as full id (an older short id is read as ours and answered as the full id; queries ask both forms), never on the card, so no export reveals them (ADR 0029) | done |
 | Relations (what someone is to me): JSContact `relatedTo` on the card, `relate` / `unrelate` / `relations` | done |
 | AI marking (ADR 0054): `mark_ai` = `kind: application` (RFC 9553 §2.1.4, travels with the card) + role `ai` (plain software is `application` too). Restricts nothing | done |
 | Server `fs-people-server`: every method of `People`, `Persons`, `Roles`; `subscribe` (with `ended`), `supportReport`; typed problems (`people/not-found` 404, `people/conflict` 409, `people/invalid` 422, `people/sensitive` 403 (release missing), `people/sensitive-link` 403 (sensitive card is not linked), `people/encryption-required` 409, `people/stored-data` 500, shared `invalid-request` 422, `too-large` 413, `unsupported` 501); binary with `--socket`, `--data`, `--actor` | done, draft |
-| Client `fs-people-client` (`RpcPeople`): `People` and `RoleBook` of the core over the socket of `people.capnp`; the connection lives on a thread of its own, the shared `Worker<Remote>` of `fs-interfaces` v0.34.0 (`rpc::client`; thread, queue, reply guard, deadlines and the generic problem readers come from there, the client keeps its `Remote`, its calls and the table problem type to `Error`); problems of the server become the variants of `fs_people_core::Error` again | done, draft; what it leaves `Unsupported` is under *Client* below |
+| Client `fs-people-client` (`RpcPeople`): `People` and `RoleBook` of the core over the socket of `people.capnp`; the connection lives on a thread of its own, the shared `Worker<Remote>` of `fs-interfaces` v0.36.0 (`rpc::client`; thread, queue, reply guard, deadlines and the generic problem readers come from there, the client keeps its `Remote`, its calls and the table problem type to `Error`); problems of the server become the variants of `fs_people_core::Error` again | done, draft; what it leaves `Unsupported` is under *Client* below |
+| Roles on the wire: ids leave as full IRIs, short ids are still accepted in requests; `RoleDefinition` carries `type` (empty = `skos:Concept`; anything but `org:Role` and `skos:Concept` is refused), `broader`, `closeMatch`, `standardRefs`. The core keeps one address for `broader` and `closeMatch`, so a second one in a request is refused (`invalid-request`), not dropped | done, draft |
 | Live feed: `PeopleFeed`, `PersonListener`, `PersonChange`; cards only, never roles or links | done |
 | `list`: kind, role and term combine with AND (`ListFilter`) | done |
 | Writes through the traits take turns (`writes` in `PeopleRepo`), so a read-modify-write is not lost when the backend yields; the inherent methods do not, and compose each other | done |
@@ -38,9 +39,10 @@ Version 0.3.0: provider of the `people` contract (`people.capnp` in `fs-interfac
 | A write of the server runs to its end, also if the client goes away (`run_to_end`) | done |
 | Numbers: what plain `serde_json` cannot keep exactly is refused at intake with a clear 422 (an integer beyond `i64` / `u64`, a float whose value does not come back, `-0`): cards, `details`, a role configuration when stored (not when restored, so a stored one cannot stop a start); in an import, per item in `failed`, also one that no parser reads such as `1e400`. A `-0` an older card already holds blocks no edit. `validate/numbers.rs` reads the text, as the parser changes the number. `serde_json` has `float_roundtrip`, without which the parser can be one step off a double (6 % of random ones). The feature `arbitrary_precision` was tried and removed: features unify across the build, it broke vCard export and undo, and other readers could not read the result | done |
 | Role configuration survives a restart: `store_role_config` keeps it in the store, `restore_role_config` puts it back at start | done |
-| Tests | 109 in the core, 49 for the server (the client has 35 and the app its own: `crates/fs-people-client/tests`, `crates/fs-people-app/tests`, all against the real server on a real socket over the real store): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
+| Compare-and-set: `People::update_checked(id, Revision, card)` and `Persons.updateIf`; every `Person` carries `revision` (derived from the stored time and card, not stored; compare for equality only). A stale revision is `people/conflict` (409) whose detail starts `conflict:` and names no revision; nothing is written. Atomic inside one process (the write turn) | done, draft |
+| Tests | 142 in the core, 60 for the server (the client has 35 and the app its own: `crates/fs-people-client/tests`, `crates/fs-people-app/tests`): over a real socket against the real store, one of them the real binary across a restart. Two small providers beside the real one, only for what it cannot show: the provider rule (a read-only source) and a feed whose reads fail |
 | Cursor paging | done: `PersonPages` (`first`/`next` with an opaque `Cursor`) in `fs-people-client`, implemented by `RpcPeople`; `PageWalk` walks it. The window's "Show more" and search read on from the cursor (`fs-people-app/source/reading.rs`) instead of reading the pages before again. Tests: 10 in the client (`tests/pages.rs`), 5 in the app (`tests/cursor.rs`), against the real server, the real socket and the real store; the app's counts the pages its client reads |
-| ADR 0043 refactor | done: every file <= 200 lines (guideline), none over the hard limit 300 (`check_rust_rules.py`: 0 errors, 2 warnings: the tests `fs-people-app/tests/keeps.rs` with 271 lines and `fs-people-app/tests/people.rs` with 235 lines are over the guideline; they are one concept each and not split yet), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
+| ADR 0043 refactor | done: no file over the hard limit of 300 lines, five test files over the guideline of 200 (`check_rust_rules.py`: 0 errors, 5 warnings: app tests keeps and people, core tests guards and role_forms, server test roles), `//! Pattern:` in every module, `#![deny(missing_docs)]`, `#![warn(clippy::pedantic)]` clean |
 
 ## Frontend `fs-people-app` (first version, provisional)
 
@@ -122,12 +124,17 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 | `fs-people-server/wire/*`, `errors.rs` | Adapter | values on the wire, limits of a message, core errors as RFC 9457 problems |
 | `fs-people-server/formats.rs` | Registry | media type to format of the core; an unknown type is `Unsupported` |
 | `fs-people-server/feed.rs`, `feed.rs` (core) | Observer | `PeopleFeed` to the shared forwarder; a read error ends the feed with `ended` |
-| `repo/role_config.rs` | Memento | the last accepted configuration as one object in the store |
+| `repo/role_config.rs` | Memento | the last accepted file of each base address as one object in the store |
 | `repo/role_facade.rs` | Facade | `RoleBook` and `PeopleFeed` over the inherent methods, writes take turns |
 | `role_book.rs`, `repo/{roles,assign}.rs` | Repository (interface + implementation) | role definitions and assignments, split from `People` so a provider of cards alone still fits |
-| `roles/registry.rs` | Registry, swapped atomically | configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
+| `roles/directory.rs` | Strategy (trait `RoleDirectory`) | `PeopleRepo` holds an `Arc<dyn RoleDirectory>` (`with_roles`, default `RoleRegistry`); shipped, decorated and test sources are interchangeable, tests run against the trait |
+| `roles/registry.rs` | Registry, swapped atomically | one scheme per base; configuration plugin after Zentinel (ADR 0045): checked first, readers see old or new, never a mix |
+| `roles/scheme.rs` | Adapter | the JSON-LD role file into plain definitions with full ids; the old array form (short ids only) is read as a file of our base that merges over the shipped roles; `parse_stored` migrates an old sentence owner ("CRM (later)" -> `crm-later`), `parse` stays strict |
+| `roles/ident.rs` | none, plain functions | short id, base, full id, `is_ai_role`: the one place that knows both forms (a newtype would wrap a string compared in one file) |
+| `repo/holders.rs` | Repository (queries) | who holds a role, asking every stored form |
 | `roles/{definition,assignment}.rs` | Value objects | the same form for shipped and own roles |
 | `card/relations.rs`, `repo/relations.rs` | Command | small edits of `relatedTo` |
+| `revision.rs`, `People::update_checked` | Newtype + Repository (optimistic lock) | `Revision` has `==` and nothing else, so no code can read it as a counter or an order (the contract says: compare for equality only); the trait method is the compare-and-set, the check and the write one step under the write turn. Derived from the stored time and card, not stored; the same for a sensitive card, and a refusal does not name the revision found (ADR 0029) |
 | `people.rs` | Repository (interface) + Null Object | the program's public contract; GUI, hub, server and tests use `dyn People` |
 | `repo/handle.rs`, `repo/mod.rs` | Repository + Facade | one small type hides store, envelope rules, formats and matching |
 | `repo/backend.rs` | Adapter | `Arc<dyn Store>` presented as `dyn ObjectRepository` + `dyn ObjectQuery` (narrowest store traits) |
@@ -161,7 +168,7 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 
 ## Crates
 
-* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.34.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
+* `fs-store` (git tag v0.2.0). `fs-interfaces` (git tag v0.36.0): `Capabilities`, `Unsupported`; the server also takes the contract and `rpc` from it.
 * `calcard =0.3.14` (Apache-2.0 OR MIT): vCard <-> JSContact following RFC 9554. **Pinned exactly**: Stalwart moved later
   versions to AGPL, which we must not use. Pulls `jmap-tools` (Apache-2.0 OR MIT), `chrono`, `mail-parser` etc., all permissive.
   Its JSON model is separate from ours: we exchange JSON text at the boundary and own the typed `Card`.
@@ -196,6 +203,8 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **vCard export** strips nested `@type` members (no vCard meaning) and relies on calcard's RFC 9554 parameters (`PROP-ID`, `JSCOMPS`, `JSPROP`)
   for lossless return. Unknown vendor properties are exported as `JSPROP`.
 
+Unsupported in the role files (nothing pretends otherwise): export of an `org:Role` assignment as `org:Membership`; the context file `roles.jsonld` (the string in `@context` is not fetched, only `@base` is read); SHACL and value types of `fields`; `closeMatch` and `broader` are stored and returned, never followed or checked; hierarchy queries; friends, partners (relations) and clubs (research open); a lead's move to prospect or customer (end one assignment, start the next).
+
 ## Open points of the `people` interface
 
 * **Operator of an AI (ADR 0054):** planned, the form is open. Nothing blocks it: `RoleAssignment.details` and the card's `extra` are lossless. Locking AIs out is deliberately not built.
@@ -205,7 +214,14 @@ its inherent methods, so callers that do not import the trait keep working. Ever
 * **Scope of an assignment (provisional):** a non-empty `scope` must be an IRI, which also keeps it apart from the internal "personal". `RoleDefinition.scope` decides: `group` needs one, `personal` has none, `public` can be either. `markAi` does not ask, an AI is one everywhere.
 * **`peopleWith` with an empty scope (provisional):** means personal, as in `RoleAssignment.scope`; a non-IRI, also the literal `personal`, is refused. "Everywhere" has no query there: `PersonFilter.role` answers that, as a filter over people. If a consumer needs the ids across all scopes, the contract needs an explicit form.
 * **Sensitive cards in the binary:** the binary opens an unencrypted store, so `fs-store` refuses them (`people/encryption-required`). The key provider comes with the key vault (ADR 0024).
-* **Role definition format:** SKOS not read yet (strategy session); the JSON form may still get sharper before 1.0.
+* **Role definition format (provisional, proposal of `docs/en/interfaces/roles.md`, not yet decided by the owner):** SKOS in JSON-LD as in the State table. Assumptions: the base `https://freesynergy.net/ns/roles/` (who controls the domain is not checked); `broader` and `closeMatch` are one address each; `ai` is `skos:Concept`, `user` and `member` `org:Role`; owners `fs-identity` (user), `fs-crm` (customer, lead, prospect), `fs-erp` (supplier) are ids taken from the documentation's "later CRM/ERP"; a short id given to `define_role` or in the old array means one of ours. Types of fields and SHACL are not read.
+* **Registry rules:** a short id has no `:`, `/`, `#` and is not empty; a full id may exist once across all bases (`Conflict`); loads read, change and write under one write lock. `RoleDefinition.id` and `RoleAssignment.role` are always full ids.
+* **AI recognition across forms:** `is_ai` and `mark_ai` accept the role stored as `ai` or as the full id. Consumers compare with `is_ai_role`, never with the literal `"ai"`.
+* **`store_role_config` called directly and in parallel loses an update.** It is an inherent method of `PeopleRepo` and does not take the write turn (`writes`) that the `RoleBook` facade takes. Two concurrent direct calls can read the same stored state and the later write replaces the earlier one. Through the trait (`RoleBook::load_role_config`, so through the server) the turn serialises them, so it cannot happen there. Found in the review of the role work; not changed, as nothing outside the facade calls it.
+* **Stored role files are never fatal, and not silent:** `restore_role_config` skips a stored file it cannot read and answers `RoleRestore` (`#[must_use]`, `skipped()` lists each file and why); `store_role_config` ignores such objects too. The core has no `tracing` dependency, so it logs nothing itself. The server prints `skipped()` at start on stderr, one line `fs-people-server: skipped stored role file: <file and why>` for each (`tests/binary_restore.rs`). Strict checks only for new input.
+* **An array is resolved when saved:** the old array (short ids) adds to the roles in force; what is saved and loaded is the resulting file of our base, not the array, and holders are checked against exactly that set. So running and after a restart the same roles hold. A stored array from before is still merged over the shipped roles on restore.
+* **Owner migration:** a sentence becomes an id ("CRM (later)" -> `crm-later`); if nothing readable is left ("?") it becomes `unknown`. Dropping the file would lose a whole configuration for one bad field, and `unknown` invents no program; it is not `fs-people`, so no details are kept for that role. Only reporting was the alternative; it would leave the roles out of force.
+* **Friends and partners are relations (vCard `RELATED`), not roles; clubs need research:** not built.
 * **The trait returns `StoredObject` of `fs-store`:** a provider without a store has to build one. To be decided before 1.0.
 * **`supportReport` is the standard** for what a provider offers (strategy decision); a method `capabilities` is not added to `People`.
 * **Gaps of `people.capnp` (for the owner of the contract):**

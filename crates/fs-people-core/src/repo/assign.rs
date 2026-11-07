@@ -3,16 +3,16 @@
 //! Pattern: Repository — an assignment is an AS2 `Relationship` (person -> role, in a scope) of its
 //! own, like a same-person link: logged, undoable, and never part of a card or its export (ADR 0029).
 
-use fs_store::{Envelope, ObjectId, Query, StoredObject};
+use fs_store::{Envelope, ObjectId, StoredObject};
 use serde_json::{Map, Value, json};
 
 use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE};
 use super::handle::PeopleRepo;
+use super::holders::{PERSONAL, read};
 use super::role_rules::{check_iri, check_kind, check_reach};
 use crate::error::{Error, Issue, Result};
 use crate::roles::{RoleAssignment, RoleDefinition};
 
-const PERSONAL: &str = "personal";
 /// The owner whose role fields this program holds itself.
 const OWN_ROLES: &str = "fs-people";
 
@@ -114,86 +114,10 @@ impl PeopleRepo {
         Ok(())
     }
 
-    /// The roles of a person.
-    pub async fn roles_of(&self, person: ObjectId) -> Result<Vec<RoleAssignment>> {
-        let q = assignments().with_index("person", person.to_string());
-        Ok(self
-            .reads
-            .query(&q)
-            .await?
-            .iter()
-            .filter_map(read)
-            .collect())
-    }
-
-    /// The people holding a role in any scope; with `scope`, only within that group.
-    pub async fn people_with_role(&self, role: &str, scope: Option<&str>) -> Result<Vec<ObjectId>> {
-        check_iri(scope)?;
-        let mut q = assignments().with_index("role", role);
-        if let Some(s) = scope {
-            q = q.with_index("scope", s);
-        }
-        self.holders(&q).await
-    }
-
-    /// The people holding a role personally, not within a group.
-    pub async fn people_with_personal_role(&self, role: &str) -> Result<Vec<ObjectId>> {
-        let q = assignments()
-            .with_index("role", role)
-            .with_index("scope", PERSONAL);
-        self.holders(&q).await
-    }
-
-    /// The assignments held within the group with this IRI.
-    pub(super) async fn assignments_scoped_to(&self, iri: &str) -> Result<Vec<ObjectId>> {
-        let q = assignments().with_index("scope", iri);
-        let found = self.reads.query(&q).await?;
-        Ok(found.iter().filter_map(read).map(|a| a.id).collect())
-    }
-
-    /// Every assignment there is.
-    pub(super) async fn all_assignments(&self) -> Result<Vec<RoleAssignment>> {
-        let found = self.reads.query(&assignments()).await?;
-        Ok(found.iter().filter_map(read).collect())
-    }
-
-    async fn holders(&self, q: &Query) -> Result<Vec<ObjectId>> {
-        let found = self.reads.query(q).await?;
-        let mut holders: Vec<ObjectId> = found.iter().filter_map(read).map(|a| a.person).collect();
-        holders.sort_unstable();
-        holders.dedup(); // one person can hold a role in several scopes
-        Ok(holders)
-    }
-
     pub(super) async fn delete_assignments_of(&self, person: ObjectId) -> Result<()> {
         for a in self.roles_of(person).await? {
             self.objects.delete(a.id, &self.actor).await?;
         }
         Ok(())
     }
-}
-
-fn assignments() -> Query {
-    Query::new().of_type(RELATIONSHIP_TYPE).in_context(CONTEXT)
-}
-
-/// The assignment in `o`, if it is one; a same-person link or a card is not.
-fn read(o: &StoredObject) -> Option<RoleAssignment> {
-    if o.envelope.object_type != RELATIONSHIP_TYPE {
-        return None;
-    }
-    let index = |k: &str| o.index.get(k).and_then(|v| v.first());
-    let scope = index("scope")?;
-    Some(RoleAssignment {
-        id: o.envelope.id,
-        person: index("person")?.parse().ok()?,
-        role: index("role")?.clone(),
-        scope: (scope != PERSONAL).then(|| scope.clone()),
-        details: o
-            .content
-            .get("details")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default(),
-    })
 }

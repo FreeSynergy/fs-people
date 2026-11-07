@@ -28,9 +28,13 @@ fn main() {
             Some(domain) => repo.with_instance(domain),
             None => repo,
         });
-        repo.restore_role_config()
+        let restored = repo
+            .restore_role_config()
             .await
             .map_err(std::io::Error::other)?;
+        for line in restored.skipped() {
+            eprintln!("fs-people-server: skipped stored role file: {line}");
+        }
         let server = PeopleServer::new(repo.clone(), repo.clone(), repo);
         Ok(server.into_client().client)
     });
