@@ -14,6 +14,7 @@ use crate::error::Result;
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 use crate::matching::SameAsProposal;
 use crate::repo::{ImportReport, ListFilter, ReleasedExport};
+use crate::revision::Revision;
 
 /// The explicit "not possible" of a method a provider does not override.
 pub(crate) fn not_possible<T>(capability: &str) -> Result<T> {
@@ -46,6 +47,17 @@ pub trait People: Send + Sync {
     }
     /// `person.update`: replace the card of `id` (the `uid` cannot change).
     async fn update(&self, _id: ObjectId, _card: Card) -> Result<StoredObject> {
+        not_possible("person.update")
+    }
+    /// `person.update`, compare-and-set: replace the card only if it still has `expected` (the
+    /// [`Revision`] the caller read); otherwise [`Error::Changed`](crate::Error::Changed) and nothing is
+    /// written. The check and the write are one step, atomic inside one provider process only.
+    async fn update_checked(
+        &self,
+        _id: ObjectId,
+        _expected: Revision,
+        _card: Card,
+    ) -> Result<StoredObject> {
         not_possible("person.update")
     }
     /// `person.delete`: delete a card, its role assignments and the same-person links that mention it.

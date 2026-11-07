@@ -26,6 +26,7 @@ pub mod index;
 pub mod matching;
 mod people;
 mod repo;
+mod revision;
 mod role_book;
 pub mod roles;
 pub mod validate;
@@ -44,5 +45,6 @@ pub use repo::{
     CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, RELATIONSHIP_TYPE,
     ROLE_DEFINITION_TYPE, ReleasedExport, card_of,
 };
+pub use revision::Revision;
 pub use role_book::RoleBook;
 pub use roles::{AI_ROLE, RoleAssignment, RoleDefinition, RoleField, RoleRegistry, RoleScope};

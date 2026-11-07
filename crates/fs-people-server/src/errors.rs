@@ -31,6 +31,7 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
             Problem::new(NOT_FOUND, "Not found", text, 404).into_error()
         }
         Error::Conflict(_)
+        | Error::Changed(_)
         | Error::Store(StoreError::Conflict(_) | StoreError::OriginalImmutable(_)) => {
             Problem::new(CONFLICT, "Conflict", text, 409).into_error()
         }
