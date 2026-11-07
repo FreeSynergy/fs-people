@@ -1520,6 +1520,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-people-client"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "capnp",
+ "fs-interfaces",
+ "fs-people-core",
+ "fs-people-server",
+ "fs-store",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "fs-people-core"
 version = "0.3.0"
 dependencies = [
