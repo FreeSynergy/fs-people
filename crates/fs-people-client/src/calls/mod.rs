@@ -2,5 +2,6 @@
 //!
 //! Pattern: Facade — this file only declares modules.
 
+pub(crate) mod lists;
 pub(crate) mod persons;
 pub(crate) mod roles;

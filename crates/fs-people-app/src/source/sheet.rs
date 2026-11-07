@@ -4,13 +4,31 @@
 //! sensitive data) stand out at the top (ADR 0029, 0054). What the card holds that is not shown is
 //! named, so nobody thinks it is gone.
 
-use fs_components_workbenches::people::{PersonField, PersonSection, PersonSheet};
-use fs_people_core::{AI_ROLE, Card, Error, RoleBook};
+use fs_components_workbenches::people::{PersonField, PersonRow, PersonSection, PersonSheet};
+use fs_people_core::{AI_ROLE, Card, Error, RoleBook, card_of};
 use fs_store::StoredObject;
 use tokio::runtime::Handle;
 
 use super::marks::is_marked;
 use crate::words::field;
+
+/// The row of a person. A card that cannot be parsed is still listed under its name, so it can be
+/// found.
+pub(super) fn row_of(object: &StoredObject) -> PersonRow {
+    let mail = card_of(object)
+        .ok()
+        .as_ref()
+        .map_or_else(String::new, first_email);
+    let row = PersonRow::new(
+        object.envelope.id.to_string(),
+        vec![object.envelope.name.clone(), mail],
+    );
+    if is_marked(object) {
+        row.guarded(field::SENSITIVE_ROW)
+    } else {
+        row
+    }
+}
 
 /// The e-mail to show in a row: the preferred one, else the first.
 pub(super) fn first_email(card: &Card) -> String {

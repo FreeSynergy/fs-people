@@ -10,6 +10,7 @@ use fs_people_core::{Card, Exporter, ImportReport, ListFilter, People, ReleasedE
 use fs_store::{ObjectId, StoredObject};
 
 use crate::RpcPeople;
+use crate::calls::lists;
 use crate::calls::persons::{self, card_text};
 use crate::pages::{Cursor, PersonPage, PersonPages};
 
@@ -28,7 +29,7 @@ impl People for RpcPeople {
 
     async fn list(&self, filter: &ListFilter) -> Result<Vec<StoredObject>> {
         let filter = filter.clone();
-        self.call(move |r| async move { persons::list(&r.persons, &filter).await })
+        self.call(move |r| async move { lists::list(&r.persons, &filter).await })
             .await
     }
 
@@ -82,13 +83,13 @@ impl People for RpcPeople {
 impl PersonPages for RpcPeople {
     async fn first(&self, filter: &ListFilter) -> Result<PersonPage> {
         let filter = filter.clone();
-        self.call(move |r| async move { persons::page(&r.persons, &filter, None).await })
+        self.call(move |r| async move { lists::page(&r.persons, &filter, None).await })
             .await
     }
 
     async fn next(&self, filter: &ListFilter, cursor: &Cursor) -> Result<PersonPage> {
         let (filter, cursor) = (filter.clone(), cursor.clone());
-        self.call(move |r| async move { persons::page(&r.persons, &filter, Some(&cursor)).await })
+        self.call(move |r| async move { lists::page(&r.persons, &filter, Some(&cursor)).await })
             .await
     }
 }

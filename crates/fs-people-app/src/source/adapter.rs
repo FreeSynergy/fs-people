@@ -21,13 +21,10 @@ use fs_people_core::{Card, Error, People, RoleBook, card_of};
 use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
-use crate::words::field;
-
 use super::apply::apply_draft;
 use super::draft::{blank_draft, draft_of};
-use super::marks::is_marked;
 use super::reading::Reading;
-use super::sheet::{first_email, sensitive_mark, sheet_of};
+use super::sheet::{row_of, sensitive_mark, sheet_of};
 
 /// The contract of the people program, for the workbench. Do not call it from inside the runtime:
 /// it blocks the calling thread until the provider has answered.
@@ -129,26 +126,7 @@ impl PeopleSource for PeopleAdapter {
 
     fn rows(&self, term: &str, offset: usize, limit: usize) -> Result<Vec<PersonRow>, SourceError> {
         let found = self.read_rows(term, offset, limit);
-        Ok(found
-            .map_err(|e| reason(&e))?
-            .iter()
-            .map(|object| {
-                // A card that cannot be parsed is still listed under its name, so it can be found.
-                let mail = card_of(object)
-                    .ok()
-                    .as_ref()
-                    .map_or_else(String::new, first_email);
-                let row = PersonRow::new(
-                    object.envelope.id.to_string(),
-                    vec![object.envelope.name.clone(), mail],
-                );
-                if is_marked(object) {
-                    row.guarded(field::SENSITIVE_ROW)
-                } else {
-                    row
-                }
-            })
-            .collect())
+        Ok(found.map_err(|e| reason(&e))?.iter().map(row_of).collect())
     }
 
     fn read(&self, key: &str) -> Result<PersonSheet, SourceError> {
