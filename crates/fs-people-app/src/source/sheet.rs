@@ -5,8 +5,8 @@
 //! named, so nobody thinks it is gone.
 
 use fs_components_workbenches::people::{PersonField, PersonSection, PersonSheet};
+use fs_objects::StoredObject;
 use fs_people_core::{Card, Error, RoleBook, is_ai_role};
-use fs_store::StoredObject;
 use tokio::runtime::Handle;
 
 use super::marks::is_marked;

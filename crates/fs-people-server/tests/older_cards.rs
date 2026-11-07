@@ -4,8 +4,8 @@
 mod common;
 
 use common::{CONFLICT, card, expect_problem, id_of, persons_of, with_store};
+use fs_objects::{Envelope, StoredObject};
 use fs_people_core::Card;
-use fs_store::{Envelope, StoredObject};
 
 const UUID: &str = "9f8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 

@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fs_components_workbenches::people::{PeopleLabels, PeopleSource, PeopleState, Variant};
+use fs_objects::{ObjectId, Store, TursoStore};
 use fs_people_app::PeopleAdapter;
 use fs_people_core::{Card, PeopleRepo};
-use fs_store::{ObjectId, Store, TursoStore};
 use tokio::runtime::Runtime;
 
 pub const ME: &str = "https://local.invalid/users/owner";

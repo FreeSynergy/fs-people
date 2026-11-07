@@ -5,9 +5,9 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use fs_objects::traits::{ObjectQuery, ObjectRepository};
+use fs_objects::{Activity, LogEntry, ObjectId, Query, Store, StoredObject, TursoStore};
 use fs_people_core::PeopleRepo;
-use fs_store::traits::{ObjectQuery, ObjectRepository};
-use fs_store::{Activity, LogEntry, ObjectId, Query, Store, StoredObject, TursoStore};
 use tokio::task::yield_now;
 
 /// The real store, with the pauses a remote one has.
@@ -15,7 +15,7 @@ pub struct Yielding(Arc<dyn Store>);
 
 #[async_trait]
 impl ObjectRepository for Yielding {
-    async fn put(&self, object: StoredObject, actor: &str) -> fs_store::Result<Activity> {
+    async fn put(&self, object: StoredObject, actor: &str) -> fs_objects::Result<Activity> {
         yield_now().await;
         Store::put(&*self.0, object, actor).await
     }
@@ -24,15 +24,15 @@ impl ObjectRepository for Yielding {
         object: StoredObject,
         actor: &str,
         extra: Vec<LogEntry>,
-    ) -> fs_store::Result<Vec<Activity>> {
+    ) -> fs_objects::Result<Vec<Activity>> {
         yield_now().await;
         Store::put_and_log(&*self.0, object, actor, extra).await
     }
-    async fn get(&self, id: ObjectId) -> fs_store::Result<Option<StoredObject>> {
+    async fn get(&self, id: ObjectId) -> fs_objects::Result<Option<StoredObject>> {
         yield_now().await;
         Store::get(&*self.0, id).await
     }
-    async fn delete(&self, id: ObjectId, actor: &str) -> fs_store::Result<Activity> {
+    async fn delete(&self, id: ObjectId, actor: &str) -> fs_objects::Result<Activity> {
         yield_now().await;
         Store::delete(&*self.0, id, actor).await
     }
@@ -40,11 +40,11 @@ impl ObjectRepository for Yielding {
 
 #[async_trait]
 impl ObjectQuery for Yielding {
-    async fn query(&self, query: &Query) -> fs_store::Result<Vec<StoredObject>> {
+    async fn query(&self, query: &Query) -> fs_objects::Result<Vec<StoredObject>> {
         yield_now().await;
         Store::query(&*self.0, query).await
     }
-    async fn count(&self, query: &Query) -> fs_store::Result<usize> {
+    async fn count(&self, query: &Query) -> fs_objects::Result<usize> {
         yield_now().await;
         Store::count(&*self.0, query).await
     }

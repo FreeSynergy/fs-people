@@ -5,8 +5,8 @@
 //! people problem types; the detail text stays as it was. The table is in `DESIGN.md`.
 
 use fs_interfaces::rpc::{Problem, problem_keys as keys};
+use fs_objects::Error as StoreError;
 use fs_people_core::Error;
-use fs_store::Error as StoreError;
 
 /// The key of the number that cannot be kept exactly (`invalid`).
 pub(crate) const VALUE: &str = "value";
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn a_list_export_names_the_list_and_each_member_held_back() {
-        let list = fs_store::ObjectId::new();
+        let list = fs_objects::ObjectId::new();
         let held = vec!["a: Ada".to_string(), "b: Bo".to_string()];
         let p = problem(Error::SensitiveMembers(
             Subject::new(Kind::List, list),
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn a_half_done_delete_gives_the_person_and_where_it_stopped() {
-        let id = fs_store::ObjectId::new();
+        let id = fs_objects::ObjectId::new();
         let p = problem(Error::PartlyDeleted(id, "links remain".into()));
         assert_eq!(p.ext("id"), Some(id.to_string().as_str()));
         assert_eq!(p.ext("kind"), Some("person"));

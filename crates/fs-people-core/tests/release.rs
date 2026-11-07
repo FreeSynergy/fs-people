@@ -3,8 +3,8 @@
 mod common;
 
 use common::{person, repo};
+use fs_objects::{Envelope, StoredObject};
 use fs_people_core::{Card, Error, JsContactFormat, VCardFormat};
-use fs_store::{Envelope, StoredObject};
 
 fn marked(name: &str, email: &str, categories: &[&str]) -> Card {
     let mut c = person(name, email);

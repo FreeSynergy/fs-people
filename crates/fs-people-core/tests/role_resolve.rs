@@ -4,8 +4,8 @@
 mod common;
 
 use common::{ME, setup};
+use fs_objects::{Envelope, StoredObject};
 use fs_people_core::{CONTEXT, Error, PeopleRepo, RoleDirectory, RoleRegistry};
-use fs_store::{Envelope, StoredObject};
 use serde_json::{Map, json};
 
 const CLUB: &str = "https://local.invalid/groups/club";

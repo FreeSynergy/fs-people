@@ -5,8 +5,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+use fs_objects::{Envelope, Store, StoredObject, TursoStore};
 use fs_people_core::CONTEXT;
-use fs_store::{Envelope, Store, StoredObject, TursoStore};
 use program::{terminate, wait_for};
 use serde_json::json;
 

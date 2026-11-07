@@ -8,8 +8,8 @@ mod common;
 use std::sync::Arc;
 
 use common::{ME, person};
+use fs_objects::{Store, TursoStore};
 use fs_people_core::{Card, Error, PeopleRepo};
-use fs_store::{Store, TursoStore};
 
 const V4: &str = "9f8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 

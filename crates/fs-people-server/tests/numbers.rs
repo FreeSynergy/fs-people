@@ -4,8 +4,8 @@ mod common;
 
 use common::{BAD_REQUEST, INVALID, ME, expect_problem, json_of, persons_of, with_store};
 use fs_interfaces::rpc::write_uuid;
+use fs_objects::{Envelope, StoredObject};
 use fs_people_core::Card;
-use fs_store::{Envelope, StoredObject};
 
 fn with_number(uid: &str, number: &str) -> String {
     format!(

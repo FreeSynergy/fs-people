@@ -3,8 +3,8 @@
 mod common;
 
 use common::{person, repo};
+use fs_objects::ObjectId;
 use fs_people_core::{Error, PeopleRepo, RoleDefinition, RoleScope};
-use fs_store::ObjectId;
 use serde_json::{Map, json};
 
 const CLUB: &str = "https://x/groups/club";

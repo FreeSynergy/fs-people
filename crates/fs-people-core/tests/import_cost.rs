@@ -8,8 +8,8 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use common::ME;
+use fs_objects::{Store, TursoStore};
 use fs_people_core::{Card, JsContactFormat, People, PeopleRepo};
-use fs_store::{Store, TursoStore};
 use gated::Gated;
 
 struct Fixture {

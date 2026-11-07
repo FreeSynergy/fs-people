@@ -3,8 +3,8 @@
 mod common;
 
 use common::{ME, person, repo, setup};
+use fs_objects::{ActivityFilter, ActivityKind};
 use fs_people_core::{Card, Error, card};
-use fs_store::{ActivityFilter, ActivityKind};
 use serde_json::json;
 
 #[tokio::test]

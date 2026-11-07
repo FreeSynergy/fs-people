@@ -7,9 +7,9 @@ use std::sync::Arc;
 use common::{ME, create, persons_of, with_root, with_store};
 use fs_interfaces::people_capnp::people;
 use fs_interfaces::rpc::read_uuid;
+use fs_objects::{ActivityFilter, Store, TursoStore};
 use fs_people_core::PeopleRepo;
 use fs_people_server::PeopleServer;
-use fs_store::{ActivityFilter, Store, TursoStore};
 use uuid::Uuid;
 
 async fn instance_of(root: &people::Client) -> Option<Uuid> {

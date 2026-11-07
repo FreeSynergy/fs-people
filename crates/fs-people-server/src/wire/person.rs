@@ -15,9 +15,9 @@ use fs_interfaces::rpc::{
     DEFAULT_PAGE_SIZE, Page, check_answer, check_intake, envelope_weight, invalid_request,
     write_envelope, write_object_id,
 };
+use fs_objects::{ObjectId, StoredObject};
 use fs_people_core::validate::check_card_numbers;
 use fs_people_core::{Card, ListFilter, MatchKind, Revision, SameAsProposal};
-use fs_store::{ObjectId, StoredObject};
 
 /// Room for one list entry with its pointers; only for the check that an answer fits.
 pub(super) const UUID_BYTES: usize = 32;

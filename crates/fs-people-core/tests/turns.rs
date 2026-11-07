@@ -13,10 +13,10 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use common::{ME, person};
+use fs_objects::{ObjectId, Store, TursoStore};
 use fs_people_core::{
     Card, JsContactFormat, People, PeopleRepo, RoleBook, RoleDefinition, RoleScope,
 };
-use fs_store::{ObjectId, Store, TursoStore};
 use gated::Gated;
 use serde_json::Map;
 

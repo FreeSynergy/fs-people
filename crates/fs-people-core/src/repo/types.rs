@@ -2,7 +2,7 @@
 //!
 //! Pattern: Value objects — plain data for list filters and import results.
 
-use fs_store::ObjectId;
+use fs_objects::ObjectId;
 
 /// Filter for `PeopleRepo::list`.
 #[derive(Clone, Debug, Default)]

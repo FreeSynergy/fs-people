@@ -15,8 +15,8 @@ use fs_components_workbenches::SourceError;
 use fs_components_workbenches::people::{
     PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
 };
+use fs_objects::{ObjectId, StoredObject};
 use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
-use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
 use crate::words::field;
@@ -61,7 +61,7 @@ fn id_of(key: &str) -> Result<ObjectId, SourceError> {
 /// What the core said, in the workbench's terms. A store refusing a sensitive card is said plainly.
 fn reason(error: &Error) -> SourceError {
     match error {
-        Error::Store(fs_store::Error::EncryptionRequired(_)) => SourceError::failed(format!(
+        Error::Store(fs_objects::Error::EncryptionRequired(_)) => SourceError::failed(format!(
             "this card is marked sensitive and this store is not encrypted, so it was refused ({error})"
         )),
         Error::NotFound(_) | Error::ListNotFound(_) => SourceError::not_found(error.to_string()),

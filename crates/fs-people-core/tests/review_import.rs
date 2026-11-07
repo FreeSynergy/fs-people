@@ -7,8 +7,8 @@ mod common;
 use std::sync::Arc;
 
 use common::{ME, person, repo};
+use fs_objects::{ObjectId, Store, TursoStore};
 use fs_people_core::PeopleRepo;
-use fs_store::{ObjectId, Store, TursoStore};
 
 const V7: &str = "01a1aaef-ba80-7f7a-8dff-0000000000ab";
 
