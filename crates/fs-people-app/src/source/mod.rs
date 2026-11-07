@@ -7,6 +7,7 @@ mod adapter;
 mod apply;
 mod draft;
 mod marks;
+mod reading;
 mod sheet;
 
 pub use adapter::PeopleAdapter;

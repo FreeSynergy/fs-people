@@ -10,14 +10,14 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use fs_components_workbenches::SourceError;
 use fs_components_workbenches::people::{
     PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
 };
 use fs_people_client::PersonPages;
-use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
+use fs_people_core::{Card, Error, People, RoleBook, card_of};
 use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
@@ -26,6 +26,7 @@ use crate::words::field;
 use super::apply::apply_draft;
 use super::draft::{blank_draft, draft_of};
 use super::marks::is_marked;
+use super::reading::Reading;
 use super::sheet::{first_email, sensitive_mark, sheet_of};
 
 /// The contract of the people program, for the workbench. Do not call it from inside the runtime:
@@ -33,7 +34,8 @@ use super::sheet::{first_email, sensitive_mark, sheet_of};
 pub struct PeopleAdapter {
     people: Arc<dyn People>,
     roles: Arc<dyn RoleBook>,
-    _pages: Arc<dyn PersonPages>,
+    pages: Arc<dyn PersonPages>,
+    reading: Mutex<Option<Reading>>,
     runtime: Handle,
 }
 
@@ -49,9 +51,28 @@ impl PeopleAdapter {
         Self {
             people,
             roles,
-            _pages: pages,
+            pages,
+            reading: Mutex::new(None),
             runtime,
         }
+    }
+
+    /// The rows from `offset`, read on from the cursor of the last call when it ended there. A reading
+    /// that failed is dropped, so the next call starts clean.
+    fn read_rows(
+        &self,
+        term: &str,
+        offset: usize,
+        limit: usize,
+    ) -> fs_people_core::Result<Vec<StoredObject>> {
+        let mut slot = self.reading.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut reading = match slot.take() {
+            Some(r) if r.term == term => r,
+            _ => Reading::new(self.pages.clone(), term),
+        };
+        let rows = self.runtime.block_on(reading.take(offset, limit))?;
+        *slot = Some(reading);
+        Ok(rows)
     }
 
     fn stored(&self, id: ObjectId) -> Result<StoredObject, SourceError> {
@@ -107,19 +128,7 @@ impl PeopleSource for PeopleAdapter {
     }
 
     fn rows(&self, term: &str, offset: usize, limit: usize) -> Result<Vec<PersonRow>, SourceError> {
-        let found = if term.trim().is_empty() {
-            let filter = ListFilter {
-                limit: Some(limit),
-                offset,
-                ..ListFilter::default()
-            };
-            self.runtime.block_on(self.people.list(&filter))
-        } else {
-            // `People::search` has no paging: the whole result is read for every page (DESIGN.md).
-            self.runtime
-                .block_on(self.people.search(term))
-                .map(|all| all.into_iter().skip(offset).take(limit).collect())
-        };
+        let found = self.read_rows(term, offset, limit);
         Ok(found
             .map_err(|e| reason(&e))?
             .iter()
