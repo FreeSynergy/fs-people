@@ -32,3 +32,16 @@ pub struct ImportReport {
     /// someone clarifies it (ADR 0029). Name and `uid`.
     pub unclear: Vec<String>,
 }
+
+/// What `restore_role_config` did. Must be looked at: a stored file that could not be read is
+/// skipped, not fatal, and only this says so.
+#[derive(Clone, Debug, Default)]
+#[must_use = "a stored role file may have been skipped: look at `skipped()`"]
+pub struct RoleRestore(pub(super) Vec<String>);
+
+impl RoleRestore {
+    /// One line for each stored role file that was skipped, with the reason. Empty if all were read.
+    pub fn skipped(&self) -> &[String] {
+        &self.0
+    }
+}

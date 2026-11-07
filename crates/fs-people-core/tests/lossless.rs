@@ -90,7 +90,7 @@ async fn a_configuration_that_was_stored_always_starts_again() {
     let content: Value = serde_json::from_str(&config).unwrap();
     let object = fs_store::StoredObject::new(envelope, "application/json", content);
     store.put(object, common::ME).await.unwrap();
-    r.restore_role_config().await.unwrap();
+    assert!(r.restore_role_config().await.unwrap().skipped().is_empty());
     assert!(r.role("x").await.unwrap().is_some());
 }
 

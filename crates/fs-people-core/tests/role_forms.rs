@@ -156,7 +156,7 @@ async fn my_customer_and_our_customer_are_two_roles_and_files_survive_a_restart(
             .unwrap()
             .is_none()
     );
-    again.restore_role_config().await.unwrap();
+    assert!(again.restore_role_config().await.unwrap().skipped().is_empty());
     assert!(
         again
             .role(&format!("{MINE}customer"))

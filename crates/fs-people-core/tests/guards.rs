@@ -167,7 +167,7 @@ async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
         again.role("ai").await.unwrap().is_some(),
         "not restored yet"
     );
-    again.restore_role_config().await.unwrap();
+    assert!(again.restore_role_config().await.unwrap().skipped().is_empty());
     assert!(
         again.role("ai").await.unwrap().is_some(),
         "the array merges over the shipped roles"

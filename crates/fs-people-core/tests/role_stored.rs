@@ -35,7 +35,7 @@ async fn an_older_configuration_with_a_sentence_as_owner_is_read_and_migrated() 
     let old = json!([{"id": "coach", "names": {"en": "Coach"}, "owner": "CRM (later)", "scope": "group"}]);
     put_stored(&store, old).await;
     let again = PeopleRepo::new(store, ME);
-    assert!(again.restore_role_config().await.unwrap().is_empty());
+    assert!(again.restore_role_config().await.unwrap().skipped().is_empty());
     let coach = again.role("coach").await.unwrap().unwrap();
     assert_eq!(coach.owner, "crm-later");
     // Newly typed input stays strict.
@@ -51,7 +51,7 @@ async fn a_broken_stored_object_blocks_neither_the_start_nor_a_new_save() {
     let (_, store) = setup().await;
     put_stored(&store, json!({"nonsense": true})).await;
     let r = PeopleRepo::new(store, ME);
-    let skipped = r.restore_role_config().await.unwrap();
+    let skipped = r.restore_role_config().await.unwrap().skipped().to_vec();
     assert_eq!(skipped.len(), 1, "{skipped:?}");
     r.store_role_config(&file("https://example.org/r/", "a"))
         .await
@@ -75,7 +75,7 @@ async fn the_old_array_merges_over_the_shipped_roles() {
     let (_, store) = setup().await;
     put_stored(&store, array).await;
     let r = PeopleRepo::new(store, ME);
-    r.restore_role_config().await.unwrap();
+    assert!(r.restore_role_config().await.unwrap().skipped().is_empty());
     assert!(r.role(AI_ROLE_IRI).await.unwrap().is_some());
 }
 

@@ -43,7 +43,7 @@ pub use matching::{
 pub use people::People;
 pub use repo::{
     CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, RELATIONSHIP_TYPE,
-    ROLE_DEFINITION_TYPE, ReleasedExport, card_of,
+    ROLE_DEFINITION_TYPE, ReleasedExport, RoleRestore, card_of,
 };
 pub use revision::Revision;
 pub use role_book::RoleBook;
