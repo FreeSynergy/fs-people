@@ -11,8 +11,20 @@
 
 #![deny(missing_docs)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
+// A closure reads better than the full path of a generated reader type.
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::redundant_closure_for_method_calls
+)]
 
+mod calls;
 mod peer;
+mod people_impl;
+mod problems;
+#[cfg(test)]
+mod problems_table;
+mod read;
+mod roles_impl;
+mod worker;
 
 pub use peer::RpcPeople;

@@ -17,7 +17,10 @@ async fn a_role_is_read_with_its_definition_or_is_not_there() {
     let got = book.role("friend").await.unwrap().unwrap();
     assert_eq!(got.names, own.names);
     assert_eq!(got.description, own.description);
-    assert_eq!((got.owner.as_str(), got.scope), ("fs-people", RoleScope::Personal));
+    assert_eq!(
+        (got.owner.as_str(), got.scope),
+        ("fs-people", RoleScope::Personal)
+    );
     assert!(book.role("nobody-knows").await.unwrap().is_none());
 }
 
@@ -42,10 +45,14 @@ async fn what_the_client_does_not_offer_is_unsupported_in_so_many_words() {
     let id = add(&people, person("Ada", "a@x.org")).await;
     let unsupported = |e: Error| matches!(e, Error::Unsupported(_));
     assert!(unsupported(people.get_by_uid("x").await.unwrap_err()));
-    assert!(unsupported(people.find_by_email("a@x.org").await.unwrap_err()));
+    assert!(unsupported(
+        people.find_by_email("a@x.org").await.unwrap_err()
+    ));
     assert!(unsupported(people.create_group("G").await.unwrap_err()));
     assert!(unsupported(people.relations(id).await.unwrap_err()));
-    assert!(unsupported(people.find_same_person_proposals().await.unwrap_err()));
+    assert!(unsupported(
+        people.find_same_person_proposals().await.unwrap_err()
+    ));
     assert!(unsupported(people.export_vcard(id).await.unwrap_err()));
     assert!(unsupported(people.mark_ai(id).await.unwrap_err()));
     assert!(unsupported(people.roles().await.unwrap_err()));

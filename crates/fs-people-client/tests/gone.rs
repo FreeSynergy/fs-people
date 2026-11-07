@@ -24,9 +24,13 @@ async fn a_server_that_stopped_answers_with_an_error_every_time() {
     people.create(person("Ada", "a@x.org")).await.unwrap();
     served.stop();
     for _ in 0..2 {
-        let got = tokio::time::timeout(Duration::from_secs(10), people.list(&ListFilter::default()))
-            .await
-            .expect("no hang");
-        assert!(matches!(got, Err(Error::Store(fs_store::Error::Backend(_)))), "{got:?}");
+        let got =
+            tokio::time::timeout(Duration::from_secs(10), people.list(&ListFilter::default()))
+                .await
+                .expect("no hang");
+        assert!(
+            matches!(got, Err(Error::Store(fs_store::Error::Backend(_)))),
+            "{got:?}"
+        );
     }
 }

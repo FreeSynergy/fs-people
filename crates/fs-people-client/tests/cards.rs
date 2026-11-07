@@ -87,7 +87,12 @@ async fn search_finds_by_name_mail_phone_and_organisation() {
     ada.add_organization("Engines Ltd");
     add(&people, ada).await;
     add(&people, person("Bob", "bob@y.org")).await;
-    for (term, who) in [("ada", "Ada"), ("y.org", "Bob"), ("123456", "Ada"), ("engines", "Ada")] {
+    for (term, who) in [
+        ("ada", "Ada"),
+        ("y.org", "Bob"),
+        ("123456", "Ada"),
+        ("engines", "Ada"),
+    ] {
         assert_eq!(names(&people.search(term).await.unwrap()), [who], "{term}");
     }
     assert!(people.search("nothing").await.unwrap().is_empty());
@@ -102,7 +107,10 @@ async fn what_the_server_refuses_comes_back_as_the_matching_error() {
         people.update(nobody, person("X", "x@x.org")).await,
         Err(Error::NotFound(id)) if id == nobody
     ));
-    assert!(matches!(people.delete(nobody).await, Err(Error::NotFound(_))));
+    assert!(matches!(
+        people.delete(nobody).await,
+        Err(Error::NotFound(_))
+    ));
 
     let first = person("Ada", "a@x.org");
     people.create(first.clone()).await.unwrap();
@@ -112,8 +120,14 @@ async fn what_the_server_refuses_comes_back_as_the_matching_error() {
     let mut bad = person("Bad", "b@x.org");
     bad.version = "9.9".into();
     let refused = people.create(bad).await.unwrap_err();
-    assert!(matches!(refused, Error::Invalid(ref issues) if !issues.is_empty()), "{refused:?}");
-    assert!(refused.to_string().starts_with("card violates RFC 9553: "), "{refused}");
+    assert!(
+        matches!(refused, Error::Invalid(ref issues) if !issues.is_empty()),
+        "{refused:?}"
+    );
+    assert!(
+        refused.to_string().starts_with("card violates RFC 9553: "),
+        "{refused}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -125,7 +139,10 @@ async fn a_plain_store_refusing_a_sensitive_card_says_so() {
     secret.mark_sensitive(["pd:SexualPreference"]);
     let refused = people.create(secret).await.unwrap_err();
     assert!(
-        matches!(refused, Error::Store(fs_store::Error::EncryptionRequired(_))),
+        matches!(
+            refused,
+            Error::Store(fs_store::Error::EncryptionRequired(_))
+        ),
         "{refused:?}"
     );
     assert!(refused.to_string().contains("not encrypted"), "{refused}");
@@ -135,7 +152,13 @@ async fn a_plain_store_refusing_a_sensitive_card_says_so() {
 async fn the_report_of_the_server_is_what_capabilities_tells() {
     let served = Served::start().await;
     let can = served.client().capabilities();
-    for id in ["person.create", "person.update", "person.delete", "person.read", "person.import"] {
+    for id in [
+        "person.create",
+        "person.update",
+        "person.delete",
+        "person.read",
+        "person.import",
+    ] {
         assert!(can.is_supported(id), "{id}");
     }
 }

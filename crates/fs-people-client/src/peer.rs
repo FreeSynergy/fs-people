@@ -1,17 +1,28 @@
 //! The connection: what a frontend holds.
 //!
-//! Pattern: Adapter — the traits of the core in front of the Cap'n Proto client. Written down as
-//! the interface first (ADR 0043); the calls follow once the tests exist.
+//! Pattern: Adapter — `People` and `RoleBook` of the core in front of the Cap'n Proto client of
+//! `people.capnp`. The thread of the connection is in `worker.rs`; the calls in `calls/`; the traits
+//! in `people_impl.rs` and `roles_impl.rs`. Interface first (ADR 0043): `connect` was written down
+//! before the calls.
 
+use std::future::Future;
 use std::io;
 use std::path::Path;
 
+use fs_interfaces::Capabilities;
+use fs_people_core::{Error, Result};
+use fs_store::Error as StoreError;
+use tokio::sync::oneshot;
+
+use crate::worker::{Job, Remote, Worker, start};
+
 /// The people program as seen over its socket. Implements `People` and `RoleBook`.
 ///
-/// Dropping it closes the connection.
-#[derive(Debug)]
+/// Calls from any thread are fine; they queue for the one thread that owns the connection and
+/// overlap there. Dropping it closes the connection.
 pub struct RpcPeople {
-    _private: (),
+    worker: Worker,
+    capabilities: Capabilities,
 }
 
 impl RpcPeople {
@@ -23,9 +34,38 @@ impl RpcPeople {
     /// # Errors
     /// Nothing listens there, the server runs as another user, or it does not answer the contract.
     pub fn connect(socket: &Path) -> io::Result<Self> {
-        Err(io::Error::other(format!(
-            "not written yet: {}",
-            socket.display()
-        )))
+        let (worker, capabilities) = start(socket.to_path_buf())?;
+        Ok(Self {
+            worker,
+            capabilities,
+        })
+    }
+
+    /// What the server reported when this connection was made. A snapshot: the server is not asked
+    /// again.
+    pub(crate) fn report(&self) -> Capabilities {
+        self.capabilities.clone()
+    }
+
+    /// Run `work` on the connection's thread and wait for its answer.
+    pub(crate) async fn call<T, F, Fut>(&self, work: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(Remote) -> Fut + Send + 'static,
+        Fut: Future<Output = Result<T>> + 'static,
+    {
+        let gone = || {
+            Error::Store(StoreError::Backend(
+                "people server: the connection is gone".into(),
+            ))
+        };
+        let (reply, answer) = oneshot::channel();
+        let job: Job = Box::new(move |remote| {
+            Box::pin(async move {
+                let _ = reply.send(work(remote).await);
+            })
+        });
+        self.worker.jobs.send(job).map_err(|_| gone())?;
+        answer.await.map_err(|_| gone())?
     }
 }
