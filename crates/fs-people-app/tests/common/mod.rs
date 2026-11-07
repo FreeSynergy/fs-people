@@ -117,6 +117,7 @@ impl World {
             people.clone(),
             people.clone(),
             pages.clone(),
+            people.clone(),
             runtime.handle().clone(),
         ));
         Self {

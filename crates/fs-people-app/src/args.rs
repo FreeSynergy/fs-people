@@ -1,8 +1,11 @@
 //! The command line.
 //!
-//! Pattern: Builder-like parser — plain `std::env::args`, no extra crate for a handful of options.
+//! Pattern: none — one pure parsing function over plain `std::env::args`, no extra crate for a handful
+//! of options; it builds a plain data type and has no behaviour of its own.
 
 use std::path::{Path, PathBuf};
+
+use crate::words::{cli, fill, no_socket};
 
 /// What was asked for on the command line.
 #[derive(Debug, PartialEq, Eq)]
@@ -43,11 +46,7 @@ impl Args {
     /// # Errors
     /// A message for the person if `--socket` was not given, saying where a socket comes from.
     pub fn socket_path(&self) -> Result<&Path, String> {
-        self.socket.as_deref().ok_or_else(|| {
-            "no --socket given: the app talks to a running people server; start one with \
-             `fs-people-server --socket <path>` and pass the same path here"
-                .to_string()
-        })
+        self.socket.as_deref().ok_or_else(no_socket)
     }
 }
 
@@ -62,16 +61,12 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
         let mut value = |name: &str| {
             it.next()
                 .cloned()
-                .ok_or_else(|| format!("{name} needs a value"))
+                .ok_or_else(|| fill(cli::NEEDS_VALUE, &[("option", name)]))
         };
         match arg.as_str() {
             "--socket" => out.socket = Some(PathBuf::from(value("--socket")?)),
             "--store" => {
-                return Err(
-                    "--store is gone: the store belongs to the server, start it with \
-                            `fs-people-server --data <dir>` and give the app its --socket"
-                        .into(),
-                );
+                return Err(cli::STORE_GONE.into());
             }
             "--import" => out.import = Some(PathBuf::from(value("--import")?)),
             "--export" => out.export = Some(PathBuf::from(value("--export")?)),
@@ -79,11 +74,11 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
             "--snapshot" => out.snapshot = Some(PathBuf::from(value("--snapshot")?)),
             "--size" => out.size = fs_components_app::parse_size(&value("--size")?)?,
             "-h" | "--help" => out.help = true,
-            other => return Err(format!("unknown option {other}")),
+            other => return Err(fill(cli::UNKNOWN_OPTION, &[("option", other)])),
         }
     }
     if !out.export_sensitive.is_empty() && out.export.is_none() {
-        return Err("--export-sensitive needs --export".into());
+        return Err(cli::SENSITIVE_NEEDS_EXPORT.into());
     }
     Ok(out)
 }

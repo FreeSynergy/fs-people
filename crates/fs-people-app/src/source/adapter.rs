@@ -4,20 +4,19 @@
 //! `people.capnp`), driven with a tokio handle from the interface thread: every call blocks that
 //! thread until the server has answered (`DESIGN.md`).
 //!
-//! Revision: the store's `updated` time and a fingerprint of the content. `People::update` takes no
-//! revision, so `save` compares and then writes; this is **not atomic** (another writer can slip in
-//! between). A compare-and-set in the store is a wish for `fs-people-core`.
+//! Revision: the one the server gives (`RevisedPeople`, `Person.revision`), kept in the draft as
+//! text. `save` hands it to `People::update_checked`, so the check and the write are one step in the
+//! provider; nobody can slip in between. The app cannot derive the revision itself: the wire carries
+//! time in milliseconds, the store keeps microseconds.
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use fs_components_workbenches::SourceError;
 use fs_components_workbenches::people::{
     PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
 };
-use fs_people_client::PersonPages;
-use fs_people_core::{Card, Error, People, RoleBook, card_of};
+use fs_people_client::{PersonPages, RevisedPeople};
+use fs_people_core::{Card, Error, People, Revision, RoleBook, card_of};
 use fs_store::{ObjectId, StoredObject};
 use tokio::runtime::Handle;
 
@@ -25,6 +24,7 @@ use super::apply::apply_draft;
 use super::draft::{blank_draft, draft_of};
 use super::reading::Reading;
 use super::sheet::{row_of, sensitive_mark, sheet_of};
+use crate::words::{fill, said};
 
 /// The contract of the people program, for the workbench. Do not call it from inside the runtime:
 /// it blocks the calling thread until the provider has answered.
@@ -32,23 +32,26 @@ pub struct PeopleAdapter {
     people: Arc<dyn People>,
     roles: Arc<dyn RoleBook>,
     pages: Arc<dyn PersonPages>,
+    revised: Arc<dyn RevisedPeople>,
     reading: Mutex<Option<Reading>>,
     runtime: Handle,
 }
 
 impl PeopleAdapter {
-    /// An adapter over a provider of both contracts and of the page-wise reading, driven with
-    /// `runtime`.
+    /// An adapter over a provider of both contracts, of the page-wise reading and of the revision,
+    /// driven with `runtime`.
     pub fn new(
         people: Arc<dyn People>,
         roles: Arc<dyn RoleBook>,
         pages: Arc<dyn PersonPages>,
+        revised: Arc<dyn RevisedPeople>,
         runtime: Handle,
     ) -> Self {
         Self {
             people,
             roles,
             pages,
+            revised,
             reading: Mutex::new(None),
             runtime,
         }
@@ -76,22 +79,24 @@ impl PeopleAdapter {
         self.runtime
             .block_on(self.people.get(id))
             .map_err(|e| reason(&e))?
-            .ok_or_else(|| SourceError::not_found("This person no longer exists."))
+            .ok_or_else(|| SourceError::not_found(said::GONE))
     }
 }
 
 /// The key of a row: the object id.
 fn id_of(key: &str) -> Result<ObjectId, SourceError> {
     key.parse()
-        .map_err(|_| SourceError::not_found(format!("\"{key}\" names nobody.")))
+        .map_err(|_| SourceError::not_found(fill(said::NAMES_NOBODY, &[("key", key)])))
 }
 
 /// What the core said, in the workbench's terms. A store refusing a sensitive card is said plainly.
 fn reason(error: &Error) -> SourceError {
     match error {
-        Error::Store(fs_store::Error::EncryptionRequired(_)) => SourceError::failed(format!(
-            "this card is marked sensitive and this store is not encrypted, so it was refused ({error})"
+        Error::Store(fs_store::Error::EncryptionRequired(_)) => SourceError::failed(fill(
+            said::NEEDS_ENCRYPTION,
+            &[("error", &error.to_string())],
         )),
+        Error::Changed(_) => SourceError::conflict(said::CHANGED),
         Error::NotFound(_) => SourceError::not_found(error.to_string()),
         Error::Unsupported(_) => SourceError::unsupported(error.to_string()),
         _ => SourceError::failed(error.to_string()),
@@ -103,15 +108,10 @@ pub(crate) fn reason_text(error: &Error) -> String {
     reason(error).message
 }
 
-/// `updated` alone could repeat within the store's clock tick.
-fn revision_of(object: &StoredObject) -> String {
-    let mut hash = DefaultHasher::new();
-    object.content.to_string().hash(&mut hash);
-    format!(
-        "{}/{:x}",
-        object.envelope.updated.to_rfc3339(),
-        hash.finish()
-    )
+/// The revision as the draft holds it: the text of [`Revision`], read back.
+fn revision_in(draft: &PersonDraft) -> Option<Revision> {
+    let text = draft.revision.as_deref()?;
+    u64::from_str_radix(text, 16).ok().map(Revision::from)
 }
 
 impl PeopleSource for PeopleAdapter {
@@ -137,10 +137,14 @@ impl PeopleSource for PeopleAdapter {
     }
 
     fn draft(&self, key: &str) -> Result<PersonDraft, SourceError> {
-        let object = self.stored(id_of(key)?)?;
-        let card = card_of(&object).map_err(|e| reason(&e))?;
-        let mut draft = draft_of(&card, Some(revision_of(&object)));
-        draft.marks.extend(sensitive_mark(&card, &object));
+        let read = self
+            .runtime
+            .block_on(self.revised.get_revised(id_of(key)?))
+            .map_err(|e| reason(&e))?
+            .ok_or_else(|| SourceError::not_found(said::GONE))?;
+        let card = card_of(&read.object).map_err(|e| reason(&e))?;
+        let mut draft = draft_of(&card, Some(read.revision.to_string()));
+        draft.marks.extend(sensitive_mark(&card, &read.object));
         Ok(draft)
     }
 
@@ -152,15 +156,11 @@ impl PeopleSource for PeopleAdapter {
     fn save(&self, key: &str, draft: &PersonDraft) -> Result<(), SourceError> {
         let id = id_of(key)?;
         let object = self.stored(id)?;
-        if draft.revision.as_deref() != Some(revision_of(&object).as_str()) {
-            return Err(SourceError::conflict(
-                "Someone else changed this person since you started.",
-            ));
-        }
+        let expected = revision_in(draft).ok_or_else(|| SourceError::conflict(said::CHANGED))?;
         let mut card = card_of(&object).map_err(|e| reason(&e))?;
         apply_draft(&mut card, draft)?;
         self.runtime
-            .block_on(self.people.update(id, card))
+            .block_on(self.people.update_checked(id, expected, card))
             .map(|_| ())
             .map_err(|e| reason(&e))
     }
