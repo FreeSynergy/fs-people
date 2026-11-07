@@ -3,7 +3,7 @@
 mod common;
 
 use common::{
-    CLUB, NOT_FOUND, SENSITIVE, create, expect_problem, id_of, json_of, name_of, persons_of,
+    CLUB, NOT_FOUND, SENSITIVE_LINK, create, expect_problem, id_of, json_of, name_of, persons_of,
     roles_of, with_server,
 };
 use fs_interfaces::rpc::{read_uuid, write_uuid};
@@ -121,7 +121,7 @@ async fn sensitive_cards_are_not_proposed_or_linked() {
         let mut confirm = persons.confirm_same_request();
         write_uuid(confirm.get().init_a(), Some(a));
         write_uuid(confirm.get().init_b(), Some(b));
-        expect_problem(confirm.send().promise.await, SENSITIVE);
+        expect_problem(confirm.send().promise.await, SENSITIVE_LINK);
     })
     .await;
 }
