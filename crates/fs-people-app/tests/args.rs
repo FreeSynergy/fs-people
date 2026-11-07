@@ -13,16 +13,16 @@ fn args(line: &str) -> Vec<String> {
 #[test]
 fn all_options_are_read_and_nothing_is_the_default() {
     let got = parse(&args(
-        "--store a.db --import b.vcf --export c.vcf --snapshot d.png --size 800x600",
+        "--socket a.sock --import b.vcf --export c.vcf --snapshot d.png --size 800x600",
     ))
     .unwrap();
-    assert_eq!(got.store, Some(PathBuf::from("a.db")));
+    assert_eq!(got.socket, Some(PathBuf::from("a.sock")));
     assert_eq!(got.import, Some(PathBuf::from("b.vcf")));
     assert_eq!(got.export, Some(PathBuf::from("c.vcf")));
     assert_eq!(got.snapshot, Some(PathBuf::from("d.png")));
     assert_eq!(got.size, (800, 600));
     let none = parse(&[]).unwrap();
-    assert_eq!(none.store, None, "in memory");
+    assert_eq!(none.socket, None, "no socket, no server");
     assert_eq!(none.size, (1200, 800));
 }
 
@@ -54,5 +54,23 @@ fn export_sensitive_is_repeatable_and_needs_an_export() {
         parse(&args("--export-sensitive a"))
             .unwrap_err()
             .contains("needs --export")
+    );
+}
+
+#[test]
+fn the_app_needs_a_socket_and_says_where_it_comes_from() {
+    let none = parse(&[]).unwrap();
+    let said = none.socket_path().unwrap_err();
+    assert!(said.contains("fs-people-server --socket"), "{said}");
+    let some = parse(&args("--socket x.sock")).unwrap();
+    assert_eq!(some.socket_path().unwrap(), std::path::Path::new("x.sock"));
+}
+
+#[test]
+fn the_store_belongs_to_the_server_now() {
+    let said = parse(&args("--store a.db")).unwrap_err();
+    assert!(
+        said.contains("fs-people-server") && said.contains("--data"),
+        "{said}"
     );
 }

@@ -7,7 +7,7 @@ mod common;
 use common::{World, person};
 use fs_components_workbenches::ErrorKind;
 use fs_components_workbenches::people::{PeopleSource, Shown};
-use fs_people_core::Card;
+use fs_people_core::{Card, People, RoleBook};
 
 fn names(world: &World, term: &str) -> Vec<String> {
     world
@@ -149,7 +149,12 @@ fn deleting_takes_two_presses_and_takes_the_roles_along() {
     assert_eq!(names(&w, "").len(), 2, "only asked");
     s.confirm_delete();
     assert_eq!(names(&w, ""), ["Bob"]);
-    assert!(w.runtime.block_on(w.repo.roles_of(id)).unwrap().is_empty());
+    assert!(
+        w.runtime
+            .block_on(w.people.roles_of(id))
+            .unwrap()
+            .is_empty()
+    );
     assert!(matches!(s.shown(), Shown::Person { sheet, .. } if sheet.title == "Bob"));
 }
 
@@ -158,7 +163,7 @@ fn a_person_gone_or_a_key_that_names_nobody_is_not_found() {
     let w = World::in_memory();
     let key = w.add(person("Ada", "ada@x.org"));
     w.runtime
-        .block_on(w.repo.delete(key.parse().unwrap()))
+        .block_on(w.people.delete(key.parse().unwrap()))
         .unwrap();
     assert_eq!(w.adapter.read(&key).unwrap_err().kind, ErrorKind::NotFound);
     assert_eq!(

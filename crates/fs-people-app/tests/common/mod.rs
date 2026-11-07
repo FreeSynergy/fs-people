@@ -1,24 +1,88 @@
-//! Shared helpers of the tests: the real core over an in-memory store, behind the real adapter.
+//! Shared helpers of the tests: the real server on a real Unix socket over the real store (on a
+//! thread of its own), the real client, and the real adapter over it. Nothing here pretends to be
+//! any of them.
 //!
-//! Pattern: Facade over the set-up. Nothing here pretends to be the core.
+//! Pattern: Facade over the set-up.
 #![allow(dead_code)] // each test file uses a different subset
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fs_components_workbenches::people::{PeopleLabels, PeopleSource, PeopleState, Variant};
+use fs_interfaces::rpc::{bind_socket, serve};
 use fs_people_app::PeopleAdapter;
-use fs_people_core::{Card, PeopleRepo};
+use fs_people_client::RpcPeople;
+use fs_people_core::{Card, People, PeopleRepo, card_of};
+use fs_people_server::PeopleServer;
 use fs_store::{ObjectId, Store, TursoStore};
 use tokio::runtime::Runtime;
+use tokio::sync::oneshot;
 
 pub const ME: &str = "https://local.invalid/users/owner";
 
-/// A runtime, a repository over a store, and the adapter over it.
+/// A server on its own thread until this is dropped.
+struct Served {
+    stop: Option<oneshot::Sender<()>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+    _dir: tempfile::TempDir,
+}
+
+impl Served {
+    fn start(repo: &Arc<PeopleRepo>) -> (Self, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let socket = dir.path().join("people.sock");
+        let (stop, stopped) = oneshot::channel::<()>();
+        let (ready, listening) = std::sync::mpsc::channel();
+        let (path, provider) = (socket.clone(), repo.clone());
+        let thread = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            tokio::task::LocalSet::new().block_on(&runtime, async move {
+                let bound = bind_socket(&path).await.unwrap();
+                let root = PeopleServer::new(provider.clone(), provider.clone(), provider);
+                ready.send(()).unwrap();
+                let shutdown = async {
+                    let _ = stopped.await;
+                };
+                serve(bound, root.into_client().client, shutdown)
+                    .await
+                    .unwrap();
+            });
+        });
+        listening.recv().unwrap();
+        let served = Self {
+            stop: Some(stop),
+            thread: Some(thread),
+            _dir: dir,
+        };
+        (served, socket)
+    }
+}
+
+impl Drop for Served {
+    fn drop(&mut self) {
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+/// A runtime, the server and its store, the client, and the adapter over the client. Dropped in the
+/// order of the fields: the client goes before the server.
 pub struct World {
-    pub runtime: Runtime,
-    pub repo: Arc<PeopleRepo>,
     pub adapter: Arc<PeopleAdapter>,
+    /// The client: what the app talks to.
+    pub people: Arc<RpcPeople>,
+    /// The provider behind the server, only for what the client does not offer (marking an AI,
+    /// importing JSContact): set-up, never what is under test.
+    pub repo: Arc<PeopleRepo>,
+    _served: Served,
+    pub runtime: Runtime,
 }
 
 impl World {
@@ -38,34 +102,36 @@ impl World {
 
     fn over(runtime: Runtime, store: Arc<dyn Store>) -> Self {
         let repo = Arc::new(PeopleRepo::new(store, ME));
+        let (served, socket) = Served::start(&repo);
+        let people = Arc::new(RpcPeople::connect(&socket).unwrap());
         let adapter = Arc::new(PeopleAdapter::new(
-            repo.clone(),
-            repo.clone(),
+            people.clone(),
+            people.clone(),
             runtime.handle().clone(),
         ));
         Self {
-            runtime,
-            repo,
             adapter,
+            people,
+            repo,
+            _served: served,
+            runtime,
         }
     }
 
-    /// Store `card` through the core; returns the row key.
+    /// Store `card` through the client; returns the row key.
     pub fn add(&self, card: Card) -> String {
-        let stored = self.runtime.block_on(self.repo.create(card)).unwrap();
+        let stored = self.runtime.block_on(self.people.create(card)).unwrap();
         stored.envelope.id.to_string()
     }
 
     /// The card as stored now.
     pub fn card(&self, key: &str) -> Card {
         let id: ObjectId = key.parse().unwrap();
-        self.runtime
-            .block_on(self.repo.get_card(id))
-            .unwrap()
-            .unwrap()
+        let stored = self.runtime.block_on(self.people.get(id)).unwrap().unwrap();
+        card_of(&stored).unwrap()
     }
 
-    /// The state machine over the real core.
+    /// The state machine over the real client.
     pub fn state(&self) -> PeopleState {
         let source: Arc<dyn PeopleSource> = self.adapter.clone();
         PeopleState::new(source, fs_people_app::labels(), Variant::Full)

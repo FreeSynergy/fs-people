@@ -136,7 +136,7 @@ fn export_sensitive_releases_exactly_the_person_named() {
     let out = dir.file("out.vcf");
     let released = vec![one_uid];
     let report =
-        fs_people_app::export_all(w.repo.as_ref(), w.runtime.handle(), &out, &released).unwrap();
+        fs_people_app::export_all(w.people.as_ref(), w.runtime.handle(), &out, &released).unwrap();
     assert_eq!(report.written, 2);
     assert_eq!(report.released.len(), 1);
     assert_eq!(report.left_out.len(), 1);
@@ -158,7 +158,7 @@ fn export_sensitive_naming_nobody_writes_nothing() {
     w.add(person("Open", "open@x.org"));
     let out = dir.file("out.vcf");
     let released = vec!["urn:uuid:nobody".to_string()];
-    let got = fs_people_app::export_all(w.repo.as_ref(), w.runtime.handle(), &out, &released);
+    let got = fs_people_app::export_all(w.people.as_ref(), w.runtime.handle(), &out, &released);
     assert!(got.unwrap_err().contains("names nobody"));
     assert!(!out.exists());
 }

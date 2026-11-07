@@ -5,8 +5,8 @@
 mod common;
 
 use common::{World, person};
-use fs_people_core::Card;
 use fs_people_core::card::{Name, NameComponent};
+use fs_people_core::{Card, People};
 use serde_json::{Value, json};
 
 /// A card with something in every corner the form does not show.
@@ -197,13 +197,15 @@ fn the_imported_original_survives_an_edit() {
     let w = World::in_memory();
     let vcard =
         "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Grace Hopper\r\nEMAIL:grace@x.org\r\nEND:VCARD\r\n";
-    w.runtime.block_on(w.repo.import_vcard(vcard)).unwrap();
+    w.runtime.block_on(w.people.import_vcard(vcard)).unwrap();
     let mut s = w.state();
     let key = s.selected().unwrap().to_string();
     s.begin_edit();
     s.set_field("name/full", "Rear Admiral Hopper");
     s.save();
     let id = key.parse().unwrap();
+    // The original does not travel over the wire, so it is read where it is kept: in the store
+    // behind the server. The edit itself went through the client.
     let stored = w.runtime.block_on(w.repo.get(id)).unwrap().unwrap();
     let original = stored.original.expect("ADR 0030: the original is kept");
     assert_eq!(String::from_utf8(original.bytes).unwrap(), vcard);
@@ -254,7 +256,7 @@ fn a_change_by_someone_else_is_a_conflict_and_writing_knowingly_keeps_their_othe
 
     let mut theirs = w.card(&key);
     theirs.add_phone("+49 30 7");
-    w.runtime.block_on(w.repo.update(id, theirs)).unwrap();
+    w.runtime.block_on(w.people.update(id, theirs)).unwrap();
 
     s.save();
     let edit = s.editing().expect("the draft stays");

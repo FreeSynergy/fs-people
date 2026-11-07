@@ -6,7 +6,7 @@
 mod common;
 
 use common::{World, person};
-use fs_people_core::Card;
+use fs_people_core::{Card, People};
 use serde_json::json;
 
 const KEY: &str = "freesynergy.net:sensitive";
@@ -46,7 +46,7 @@ fn item_3_a_rename_never_reduces_the_sensitive_categories() {
     assert_eq!(card.sensitive_categories(), before);
     let stored = w
         .runtime
-        .block_on(w.repo.get(key.parse().unwrap()))
+        .block_on(w.people.get(key.parse().unwrap()))
         .unwrap()
         .unwrap();
     assert_eq!(stored.envelope.sensitive, before, "the store knows as well");
@@ -68,7 +68,8 @@ fn item_3_removing_the_marked_e_mail_keeps_its_category_and_the_person_stays_out
             .contains(&"pd:Religion".to_string())
     );
     let out = dir.file("out.vcf");
-    let report = fs_people_app::export_all(w.repo.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
+    let report =
+        fs_people_app::export_all(w.people.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
     assert_eq!(report.written, 0);
     assert_eq!(report.left_out.len(), 1);
 }
@@ -88,7 +89,8 @@ fn a_marking_without_categories_counts_as_sensitive_on_export_and_is_marked() {
     }
     w.add(person("Open", "o@x.org"));
     let out = dir.file("out.vcf");
-    let report = fs_people_app::export_all(w.repo.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
+    let report =
+        fs_people_app::export_all(w.people.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
     assert_eq!(report.written, 1, "{report:?}");
     assert_eq!(report.left_out.len(), 3, "{report:?}");
 }
@@ -154,6 +156,7 @@ fn item_h_a_note_that_mentions_the_property_marks_nobody() {
     assert!(s.rows()[0].marks.is_empty(), "not marked");
     assert_eq!(s.selected(), Some(key.as_str()), "and opened like anyone");
     let out = dir.file("out.vcf");
-    let report = fs_people_app::export_all(w.repo.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
+    let report =
+        fs_people_app::export_all(w.people.as_ref(), w.runtime.handle(), &out, &[]).unwrap();
     assert_eq!(report.written, 1, "{report:?}");
 }
