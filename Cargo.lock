@@ -1527,13 +1527,13 @@ dependencies = [
 
 [[package]]
 name = "fs-interfaces"
-version = "0.43.0"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.43.0#43140831d26fc8f4a05bfaf7e0bd1720a42f5c24"
+version = "0.45.0"
+source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.45.0#bc4eda933e80c537ae2d73dea371051ed3443fd9"
 dependencies = [
  "capnp",
  "capnp-rpc",
  "chrono",
- "fs-store",
+ "fs-objects",
  "futures",
  "rustix 1.1.6",
  "tokio",
@@ -1542,55 +1542,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs-people-app"
+name = "fs-objects"
 version = "0.5.0"
-dependencies = [
- "fs-components-app",
- "fs-components-render",
- "fs-components-workbenches",
- "fs-people-core",
- "fs-store",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "fs-people-core"
-version = "0.5.0"
-dependencies = [
- "async-trait",
- "calcard",
- "chrono",
- "fs-interfaces",
- "fs-store",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
-]
-
-[[package]]
-name = "fs-people-server"
-version = "0.5.0"
-dependencies = [
- "async-trait",
- "capnp",
- "capnp-rpc",
- "fs-interfaces",
- "fs-people-core",
- "fs-store",
- "serde_json",
- "tempfile",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "fs-store"
-version = "0.4.0"
-source = "git+https://github.com/FreeSynergy/fs-store?tag=v0.4.0#3f20a2a180a64af66c8db35cad4c49a863e57bfb"
+source = "git+https://github.com/FreeSynergy/fs-objects?tag=v0.5.0#b0a794ab702d8cf8660956950e1e8868e4c155c3"
 dependencies = [
  "async-trait",
  "base64",
@@ -1602,6 +1556,52 @@ dependencies = [
  "tokio",
  "turso",
  "unicode-normalization",
+ "uuid",
+]
+
+[[package]]
+name = "fs-people-app"
+version = "0.6.0"
+dependencies = [
+ "fs-components-app",
+ "fs-components-render",
+ "fs-components-workbenches",
+ "fs-objects",
+ "fs-people-core",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "fs-people-core"
+version = "0.6.0"
+dependencies = [
+ "async-trait",
+ "calcard",
+ "chrono",
+ "fs-interfaces",
+ "fs-objects",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "fs-people-server"
+version = "0.6.0"
+dependencies = [
+ "async-trait",
+ "capnp",
+ "capnp-rpc",
+ "fs-interfaces",
+ "fs-objects",
+ "fs-people-core",
+ "serde_json",
+ "tempfile",
+ "tokio",
  "uuid",
 ]
 
