@@ -2,7 +2,7 @@
 //!
 //! Pattern: Iterator with State — a [`PageWalk`] (the cursor) plus the part of the last page that was
 //! not yet shown (`carry`) and how many rows were shown (`served`). The workbench asks by
-//! `offset`/`limit`; a request that starts exactly at `served` continues from the cursor, any other
+//! `offset`/`limit`; a request that starts at `served` or inside the rows just given continues from the cursor, any other
 //! one starts the walk again and skips (`DESIGN.md`, limits).
 
 use std::collections::VecDeque;
@@ -26,6 +26,9 @@ pub(crate) struct Reading {
     pages: Arc<dyn PersonPages>,
     walk: PageWalk,
     carry: VecDeque<StoredObject>,
+    /// The rows of the last call, which end at `served`: the workbench asks for one row more than
+    /// it shows and asks on from what it shows, so the next call may start inside them.
+    kept: Vec<StoredObject>,
     served: usize,
 }
 
@@ -37,6 +40,7 @@ impl Reading {
             walk: PageWalk::new(pages.clone(), filter_of(term)),
             pages,
             carry: VecDeque::new(),
+            kept: Vec::new(),
             served: 0,
         }
     }
@@ -52,10 +56,23 @@ impl Reading {
         Ok(self.carry.pop_front())
     }
 
+    /// Put back the last `back` rows delivered, so they are delivered again.
+    fn rewind(&mut self, back: usize) {
+        let from = self.kept.len() - back;
+        for row in self.kept.drain(from..).rev() {
+            self.carry.push_front(row);
+        }
+        self.served -= back;
+    }
+
     /// `limit` rows from `offset`. Continues from the cursor when `offset` is where the last call
-    /// ended; otherwise starts again and skips `offset` rows.
+    /// ended, or inside the rows the last call delivered (they are given again); from 0 or anywhere
+    /// else it starts again (a reload must see changes) and skips.
     pub(crate) async fn take(&mut self, offset: usize, limit: usize) -> Result<Vec<StoredObject>> {
-        if offset == 0 || offset != self.served {
+        let back = self.served.saturating_sub(offset);
+        if offset > 0 && back > 0 && back <= self.kept.len() {
+            self.rewind(back);
+        } else if offset == 0 || offset != self.served {
             *self = Self::new(self.pages.clone(), &self.term.clone());
             while self.served < offset && self.pop().await?.is_some() {
                 self.served += 1;
@@ -70,6 +87,9 @@ impl Reading {
             rows.push(row);
         }
         self.served += rows.len();
+        if !rows.is_empty() {
+            self.kept = rows.clone();
+        }
         Ok(rows)
     }
 }
