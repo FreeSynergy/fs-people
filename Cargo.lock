@@ -1457,7 +1457,7 @@ checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 [[package]]
 name = "fs-components-app"
 version = "0.3.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=7c59d53f21e3997742bc46b06e9c6c60bc71fbaf#7c59d53f21e3997742bc46b06e9c6c60bc71fbaf"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=dd5ff46a26d882af405c9b6b2ff418c7f3a885ea#dd5ff46a26d882af405c9b6b2ff418c7f3a885ea"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1471,17 +1471,19 @@ dependencies = [
 [[package]]
 name = "fs-components-primitives"
 version = "0.3.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=7c59d53f21e3997742bc46b06e9c6c60bc71fbaf#7c59d53f21e3997742bc46b06e9c6c60bc71fbaf"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=dd5ff46a26d882af405c9b6b2ff418c7f3a885ea#dd5ff46a26d882af405c9b6b2ff418c7f3a885ea"
 dependencies = [
  "blinc_cn",
  "blinc_core",
  "blinc_layout",
+ "blinc_theme",
+ "fs-interfaces",
 ]
 
 [[package]]
 name = "fs-components-render"
 version = "0.3.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=7c59d53f21e3997742bc46b06e9c6c60bc71fbaf#7c59d53f21e3997742bc46b06e9c6c60bc71fbaf"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=dd5ff46a26d882af405c9b6b2ff418c7f3a885ea#dd5ff46a26d882af405c9b6b2ff418c7f3a885ea"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1496,7 +1498,7 @@ dependencies = [
 [[package]]
 name = "fs-components-widgets"
 version = "0.3.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=7c59d53f21e3997742bc46b06e9c6c60bc71fbaf#7c59d53f21e3997742bc46b06e9c6c60bc71fbaf"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=dd5ff46a26d882af405c9b6b2ff418c7f3a885ea#dd5ff46a26d882af405c9b6b2ff418c7f3a885ea"
 dependencies = [
  "blinc_cn",
  "blinc_core",
@@ -1512,7 +1514,7 @@ dependencies = [
 [[package]]
 name = "fs-components-workbenches"
 version = "0.3.0"
-source = "git+https://github.com/FreeSynergy/fs-components?rev=7c59d53f21e3997742bc46b06e9c6c60bc71fbaf#7c59d53f21e3997742bc46b06e9c6c60bc71fbaf"
+source = "git+https://github.com/FreeSynergy/fs-components?rev=dd5ff46a26d882af405c9b6b2ff418c7f3a885ea#dd5ff46a26d882af405c9b6b2ff418c7f3a885ea"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1526,14 +1528,15 @@ dependencies = [
 
 [[package]]
 name = "fs-interfaces"
-version = "0.50.0"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.50.0#bbcab672045d41966d3217c22cd0559530935ab8"
+version = "0.52.0"
+source = "git+https://github.com/FreeSynergy/fs-interfaces?rev=9a288a6#9a288a6e7a1e5400cacca1a893fcc5c519bfe3b2"
 dependencies = [
  "capnp",
  "capnp-rpc",
  "chrono",
  "fs-objects",
  "futures",
+ "idna",
  "rustix 1.1.6",
  "tokio",
  "tokio-util",
@@ -1615,7 +1618,6 @@ dependencies = [
  "chrono",
  "fs-interfaces",
  "fs-objects",
- "idna",
  "proptest",
  "serde",
  "serde_json",

@@ -58,10 +58,11 @@ pub(crate) fn problem(problem: fs_people_core::values::ValueProblem) -> &'static
         P::LocalTooLong => "The part before the @ is longer than 64 characters.",
         P::BadDomain => "The part after the @ is not a valid domain name.",
         P::DomainWithoutDot => "The domain needs a dot, like example.org.",
-        P::NoCountryCode => "Start with + and the country code, like +49 30 1234567.",
+        P::NoCountryCode => "Start with + and the country code (not 0), like +49 30 1234567.",
         P::PhoneCharacter => {
             "A phone number holds digits, and spaces, dots, hyphens or brackets between them."
         }
+        P::AddressTooLong => "The whole address is longer than 254 characters.",
         P::PhoneLength => "A phone number has 7 to 15 digits after the +, the first not 0.",
     }
 }

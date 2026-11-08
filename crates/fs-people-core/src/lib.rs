@@ -32,7 +32,8 @@ mod role_book;
 pub mod roles;
 mod subject;
 pub mod validate;
-pub mod values;
+/// Contact values (`EmailAddress`, `PhoneNumber`): they live in `fs-interfaces` so every program shares them.
+pub use fs_interfaces::values;
 pub mod vcard;
 
 pub use adoption::{Adoption, Offered};
