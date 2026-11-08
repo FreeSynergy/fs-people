@@ -14,6 +14,7 @@ jobs:
       name: fs-people
       kind: app
       app-id: net.freesynergy.People
+      macos: false
       windows-targets: ""   # Unix sockets and Unix paths for now
     secrets:
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}

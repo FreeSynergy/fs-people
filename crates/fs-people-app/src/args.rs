@@ -7,7 +7,7 @@ use std::path::PathBuf;
 /// What was asked for on the command line.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Args {
-    /// Store file; `None` = in memory, gone when the program ends.
+    /// Store file; `None` = the data folder for a window, memory for a picture or an export.
     pub store: Option<PathBuf>,
     /// A `.vcf` file to import before anything else.
     pub import: Option<PathBuf>,
@@ -81,7 +81,7 @@ pub const HELP: &str = "fs-people: the people window (without arguments it opens
   --socket <path>    the people server to talk to (default: $XDG_RUNTIME_DIR/freesynergy/people.sock);
                      start it with `fs-people serve`
   --local            keep the people in this process instead of at the server (nothing is shared)
-  --store <file>     (local) keep the people in this store file (default: in memory, gone at the end)
+  --store <file>     (local) keep the people in this store file (default: the data folder, $XDG_DATA_HOME/freesynergy/people/app.db; a picture or an export uses memory)
   --import <file>    import a vCard file first; people already known are skipped, never replaced
   --export <file>    write everyone to a new vCard file and stop; an existing file is not replaced,
                      people marked sensitive are left out and named
