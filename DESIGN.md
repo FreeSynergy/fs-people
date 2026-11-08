@@ -266,3 +266,32 @@ Still wanted:
 
 `roles-skos` is **already on `main`** (since v0.4.0): `RoleAssignment.role` and `RoleDefinition.id` are full IRIs (`https://freesynergy.net/ns/roles/ai`), short ids are still accepted in queries. Every consumer that decides "is this member an AI" (ADR 0054: consent, agents are never admin) must use `fs_people_core::is_ai_role()` and must never compare the short id `ai`. Read from the code on 2026-11-07, not tested end to end: `fs-groups` takes the decision through the injected trait `AiMarking` (no string compare of its own in `main`), `fs-messenger-guard` lists `ai` only among its test inputs for unknown values. Whether the host that implements `AiMarking` and the guard compare the short id is **not checked**: switch and check them in the next plan.
 
+
+## RFC 9553 against the window (2026-11-08, Thread G)
+
+What a JSContact `Card` holds and what the window does with it. Core = typed and kept losslessly in `fs-people-core`; Window = shown / edited in `fs-people-app`. Everything the window does not edit stays on the card as it is (tests/keeps.rs).
+
+| Property (RFC 9553) | Core | Window |
+|---|---|---|
+| `@type`, `version`, `uid`, `kind` | typed, validated | `kind` marked, not editable; `uid` shown by no one |
+| `prodId`, `created`, `updated` | kept | not shown |
+| `language`, `preferredLanguages` | kept | not shown, not editable |
+| `members`, `relatedTo` | groups, relations (core) | groups listed; relations not shown (`Unsupported`) |
+| `name` (full, components, `sortAs`, phonetic) | typed | full name edited; components replaced on change |
+| `nicknames` | kept | not shown, not editable |
+| `organizations`, `titles`, `speakAs` | kept | organisation name edited; titles not shown |
+| `emails` (contexts, `pref`, label) | typed | address edited with the e-mail check; contexts kept, not editable |
+| `phones` (features, contexts, `pref`) | typed | number edited with the phone check; contexts kept |
+| `onlineServices` | kept | not shown |
+| `addresses` | kept | read only, not editable |
+| `calendars`, `schedulingAddresses` | kept | not shown |
+| `cryptoKeys`, `directories` | kept | not shown |
+| `links` | kept | not shown |
+| `media` (kind `photo`, `logo`, `sound`) | kept | **not shown, no avatar** (wanted: show the `photo`; setting needs a file dialog and fs-files) |
+| `anniversaries` | kept | not shown |
+| `keywords`, `notes` | kept | not shown |
+| `personalInfo` | kept | not shown |
+| `localizations` | kept | not shown |
+| vendor properties (`freesynergy.net:sensitive`, `:describes`) | typed | sensitive marked, not settable |
+
+Missing for "the window shows the standard" (in this order, from the hand test of 2026-11-08): name parts and nickname; several e-mails and phones with context (private / work) and `pref`; organisation with title; addresses; online services; anniversaries; notes and keywords; languages; links; `media` as an avatar. Each is a group in the form with its own `FieldCheck` or a component, added one by one with its test (draft, apply, keeps).
