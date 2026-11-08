@@ -32,16 +32,22 @@ async fn one_person_has_many_roles_without_a_second_record() {
         .collect();
     held.sort();
     assert_eq!(held, ["customer", "member"].map(full_id));
-    assert_eq!(r.list(&Default::default()).await.unwrap().len(), 1);
+    assert_eq!(
+        r.list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
     assert_eq!(
         r.people_with_role("member", Some(CLUB)).await.unwrap(),
         [ada]
     );
-    assert!(
+    assert_eq!(
         r.people_with_role("member", Some("https://x/groups/other"))
             .await
-            .unwrap()
-            .is_empty()
+            .unwrap(),
+        [] as [fs_objects::ObjectId; 0]
     );
 }
 
@@ -68,7 +74,10 @@ async fn assigning_twice_keeps_one_and_unknown_roles_are_refused() {
         Err(Error::Conflict(_))
     ));
     r.unassign_role(one.id).await.unwrap();
-    assert!(r.roles_of(ada).await.unwrap().is_empty());
+    assert_eq!(
+        r.roles_of(ada).await.unwrap(),
+        [] as [fs_people_core::RoleAssignment; 0]
+    );
 }
 
 #[tokio::test]
@@ -129,7 +138,10 @@ async fn own_roles_are_defined_like_ours_and_survive_as_objects() {
 #[tokio::test]
 async fn role_config_is_checked_first_then_swapped() {
     let r = repo().await.with_roles(RoleRegistry::empty());
-    assert!(r.roles().await.unwrap().is_empty());
+    assert_eq!(
+        r.roles().await.unwrap(),
+        [] as [fs_people_core::RoleDefinition; 0]
+    );
     let bad = json!([{"id": "x", "names": {}, "owner": "o"}]).to_string();
     assert!(matches!(r.swap_role_config(&bad), Err(Error::Invalid(_))));
     assert!(r.roles().await.unwrap().is_empty(), "nothing changed");
@@ -156,7 +168,10 @@ async fn deleting_a_person_ends_their_roles() {
         .await
         .unwrap();
     r.delete(ada).await.unwrap();
-    assert!(r.people_with_role("member", None).await.unwrap().is_empty());
+    assert_eq!(
+        r.people_with_role("member", None).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
 }
 
 #[tokio::test]
@@ -166,5 +181,8 @@ async fn role_assignments_do_not_disturb_same_person_links() {
     r.assign_role(a, "member", Some(CLUB), Map::new())
         .await
         .unwrap();
-    assert!(r.linked_to(a).await.unwrap().is_empty());
+    assert_eq!(
+        r.linked_to(a).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
 }

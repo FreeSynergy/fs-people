@@ -38,8 +38,14 @@ async fn import_reports_created_skipped_and_failed() {
         let report = answer.get().unwrap().get_report().unwrap();
         let created = uuids(report.get_created().unwrap());
         assert_eq!(created, [id_by_uid(&persons, "vcard-1").await]);
-        assert!(texts(report.get_skipped().unwrap()).is_empty());
-        assert!(texts(report.get_failed().unwrap()).is_empty());
+        assert_eq!(
+            texts(report.get_skipped().unwrap()),
+            [] as [std::string::String; 0]
+        );
+        assert_eq!(
+            texts(report.get_failed().unwrap()),
+            [] as [std::string::String; 0]
+        );
 
         let two = format!(
             "[{},{},{}]",
@@ -77,7 +83,7 @@ async fn import_reports_created_skipped_and_failed() {
         lost.get().set_text("this is no vCard");
         let answer = lost.send().promise.await.unwrap();
         let report = answer.get().unwrap().get_report().unwrap();
-        assert!(uuids(report.get_created().unwrap()).is_empty());
+        assert_eq!(uuids(report.get_created().unwrap()), [] as [uuid::Uuid; 0]);
         let failed = texts(report.get_failed().unwrap());
         assert_eq!(failed.len(), 1);
         assert!(
@@ -164,8 +170,11 @@ async fn the_other_spelling_of_a_uid_is_skipped_not_failed() {
             texts(report.get_skipped().unwrap()),
             std::slice::from_ref(&upper)
         );
-        assert!(texts(report.get_failed().unwrap()).is_empty());
-        assert!(uuids(report.get_created().unwrap()).is_empty());
+        assert_eq!(
+            texts(report.get_failed().unwrap()),
+            [] as [std::string::String; 0]
+        );
+        assert_eq!(uuids(report.get_created().unwrap()), [] as [uuid::Uuid; 0]);
         assert_eq!(id_by_uid(&persons, UUID).await, id);
     })
     .await;

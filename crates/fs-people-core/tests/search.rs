@@ -54,7 +54,10 @@ async fn import_demo_list_and_search() {
     assert_eq!(by_phone.len(), 1);
     let by_org = r.search("stichting").await.unwrap();
     assert!(by_org.iter().any(|o| o.envelope.name == "NLnet Foundation"));
-    assert!(r.search("zzzz-nobody").await.unwrap().is_empty());
+    assert_eq!(
+        r.search("zzzz-nobody").await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
     assert_eq!(
         r.find_by_email("WebContact@NLnet.nl").await.unwrap().len(),
         1

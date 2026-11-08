@@ -140,9 +140,15 @@ async fn a_word_with_digits_is_no_phone_number() {
     let mut card = person("Ada", "a@x.org");
     card.add_phone("+49 30 555");
     r.create(card).await.unwrap();
-    assert!(r.search("Room 555").await.unwrap().is_empty());
+    assert_eq!(
+        r.search("Room 555").await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
     for hit in ["555", "+49 30", "49-30 555"] {
         assert_eq!(r.search(hit).await.unwrap().len(), 1, "{hit}");
     }
-    assert!(r.search("(030) 777").await.unwrap().is_empty());
+    assert_eq!(
+        r.search("(030) 777").await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
 }

@@ -33,10 +33,10 @@ fn validation_rules() {
     let ok = person("Ada", "ada@example.org");
     assert!(validate::validate(&ok).is_ok());
     let mut c = ok.clone();
-    c.uid = "".into();
+    c.uid = String::new();
     c.version = "2.0".into();
     c.kind = Some("robot".into());
-    c.emails.get_mut("e1").unwrap().address = "".into();
+    c.emails.get_mut("e1").unwrap().address = String::new();
     c.created = Some("yesterday".into());
     let paths: Vec<_> = validate::issues(&c).into_iter().map(|i| i.path).collect();
     for p in ["/uid", "/version", "/kind", "/emails/e1", "/created"] {

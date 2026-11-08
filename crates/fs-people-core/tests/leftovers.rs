@@ -32,7 +32,10 @@ async fn a_new_card_of_an_id_does_not_inherit_what_a_delete_left() {
 
     r.delete(id).await.unwrap();
     r.create(card).await.unwrap();
-    assert!(r.roles_of(id).await.unwrap().is_empty());
+    assert_eq!(
+        r.roles_of(id).await.unwrap(),
+        [] as [fs_people_core::RoleAssignment; 0]
+    );
 }
 
 #[tokio::test]

@@ -35,12 +35,12 @@ async fn a_number_that_would_change_does_not_come_in() {
 
         let mut fine = persons.create_request();
         fine.get()
-            .set_jscontact(with_number("f", "13.049435775302797").as_str());
+            .set_jscontact(with_number("f", "13.049_435_775_302_797").as_str());
         let answer = fine.send().promise.await.unwrap();
         let stored = json_of(answer.get().unwrap().get_person().unwrap());
         assert_eq!(
             stored["example.org:n"],
-            serde_json::json!(13.049435775302797)
+            serde_json::json!(13.049_435_775_302_797)
         );
     })
     .await;

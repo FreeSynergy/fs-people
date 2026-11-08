@@ -9,8 +9,8 @@ use serde_json::{Map, json};
 
 const CLUB: &str = "https://x/groups/club";
 
-fn not_found<T: std::fmt::Debug>(r: Result<T, Error>) -> bool {
-    matches!(r, Err(Error::Store(fs_objects::Error::NotFound(_))))
+fn not_found<T: std::fmt::Debug>(r: &Result<T, Error>) -> bool {
+    matches!(*r, Err(Error::Store(fs_objects::Error::NotFound(_))))
 }
 
 #[tokio::test]
@@ -35,15 +35,15 @@ async fn removing_a_link_or_an_assignment_touches_nothing_else() {
     let link = r.confirm_same_person(a, b).await.unwrap().envelope.id;
 
     for victim in [a, held.id] {
-        assert!(not_found(r.unlink(victim).await), "unlink {victim}");
+        assert!(not_found(&r.unlink(victim).await), "unlink {victim}");
     }
     for victim in [a, link] {
         assert!(
-            not_found(r.unassign_role(victim).await),
+            not_found(&r.unassign_role(victim).await),
             "unassign {victim}"
         );
     }
-    assert!(not_found(r.unlink(ObjectId::new()).await));
+    assert!(not_found(&r.unlink(ObjectId::new()).await));
     assert!(r.get(a).await.unwrap().is_some());
     assert_eq!(r.roles_of(a).await.unwrap().len(), 1);
     assert_eq!(r.linked_to(a).await.unwrap(), [b]);
@@ -103,7 +103,7 @@ async fn a_scope_is_an_iri_and_details_belong_to_own_roles() {
         .assign_role(a, "member", Some(CLUB), details.clone())
         .await;
     assert!(matches!(held, Err(Error::Invalid(_))));
-    assert!(r.roles_of(a).await.unwrap().is_empty());
+    assert_eq!(r.roles_of(a).await.unwrap(), []);
 
     r.define_role(RoleDefinition::new(
         "coach",
@@ -134,6 +134,7 @@ async fn a_failed_ai_mark_leaves_the_card_alone() {
     assert!(!r.is_ai(a).await.unwrap());
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn a_stored_configuration_survives_and_wins_over_an_own_role() {
     let (r, store) = setup().await;

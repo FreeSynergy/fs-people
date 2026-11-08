@@ -29,6 +29,7 @@ async fn put_stored(store: &Arc<dyn Store>, content: Value) {
     store.put(obj, ME).await.unwrap();
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn an_older_configuration_with_a_sentence_as_owner_is_read_and_migrated() {
     let (r, store) = setup().await;
@@ -67,6 +68,7 @@ async fn a_broken_stored_object_blocks_neither_the_start_nor_a_new_save() {
     assert!(r.role("member").await.unwrap().is_some());
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn the_old_array_merges_over_the_shipped_roles() {
     let dir = RoleRegistry::known();
@@ -109,7 +111,7 @@ fn a_short_id_has_no_slash_and_is_not_empty() {
         dir.load(&array.to_string()),
         Err(Error::Invalid(_))
     ));
-    assert!(dir.all().is_empty());
+    assert_eq!(dir.all(), []);
 }
 
 #[tokio::test]

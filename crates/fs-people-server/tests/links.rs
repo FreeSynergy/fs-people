@@ -87,7 +87,10 @@ async fn proposals_link_and_unlink() {
         let mut linked = persons.linked_to_request();
         write_uuid(linked.get().init_id(), Some(a));
         let answer = linked.send().promise.await.unwrap();
-        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+        assert_eq!(
+            uuids(answer.get().unwrap().get_ids().unwrap()),
+            [] as [uuid::Uuid; 0]
+        );
     })
     .await;
 }

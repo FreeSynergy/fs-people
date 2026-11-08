@@ -42,7 +42,10 @@ fn item_3_a_rename_never_reduces_the_sensitive_categories() {
     s.save();
     assert!(s.editing().is_none(), "{}", error_of(&s));
     let card = w.card(&key);
-    assert!(card.name.as_ref().unwrap().components.is_empty());
+    assert_eq!(
+        card.name.as_ref().unwrap().components,
+        [] as [fs_people_core::card::NameComponent; 0]
+    );
     assert_eq!(card.sensitive_categories(), before);
     let stored = w
         .runtime

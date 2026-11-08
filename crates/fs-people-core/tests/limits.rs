@@ -35,7 +35,10 @@ async fn a_card_cannot_grow_past_what_fits_an_answer() {
         r.relate(id, &huge, "friend").await,
         Err(Error::TooLarge(_))
     ));
-    assert!(r.relations(id).await.unwrap().is_empty());
+    assert_eq!(
+        r.relations(id).await.unwrap(),
+        [] as [(std::string::String, std::string::String); 0]
+    );
 }
 
 #[tokio::test]
@@ -54,5 +57,8 @@ async fn lines_outside_a_complete_vcard_are_reported() {
         nothing.created.is_empty() && nothing.failed.len() == 1,
         "{nothing:?}"
     );
-    assert!(r.import_vcard(" \r\n").await.unwrap().failed.is_empty());
+    assert_eq!(
+        r.import_vcard(" \r\n").await.unwrap().failed,
+        [] as [std::string::String; 0]
+    );
 }

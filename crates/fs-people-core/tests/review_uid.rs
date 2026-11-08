@@ -56,7 +56,10 @@ async fn a_card_without_the_index_is_still_found_in_any_spelling() {
             assert_eq!(report.skipped.len(), 1, "{stored} then {asked}: {report:?}");
         }
         assert_eq!(
-            r.list(&Default::default()).await.unwrap().len(),
+            r.list(&fs_people_core::ListFilter::default())
+                .await
+                .unwrap()
+                .len(),
             1,
             "{stored}"
         );
@@ -70,7 +73,13 @@ async fn another_uid_that_only_contains_the_uuid_is_not_the_same_card() {
     let mut other = Card::individual("Other");
     other.uid = format!("urn:uuid:{V4}");
     r.create(other).await.unwrap();
-    assert_eq!(r.list(&Default::default()).await.unwrap().len(), 2);
+    assert_eq!(
+        r.list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
 }
 
 #[tokio::test]

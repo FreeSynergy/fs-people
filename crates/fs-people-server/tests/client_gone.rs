@@ -192,7 +192,10 @@ async fn a_half_done_delete_is_a_problem_of_its_own_and_a_second_call_finishes_i
         let mut linked = persons.linked_to_request();
         write_uuid(linked.get().init_id(), Some(b));
         let answer = linked.send().promise.await.unwrap();
-        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+        assert_eq!(
+            uuids(answer.get().unwrap().get_ids().unwrap()),
+            [] as [uuid::Uuid; 0]
+        );
     })
     .await;
 }

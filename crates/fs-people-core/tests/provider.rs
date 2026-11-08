@@ -36,7 +36,10 @@ impl RoleBook for ReadOnly {}
 #[tokio::test]
 async fn a_missing_method_says_not_possible() {
     let p: Arc<dyn People> = Arc::new(ReadOnly);
-    assert!(p.list(&ListFilter::default()).await.unwrap().is_empty());
+    assert_eq!(
+        p.list(&ListFilter::default()).await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
     let Err(Error::Unsupported(u)) = p.create(Card::individual("Ada")).await else {
         panic!("expected an explicit not possible");
     };

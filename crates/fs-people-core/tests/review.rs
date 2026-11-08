@@ -58,7 +58,10 @@ async fn item_1_create_refuses_another_spelling_of_a_known_identity() {
             matches!(again, Err(ref e) if e.is_conflict()),
             "{first} then {second}: {again:?}"
         );
-        let all = r.list(&Default::default()).await.unwrap();
+        let all = r
+            .list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap();
         assert_eq!(all.len(), 1, "{first} then {second}");
         assert_eq!(all[0].envelope.name, "First", "{first} then {second}");
     }
@@ -75,7 +78,10 @@ async fn item_1_import_skips_another_spelling_of_a_known_identity() {
             report.failed.is_empty(),
             "{first} then {second}: {report:?}"
         );
-        let all = r.list(&Default::default()).await.unwrap();
+        let all = r
+            .list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap();
         assert_eq!(all.len(), 1, "{first} then {second}");
         assert_eq!(all[0].envelope.name, "First", "{first} then {second}");
     }
@@ -92,7 +98,13 @@ async fn item_1_get_by_uid_finds_any_spelling_and_two_plain_uids_stay_apart() {
     assert_eq!(found.envelope.id, stored.envelope.id);
     r.create(card_with_uid("plain-one", "B")).await.unwrap();
     r.create(card_with_uid("plain-two", "C")).await.unwrap();
-    assert_eq!(r.list(&Default::default()).await.unwrap().len(), 3);
+    assert_eq!(
+        r.list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap()
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -130,7 +142,12 @@ async fn item_4_a_new_card_with_an_unclear_marking_is_refused() {
         let got = r.create(card).await;
         assert!(matches!(got, Err(Error::Invalid(_))), "{marking}: {got:?}");
     }
-    assert!(r.list(&Default::default()).await.unwrap().is_empty());
+    assert_eq!(
+        r.list(&fs_people_core::ListFilter::default())
+            .await
+            .unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
     let mut nested = person("Nested", "n@x.org");
     let entry = nested.emails.values_mut().next().unwrap();
     entry
@@ -164,7 +181,10 @@ async fn item_4_an_import_keeps_a_card_with_an_unclear_marking_names_it_and_trea
             !object.envelope.sensitive.is_empty(),
             "{marking}: the store must treat it so"
         );
-        assert!(r.find_same_person_proposals().await.unwrap().is_empty());
+        assert_eq!(
+            r.find_same_person_proposals().await.unwrap(),
+            [] as [fs_people_core::SameAsProposal; 0]
+        );
         // Still editable: an update is not new input.
         let mut edited = stored;
         edited.add_phone("+49 30 1");

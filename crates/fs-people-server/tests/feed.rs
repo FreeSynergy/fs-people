@@ -19,6 +19,7 @@ use fs_people_server::PeopleServer;
 #[derive(Clone, Default)]
 struct Seen(Rc<RefCell<Vec<String>>>);
 
+#[allow(clippy::unused_async_trait_impl)] // the generated trait requires async methods
 impl change_listener::Server for Seen {
     async fn change(
         self: Rc<Self>,

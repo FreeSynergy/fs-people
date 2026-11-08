@@ -28,11 +28,11 @@ impl Gated {
             arrived: Notify::new(),
         }
     }
-    async fn pass(&self) {
+    fn pass(&self) {
         self.calls.fetch_add(1, Ordering::SeqCst);
     }
     async fn pass_write(&self) {
-        self.pass().await;
+        self.pass();
         if self.armed.swap(0, Ordering::SeqCst) == 1 {
             self.arrived.notify_one();
             drop(self.gate.acquire().await.unwrap());
@@ -56,7 +56,7 @@ impl ObjectRepository for Gated {
         Store::put_and_log(&*self.store, object, actor, extra).await
     }
     async fn get(&self, id: ObjectId) -> fs_objects::Result<Option<StoredObject>> {
-        self.pass().await;
+        self.pass();
         Store::get(&*self.store, id).await
     }
     async fn delete(&self, id: ObjectId, actor: &str) -> fs_objects::Result<Activity> {
@@ -68,11 +68,11 @@ impl ObjectRepository for Gated {
 #[async_trait]
 impl ObjectQuery for Gated {
     async fn query(&self, query: &Query) -> fs_objects::Result<Vec<StoredObject>> {
-        self.pass().await;
+        self.pass();
         Store::query(&*self.store, query).await
     }
     async fn count(&self, query: &Query) -> fs_objects::Result<usize> {
-        self.pass().await;
+        self.pass();
         Store::count(&*self.store, query).await
     }
 }

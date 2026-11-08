@@ -45,7 +45,10 @@ async fn groups_hold_members() {
     ));
     r.remove_member(gid, a).await.unwrap();
     assert_eq!(r.members(gid).await.unwrap().len(), 1);
-    assert!(r.groups_of(a).await.unwrap().is_empty());
+    assert_eq!(
+        r.groups_of(a).await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
+    );
     let groups = r
         .list(&ListFilter {
             kind: Some("group".into()),

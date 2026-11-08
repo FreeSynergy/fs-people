@@ -21,8 +21,8 @@ async fn every_answer_carries_a_revision_and_each_write_changes_it() {
         let mut make = persons.create_request();
         make.get()
             .set_jscontact(card("u1", "Ada", "a@x.org").as_str());
-        let made = make.send().promise.await.unwrap();
-        let person = made.get().unwrap().get_person().unwrap();
+        let created = make.send().promise.await.unwrap();
+        let person = created.get().unwrap().get_person().unwrap();
         let id = id_of(person);
         let first = revision_of(person);
 
@@ -116,8 +116,8 @@ async fn a_sensitive_card_has_a_revision_and_a_refusal_says_no_more() {
         let persons = persons_of(&root).await;
         let mut make = persons.create_request();
         make.get().set_jscontact(marked("s1", "Sam").as_str());
-        let made = make.send().promise.await.unwrap();
-        let person = made.get().unwrap().get_person().unwrap();
+        let created = make.send().promise.await.unwrap();
+        let person = created.get().unwrap().get_person().unwrap();
         let id = id_of(person);
         let read = revision_of(person);
 

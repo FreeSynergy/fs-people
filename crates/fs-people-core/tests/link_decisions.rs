@@ -67,13 +67,19 @@ async fn the_user_links_by_hand_also_a_rejected_pair_and_unlinking_does_not_ask_
     ));
 
     r.unlink(link.envelope.id).await.unwrap();
-    assert!(r.linked_to(a).await.unwrap().is_empty());
+    assert_eq!(
+        r.linked_to(a).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
     assert_eq!(
         r.same_person_state(a, b).await.unwrap(),
         Some(ProposalState::Rejected),
         "taking a link back is an answer"
     );
-    assert!(proposed(&r).await.is_empty());
+    assert_eq!(
+        proposed(&r).await,
+        [] as [(fs_objects::ObjectId, fs_objects::ObjectId); 0]
+    );
 }
 
 #[tokio::test]
@@ -91,11 +97,15 @@ async fn a_hand_made_link_needs_no_proposal() {
         .unwrap()
         .envelope
         .id;
-    assert!(proposed(&r).await.is_empty());
+    assert_eq!(
+        proposed(&r).await,
+        [] as [(fs_objects::ObjectId, fs_objects::ObjectId); 0]
+    );
     r.confirm_same_person(a, b).await.unwrap();
     assert_eq!(r.linked_to(b).await.unwrap(), [a]);
 }
 
+#[allow(clippy::many_single_char_names)] // short fixture names (repo, person, group)
 #[tokio::test]
 async fn name_at_the_same_organisation_is_a_proposal_a_name_alone_is_not() {
     let r = repo().await;

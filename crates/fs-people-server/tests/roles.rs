@@ -201,7 +201,10 @@ async fn assignments_come_and_go() {
         let mut with = roles.people_with_request();
         with.get().set_role("member");
         let answer = with.send().promise.await.unwrap();
-        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+        assert_eq!(
+            uuids(answer.get().unwrap().get_ids().unwrap()),
+            [] as [uuid::Uuid; 0]
+        );
         let mut literal = roles.people_with_request();
         literal.get().set_role("member");
         literal.get().set_scope("personal");
@@ -219,7 +222,10 @@ async fn assignments_come_and_go() {
         with.get().set_role("member");
         with.get().set_scope(CLUB);
         let answer = with.send().promise.await.unwrap();
-        assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+        assert_eq!(
+            uuids(answer.get().unwrap().get_ids().unwrap()),
+            [] as [uuid::Uuid; 0]
+        );
     })
     .await;
 }

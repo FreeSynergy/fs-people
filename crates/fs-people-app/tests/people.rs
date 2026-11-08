@@ -44,7 +44,7 @@ fn search_finds_by_name_mail_phone_and_organisation_and_pages_too() {
     assert_eq!(names(&w, "y.org"), ["Bob"]);
     assert_eq!(names(&w, "123456"), ["Ada"]);
     assert_eq!(names(&w, "engines"), ["Ada"]);
-    assert!(names(&w, "nothing").is_empty());
+    assert_eq!(names(&w, "nothing"), [] as [std::string::String; 0]);
     assert_eq!(w.adapter.rows("org", 1, 5).unwrap().len(), 1);
 }
 
@@ -119,7 +119,7 @@ fn a_new_person_with_blanks_only_is_refused_with_a_reason_and_stays_in_the_form(
     s.save();
     let edit = s.editing().expect("the form stays");
     assert!(edit.error.as_deref().unwrap().contains("at least"));
-    assert!(names(&w, "").is_empty());
+    assert_eq!(names(&w, ""), [] as [std::string::String; 0]);
 }
 
 #[test]
@@ -150,7 +150,10 @@ fn deleting_takes_two_presses_and_takes_the_roles_along() {
     assert_eq!(names(&w, "").len(), 2, "only asked");
     s.confirm_delete();
     assert_eq!(names(&w, ""), ["Bob"]);
-    assert!(w.runtime.block_on(w.repo.roles_of(id)).unwrap().is_empty());
+    assert_eq!(
+        w.runtime.block_on(w.repo.roles_of(id)).unwrap(),
+        [] as [fs_people_core::RoleAssignment; 0]
+    );
     assert!(matches!(s.shown(), Shown::Person { sheet, .. } if sheet.title == "Bob"));
 }
 
@@ -189,7 +192,7 @@ fn someone_sensitive_is_marked_in_the_list_in_search_and_in_the_form_and_not_ope
     let mut s = w.state();
     assert_eq!(s.rows()[0].cells[0], "Aaron Secret");
     assert_eq!(s.rows()[0].marks, ["Sensitive"]);
-    assert!(s.rows()[1].marks.is_empty());
+    assert_eq!(s.rows()[1].marks, [] as [std::string::String; 0]);
     assert_eq!(
         s.selected(),
         None,

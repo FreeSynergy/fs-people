@@ -131,7 +131,10 @@ async fn item_14_a_failed_clean_up_is_said_and_a_second_delete_finishes_it() {
     assert!(r.get(a).await.unwrap().is_none());
     failing.fail_others.store(false, Ordering::Relaxed);
     r.delete(a).await.unwrap();
-    assert!(r.linked_to(b).await.unwrap().is_empty());
+    assert_eq!(
+        r.linked_to(b).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
     assert!(
         matches!(r.delete(a).await, Err(Error::NotFound(_))),
         "nothing left to do"

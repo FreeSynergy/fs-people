@@ -115,20 +115,11 @@ async fn lead_prospect_and_customer_are_three_roles_with_no_stage() {
     r.assign_role(ada, "lead", Some(CLUB), Map::new())
         .await
         .unwrap();
-    assert!(
-        r.people_with_role("prospect", None)
-            .await
-            .unwrap()
-            .is_empty()
-    );
-    assert!(
-        r.people_with_role("customer", None)
-            .await
-            .unwrap()
-            .is_empty()
-    );
+    assert_eq!(r.people_with_role("prospect", None).await.unwrap(), []);
+    assert_eq!(r.people_with_role("customer", None).await.unwrap(), []);
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn my_customer_and_our_customer_are_two_roles_and_files_survive_a_restart() {
     let (r, store) = setup().await;

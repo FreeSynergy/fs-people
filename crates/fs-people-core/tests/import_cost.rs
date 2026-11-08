@@ -32,7 +32,7 @@ async fn a_file_of_failures_never_asks_the_store_and_bounds_its_report() {
         .await
         .unwrap();
     assert_eq!(gated.calls.load(Ordering::SeqCst), before);
-    assert!(report.created.is_empty());
+    assert_eq!(report.created, [] as [fs_objects::ObjectId; 0]);
     let last = report.failed.last().unwrap();
     let more: usize = last.strip_suffix(" more").map_or(0, |n| n.parse().unwrap());
     assert_eq!(more + report.failed.len() - usize::from(more > 0), 300_000);

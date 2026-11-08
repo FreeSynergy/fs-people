@@ -10,7 +10,7 @@ use serde_json::{Map, json};
 const CLUB: &str = "https://x/groups/club";
 const V7: &str = "01a1aaef-ba80-7f7a-8dff-0000000000ab";
 
-fn broken_list(members: serde_json::Value) -> StoredObject {
+fn broken_list(members: &serde_json::Value) -> StoredObject {
     let mut envelope = Envelope::new("Profile", "Broken");
     envelope.context = Some("people".into());
     let content = json!({"uid": 5, "kind": "group", "members": members});
@@ -35,10 +35,10 @@ async fn a_list_that_does_not_read_blocks_no_delete_and_no_proposals() {
         .envelope
         .id;
     let uid = r.get_card(ada).await.unwrap().unwrap().uid;
-    let holds = broken_list(json!({uid.clone(): true, "other": true}));
+    let holds = broken_list(&json!({uid.clone(): true, "other": true}));
     let holds_id = holds.envelope.id;
     store.put(holds, ME).await.unwrap();
-    let unreadable = broken_list(json!(["no", "map"]));
+    let unreadable = broken_list(&json!(["no", "map"]));
     let other_id = unreadable.envelope.id;
     store.put(unreadable, ME).await.unwrap();
 

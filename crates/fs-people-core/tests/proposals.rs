@@ -9,6 +9,7 @@ use fs_objects::{ObjectId, Store, TursoStore};
 use fs_people_core::{Error, MatchKind, MatchReason, PeopleRepo};
 use serde_json::json;
 
+#[allow(clippy::many_single_char_names)] // short fixture names (repo, person, group)
 #[tokio::test]
 async fn same_person_proposals_and_confirmation() {
     let (r, store) = setup().await;
@@ -90,6 +91,7 @@ async fn same_person_proposals_and_confirmation() {
     assert!(store.get(rel.envelope.id).await.unwrap().is_none());
 }
 
+#[allow(clippy::many_single_char_names)] // short fixture names (repo, person, group)
 #[tokio::test]
 async fn sensitive_cards_are_never_proposed_or_linked() {
     let r = repo().await;
@@ -106,7 +108,10 @@ async fn sensitive_cards_are_never_proposed_or_linked() {
     let oc = r.create(c).await.unwrap();
     assert_eq!(oc.envelope.sensitive, ["pd:HealthRecord"]);
     let (c, d) = (oc.envelope.id, r.create(d).await.unwrap().envelope.id);
-    assert!(r.find_same_person_proposals().await.unwrap().is_empty());
+    assert_eq!(
+        r.find_same_person_proposals().await.unwrap(),
+        [] as [fs_people_core::SameAsProposal; 0]
+    );
     assert!(matches!(r.confirm_same_person(a, b).await, Err(Error::Sensitive(id)) if id == a));
     assert!(matches!(r.confirm_same_person(d, c).await, Err(Error::Sensitive(id)) if id == c));
 }

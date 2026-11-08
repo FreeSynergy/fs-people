@@ -95,11 +95,11 @@ async fn the_match_strategy_is_swappable() {
     r.create(person("B", "b@x.org")).await.unwrap();
     assert_eq!(r.find_same_person_proposals().await.unwrap().len(), 1);
     // the default strategy needs a shared contact point
-    assert!(
+    assert_eq!(
         PeopleRepo::new(store, ME)
             .find_same_person_proposals()
             .await
-            .unwrap()
-            .is_empty()
+            .unwrap(),
+        [] as [fs_people_core::SameAsProposal; 0]
     );
 }

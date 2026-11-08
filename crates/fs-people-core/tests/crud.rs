@@ -107,21 +107,17 @@ async fn describes_is_an_envelope_field() {
         r.find_by_describes("did:example:ada").await.unwrap().len(),
         1
     );
-    assert!(
-        r.find_by_describes("did:example:other")
-            .await
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        r.find_by_describes("did:example:other").await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
     );
     // update follows the card
     let mut c = r.get_card(o.envelope.id).await.unwrap().unwrap();
     c.set_vendor("freesynergy.net:describes", json!("did:example:ada2"));
     let o = r.update(o.envelope.id, c).await.unwrap();
     assert_eq!(o.envelope.describes.as_deref(), Some("did:example:ada2"));
-    assert!(
-        r.find_by_describes("did:example:ada")
-            .await
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        r.find_by_describes("did:example:ada").await.unwrap(),
+        [] as [fs_objects::StoredObject; 0]
     );
 }

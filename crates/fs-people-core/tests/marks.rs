@@ -28,7 +28,10 @@ async fn an_update_without_the_mark_keeps_it() {
     bare.uid = r.get_card(a).await.unwrap().unwrap().uid;
     let stored = r.update(a, bare.clone()).await.unwrap();
     assert_eq!(stored.envelope.sensitive, ["pd:HealthRecord"]);
-    assert!(r.find_same_person_proposals().await.unwrap().is_empty());
+    assert_eq!(
+        r.find_same_person_proposals().await.unwrap(),
+        [] as [fs_people_core::SameAsProposal; 0]
+    );
 
     // Another named category adds to it, and removes nothing.
     bare.mark_sensitive(["pd:Religion"]);
@@ -86,8 +89,14 @@ async fn a_card_that_becomes_sensitive_loses_its_links() {
     let mut card = r.get_card(a).await.unwrap().unwrap();
     card.mark_sensitive(["pd:HealthRecord"]);
     r.update(a, card).await.unwrap();
-    assert!(r.linked_to(a).await.unwrap().is_empty());
-    assert!(r.linked_to(b).await.unwrap().is_empty());
+    assert_eq!(
+        r.linked_to(a).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
+    assert_eq!(
+        r.linked_to(b).await.unwrap(),
+        [] as [fs_objects::ObjectId; 0]
+    );
 }
 
 #[tokio::test]
@@ -133,7 +142,7 @@ async fn a_sensitive_member_can_be_added_on_request_but_does_not_leave_with_the_
         .await
         .unwrap();
     assert!(released.text.contains(&secret_uid), "{}", released.text);
-    assert!(released.withheld.is_empty());
+    assert_eq!(released.withheld, [] as [std::string::String; 0]);
 
     // The list itself did not change.
     assert_eq!(r.members(list).await.unwrap().len(), 2);

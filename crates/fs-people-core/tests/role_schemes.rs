@@ -9,7 +9,7 @@ use serde_json::json;
 const MINE: &str = "https://example.org/roles/kal/";
 const OURS: &str = "https://freesynergy.net/ns/roles/";
 
-fn scheme(base: &str, roles: serde_json::Value) -> String {
+fn scheme(base: &str, roles: &serde_json::Value) -> String {
     json!({
         "@context": ["https://freesynergy.net/ns/roles.jsonld", {"@base": base}],
         "id": "", "type": "skos:ConceptScheme", "names": {"en": "Test"}, "roles": roles
@@ -55,7 +55,7 @@ fn shipped_roles_have_the_decided_types_and_names() {
 #[test]
 fn two_files_sit_side_by_side_and_do_not_clash() {
     let dir = RoleRegistry::known();
-    dir.load(&scheme(MINE, json!([role("customer"), role("treasurer")])))
+    dir.load(&scheme(MINE, &json!([role("customer"), role("treasurer")])))
         .unwrap();
     let ours = dir.find(&format!("{OURS}customer")).unwrap();
     let mine = dir.find(&format!("{MINE}customer")).unwrap();
@@ -69,8 +69,8 @@ fn two_files_sit_side_by_side_and_do_not_clash() {
 #[test]
 fn loading_replaces_only_the_scheme_with_the_same_base() {
     let dir = RoleRegistry::known();
-    dir.load(&scheme(MINE, json!([role("a")]))).unwrap();
-    dir.load(&scheme(MINE, json!([role("b")]))).unwrap();
+    dir.load(&scheme(MINE, &json!([role("a")]))).unwrap();
+    dir.load(&scheme(MINE, &json!([role("b")]))).unwrap();
     assert!(dir.find(&format!("{MINE}a")).is_none());
     assert!(dir.find(&format!("{MINE}b")).is_some());
     assert!(dir.find("member").is_some());
@@ -80,14 +80,14 @@ fn loading_replaces_only_the_scheme_with_the_same_base() {
 fn a_bad_file_changes_nothing_and_a_preview_changes_nothing() {
     let dir = RoleRegistry::known();
     let before = dir.all();
-    let twice = scheme(MINE, json!([role("a"), role("a")]));
+    let twice = scheme(MINE, &json!([role("a"), role("a")]));
     assert!(matches!(dir.load(&twice), Err(Error::Conflict(_))));
     let no_base = json!({"@context": "x", "id": "", "type": "skos:ConceptScheme", "roles": []});
     assert!(matches!(
         dir.load(&no_base.to_string()),
         Err(Error::Invalid(_))
     ));
-    let seen = dir.preview(&scheme(MINE, json!([role("a")]))).unwrap();
+    let seen = dir.preview(&scheme(MINE, &json!([role("a")]))).unwrap();
     assert!(seen.contains_key(&format!("{MINE}a")) && seen.contains_key(AI_ROLE_IRI));
     assert_eq!(dir.all(), before);
 }
@@ -98,7 +98,7 @@ fn owner_is_an_id_not_a_sentence() {
     let mut bad = role("a");
     bad["owner"] = json!("CRM (later)");
     assert!(matches!(
-        dir.load(&scheme(MINE, json!([bad]))),
+        dir.load(&scheme(MINE, &json!([bad]))),
         Err(Error::Invalid(_))
     ));
 }
@@ -113,7 +113,7 @@ fn the_fields_of_the_format_are_kept() {
     r["standardRefs"] = json!(["https://schema.org/EmployeeRole"]);
     r["description"] = json!({"de": "Verwaltet die Kasse."});
     r["scope"] = json!("group");
-    dir.load(&scheme(MINE, json!([r]))).unwrap();
+    dir.load(&scheme(MINE, &json!([r]))).unwrap();
     let def = dir.find(&format!("{MINE}treasurer")).unwrap();
     assert_eq!(def.kind, RoleKind::OrgRole);
     assert_eq!(def.scope, RoleScope::Group);

@@ -28,6 +28,7 @@ fn ids(all: Vec<fs_people_core::RoleDefinition>) -> Vec<String> {
     ids
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn a_held_role_survives_an_array_and_a_restart() {
     let (r, store) = setup().await;
@@ -55,6 +56,7 @@ async fn a_held_role_survives_an_array_and_a_restart() {
     assert!(again.role("trainer").await.unwrap().is_some());
 }
 
+#[allow(clippy::assert_is_empty)] // plain is_empty reads clearer; a bare [] cannot infer its element type
 #[tokio::test]
 async fn the_second_scenario_is_the_same_running_and_restarted() {
     let (r, store) = setup().await;
