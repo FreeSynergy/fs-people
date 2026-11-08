@@ -4,6 +4,13 @@
 
 use serde_json::Value;
 
+/// Control characters in a value (a newline, a terminal escape) are shown as `?`.
+fn clean(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
+}
+
 /// `id  name  first e-mail`, columns split by two spaces; a missing member is `-`.
 pub(crate) fn line(id: &str, jscontact: &str) -> String {
     let v: Value = serde_json::from_str(jscontact).unwrap_or(Value::Null);
@@ -18,7 +25,7 @@ pub(crate) fn line(id: &str, jscontact: &str) -> String {
         .and_then(|e| e.get("address"))
         .and_then(Value::as_str)
         .unwrap_or("-");
-    format!("{id}  {name}  {email}")
+    format!("{id}  {}  {}", clean(name), clean(email))
 }
 
 /// The JSContact text pretty-printed; the text as it is when it is no JSON.

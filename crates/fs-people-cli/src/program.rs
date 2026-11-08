@@ -10,6 +10,7 @@ use crate::{HELP, parse, run};
 
 /// Carry out the words after `fs-people` (a command, maybe with `--socket`). The exit code: 0 done,
 /// 1 the server or the system refused, 2 the words were wrong.
+#[must_use]
 pub fn command_line(words: &[String]) -> i32 {
     let args = match parse(words) {
         Ok(a) => a,
