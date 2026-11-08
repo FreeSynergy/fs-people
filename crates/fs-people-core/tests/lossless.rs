@@ -135,9 +135,9 @@ async fn a_double_comes_back_through_store_undo_and_export() {
         .insert("example.com:lat".into(), json!(13.049_435_775_302_797));
     let id = r.create(card.clone()).await.unwrap().envelope.id;
     let text = r.export(&JsContactFormat, id).await.unwrap();
-    assert!(text.contains("13.049_435_775_302_797"), "{text}");
+    assert!(text.contains("13.049435775302797"), "{text}");
     let vcard = r.export_vcard(id).await.unwrap();
-    assert!(vcard.contains("13.049_435_775_302_797"), "{vcard}");
+    assert!(vcard.contains("13.049435775302797"), "{vcard}");
     card.extra.insert("example.com:lat".into(), json!(1.5));
     r.update(id, card).await.unwrap();
     store.undo(common::ME, 1).await.unwrap();
