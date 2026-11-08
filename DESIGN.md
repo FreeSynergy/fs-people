@@ -287,7 +287,7 @@ What a JSContact `Card` holds and what the window does with it. Core = typed and
 | `calendars`, `schedulingAddresses` | kept | not shown |
 | `cryptoKeys`, `directories` | kept | not shown |
 | `links` | kept | not shown |
-| `media` (kind `photo`, `logo`, `sound`) | kept | **not shown, no avatar** (wanted: show the `photo`; setting needs a file dialog and fs-files) |
+| `media` (kind `photo`, `logo`, `sound`) | kept | the first `photo` with a `data:image/` URI is the avatar of the sheet (else the initials); a web address or file is **not** loaded (opening a person must not call out); `logo`, `sound` not shown; setting a photo not built (needs a file dialog and fs-files) |
 | `anniversaries` | kept | not shown |
 | `keywords`, `notes` | kept | not shown |
 | `personalInfo` | kept | not shown |

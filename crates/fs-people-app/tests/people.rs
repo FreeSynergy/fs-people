@@ -7,6 +7,7 @@ mod common;
 use common::{World, person};
 use fs_components_workbenches::ErrorKind;
 use fs_components_workbenches::people::{PeopleSource, Shown};
+use fs_objects::ObjectId;
 use fs_people_core::Card;
 
 fn names(world: &World, term: &str) -> Vec<String> {
@@ -272,4 +273,28 @@ fn e_mail_and_phone_fields_are_checked_by_the_core_values_with_the_programs_word
             .iter()
             .any(|g| g.key == "phones" && g.check == FieldCheck::Phone)
     );
+}
+
+#[test]
+fn the_photo_of_a_card_is_a_data_uri_and_a_web_address_is_never_fetched() {
+    let w = World::in_memory();
+    let with = |uri: &str| -> Card {
+        serde_json::from_value(serde_json::json!({
+            "@type": "Card", "version": "1.0", "uid": ObjectId::new().to_string(),
+            "name": {"full": "Ada"},
+            "media": {"m1": {"@type": "Media", "kind": "photo", "uri": uri}},
+        }))
+        .unwrap()
+    };
+    let pixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    let key = w.add(with(pixel));
+    assert_eq!(w.adapter.read(&key).unwrap().image.as_deref(), Some(pixel));
+    let key = w.add(with("https://example.org/ada.png"));
+    assert_eq!(
+        w.adapter.read(&key).unwrap().image,
+        None,
+        "no call out when opening a person"
+    );
+    let key = w.add(person("Bob", "bob@x.org"));
+    assert_eq!(w.adapter.read(&key).unwrap().image, None);
 }

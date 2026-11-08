@@ -48,7 +48,24 @@ pub(super) fn sheet_of(
         sheet.marks.push(field::AI.to_string());
     }
     sheet.marks.extend(sensitive_mark(card, object));
+    if let Some(photo) = photo_of(card) {
+        sheet = sheet.with_image(photo);
+    }
     sheet
+}
+
+/// The picture of the card: its first `media` entry of kind `photo` (RFC 9553 §2.6.4) whose `uri` is
+/// a `data:image/` URI. A web address is **not** fetched: opening a person must not make the program
+/// call out (and tell a server who is looked at); a local file is not read for the same reason.
+fn photo_of(card: &Card) -> Option<String> {
+    card.extra
+        .get("media")?
+        .as_object()?
+        .values()
+        .filter(|m| m.get("kind").and_then(|k| k.as_str()) == Some("photo"))
+        .filter_map(|m| m.get("uri").and_then(|u| u.as_str()))
+        .find(|uri| uri.starts_with("data:image/"))
+        .map(str::to_string)
 }
 
 /// The marking of someone sensitive, with the categories; `None` for everyone else (ADR 0029).
