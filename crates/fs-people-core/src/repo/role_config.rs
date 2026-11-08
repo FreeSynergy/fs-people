@@ -68,10 +68,10 @@ impl PeopleRepo {
                 check_reach(&definition, scope)
                     .map_err(|e| Error::Conflict(format!("in use: {e}")))?;
             }
-            if let Some(card) = self.get_card(held.person).await? {
-                if check_kind(&now, card.kind()).is_ok() {
-                    check_kind(&definition, card.kind())?;
-                }
+            if let Some(card) = self.get_card(held.person).await?
+                && check_kind(&now, card.kind()).is_ok()
+            {
+                check_kind(&definition, card.kind())?;
             }
         }
         Ok(())

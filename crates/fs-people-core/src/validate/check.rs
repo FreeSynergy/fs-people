@@ -40,12 +40,11 @@ fn header(sink: &mut Sink, card: &Card) {
     if card.uid.trim().is_empty() {
         sink.bad("/uid", "required");
     }
-    if let Some(k) = &card.kind {
-        if !is_valid_kind(k) {
-            let msg =
-                format!("unknown kind {k:?}; use {KINDS:?} or a vendor value <domain>:<value>");
-            sink.bad("/kind", &msg);
-        }
+    if let Some(k) = &card.kind
+        && !is_valid_kind(k)
+    {
+        let msg = format!("unknown kind {k:?}; use {KINDS:?} or a vendor value <domain>:<value>");
+        sink.bad("/kind", &msg);
     }
     for (name, val) in [("created", &card.created), ("updated", &card.updated)] {
         if val.as_deref().is_some_and(|t| !is_utc_datetime(t)) {
