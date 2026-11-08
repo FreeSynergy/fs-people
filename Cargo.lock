@@ -1572,6 +1572,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-people-cli"
+version = "0.6.1-rc.2"
+dependencies = [
+ "capnp",
+ "fs-interfaces",
+ "fs-objects",
+ "fs-people-core",
+ "fs-people-server",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "fs-people-core"
 version = "0.6.1-rc.2"
 dependencies = [
