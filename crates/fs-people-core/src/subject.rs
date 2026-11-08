@@ -50,11 +50,18 @@ impl Subject {
 }
 
 impl Error {
-    /// The object this error is about, if the error itself knows it. A conflict or an invalid card
+    /// Whether the operation clashes with what is stored: `Conflict` or `Exists`.
+    #[must_use]
+    pub fn is_conflict(&self) -> bool {
+        matches!(self, Self::Conflict(_) | Self::Exists(_))
+    }
+
+    /// The object this error is about, if the error itself knows it. An `Exists` names the card that is there; any other conflict or an invalid card
     /// is not tied to one object in the error, so it has none.
     pub fn subject(&self) -> Option<Subject> {
         match self {
             Self::NotFound(id)
+            | Self::Exists(id)
             | Self::Changed(id)
             | Self::Sensitive(id)
             | Self::PartlyDeleted(id, _) => Some(Subject::new(Kind::Person, id)),

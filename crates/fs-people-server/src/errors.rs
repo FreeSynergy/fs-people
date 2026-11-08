@@ -38,6 +38,7 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
         | Error::UnknownRole(_)
         | Error::Store(StoreError::NotFound(_)) => problem(NOT_FOUND, "Not found", 404),
         Error::Conflict(_)
+        | Error::Exists(_)
         | Error::Changed(_)
         | Error::Store(StoreError::Conflict(_) | StoreError::OriginalImmutable(_)) => {
             problem(CONFLICT, "Conflict", 409)

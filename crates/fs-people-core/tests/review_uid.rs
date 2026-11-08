@@ -47,7 +47,7 @@ async fn a_card_without_the_index_is_still_found_in_any_spelling() {
             again.uid.clone_from(&asked);
             let got = r.create(again).await;
             assert!(
-                matches!(got, Err(Error::Conflict(_))),
+                matches!(got, Err(ref e) if e.is_conflict()),
                 "{stored} then {asked}: {got:?}"
             );
             let vcard =
@@ -91,7 +91,7 @@ async fn get_by_uid_goes_by_the_uid_not_by_the_object_id_and_create_still_will_n
     let mut clash = Card::individual("Clash");
     clash.uid = format!("urn:uuid:{id}");
     let got = r.create(clash.clone()).await;
-    assert!(matches!(got, Err(Error::Conflict(_))), "{got:?}");
+    assert!(matches!(got, Err(ref e) if e.is_conflict()), "{got:?}");
     let text = serde_json::to_string(&clash).unwrap();
     let report = r.import_jscontact(&text).await.unwrap();
     assert_eq!(

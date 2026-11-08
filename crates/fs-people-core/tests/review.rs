@@ -55,7 +55,7 @@ async fn item_1_create_refuses_another_spelling_of_a_known_identity() {
         r.create(card_with_uid(&first, "First")).await.unwrap();
         let again = r.create(card_with_uid(&second, "Second")).await;
         assert!(
-            matches!(again, Err(Error::Conflict(_))),
+            matches!(again, Err(ref e) if e.is_conflict()),
             "{first} then {second}: {again:?}"
         );
         let all = r.list(&Default::default()).await.unwrap();

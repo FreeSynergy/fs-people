@@ -249,7 +249,7 @@ Still wanted:
 
 ## After the sprint (strategy list, 2026-11-07)
 
-* `Error::Conflict(String)` carries no object: a taken `uid` or a role in use names no id; give it a `Subject`.
+* A taken `uid` is `Error::Exists(id)` since 0.6.1: it names the card that is there (`Error::subject`, and `id` and `kind` in the problem). `Error::is_conflict` is true for it and for `Conflict`. Other conflicts (a role in use, a card linked with itself) name no object and stay `Conflict(String)`. The id of an existing card is not its content; a caller who can create a card can already ask for it by uid.
 * `broader`/`closeMatch` in role definitions are not normalised to full IRIs; a stored role file freezes the roles shipped with the version that wrote it.
 
 ## Merge lock for consumers of the AI role (strategy, 2026-11-07)

@@ -81,7 +81,11 @@ pub enum Error {
     /// written. The text does not name the revision found (ADR 0029: it says nothing more than "changed").
     #[error("conflict: person {0} was changed since it was read; nothing was written")]
     Changed(ObjectId),
-    /// The operation conflicts with the current state (duplicate uid, immutable field, ...).
+    /// The operation conflicts with the current state (immutable field, a role in use, ...).
     #[error("{0}")]
     Conflict(String),
+    /// A card with this uid exists already; the id is the existing card's, so a caller can open or
+    /// merge it instead of parsing a sentence. Counts as a conflict everywhere ([`Error::is_conflict`]).
+    #[error("a person with this uid exists: {0}")]
+    Exists(ObjectId),
 }

@@ -30,10 +30,7 @@ async fn create_get_update_delete_with_envelope() {
     assert_eq!(o.index["org"], ["analytical engines"]);
     assert_eq!(o.index["kind"], ["individual"]);
     // duplicate uid refused
-    assert!(matches!(
-        r.create(card.clone()).await,
-        Err(Error::Conflict(_))
-    ));
+    assert!(matches!(r.create(card.clone()).await, Err(ref e) if e.is_conflict()));
     // invalid refused
     let mut bad = person("X", "x@y.z");
     bad.version.clear();

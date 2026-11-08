@@ -48,11 +48,8 @@ impl PeopleRepo {
         if has_negative_zero(&card.to_value()) {
             return Err(inexact("-0"));
         }
-        if self.get_by_uid(&card.uid).await?.is_some() {
-            return Err(Error::Conflict(format!(
-                "a person with uid {} exists",
-                card.uid
-            )));
+        if let Some(existing) = self.get_by_uid(&card.uid).await? {
+            return Err(Error::Exists(existing.envelope.id));
         }
         let obj = self.build_object(&card, None, original);
         let id = obj.envelope.id;
