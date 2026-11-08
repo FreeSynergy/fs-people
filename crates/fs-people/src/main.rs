@@ -17,11 +17,28 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("serve") => serve(&args[1..]),
         None | Some("gui") => window(args.get(1..).unwrap_or_default()),
-        Some(flag) if flag.starts_with("--") && flag != "--socket" && flag != "--help" => {
-            window(&args)
-        }
-        Some(_) => exit(fs_people_cli::command_line(&args)),
+        Some(_) if has_command(&args) => exit(fs_people_cli::command_line(&args)),
+        Some(_) => window(&args),
     }
+}
+
+/// Whether the words hold a command (`list`, `show`, ...) rather than only window options.
+/// `--socket PATH` belongs to both; every other option with a value is the window's.
+fn has_command(words: &[String]) -> bool {
+    let mut it = words.iter();
+    while let Some(word) = it.next() {
+        if word == "--help" || word == "-h" {
+            return false;
+        }
+        if word.starts_with("--") {
+            if word != "--local" {
+                it.next();
+            }
+        } else {
+            return true;
+        }
+    }
+    false
 }
 
 fn exit(code: i32) -> ExitCode {

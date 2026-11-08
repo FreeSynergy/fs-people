@@ -53,7 +53,7 @@ Version 0.5.0 (typed problem extensions, `SupportReport.instance`): provider of 
 
 Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default in memory), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
 
-**In process, not RPC (provisional, do not forget):** `PeopleAdapter` holds `Arc<dyn People>` and `Arc<dyn RoleBook>` in the same process and drives them with a tokio handle, blocking the interface thread like `fs-wiki-app`. When the Cap'n Proto server of `people.capnp` exists, the adapter must call it instead. Until then the program opens the store itself, and the workbench's calls freeze the window for as long as the store takes.
+**Over the socket (ADR 0063):** the window talks to the server of `fs-people serve` through `RemotePeople` (a proxy: a worker thread owns the Cap'n Proto connection, the window thread waits for the answers). It reads, lists (the term is the server's own search), creates, updates and deletes. **Roles are not asked over the socket yet** (`NoRoles`: the window shows none). `--local` (or `--store`, `--import`, `--export`) keeps the people in the process of the window as before: nothing is shared then. The window needs a running server, and says `start it with fs-people serve` if none answers. `tests/remote.rs` runs it against a real server and store.
 
 | Area | State |
 |---|---|

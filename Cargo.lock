@@ -1578,12 +1578,17 @@ dependencies = [
 name = "fs-people-app"
 version = "0.6.1-rc.2"
 dependencies = [
+ "async-trait",
+ "capnp",
  "fs-components-app",
  "fs-components-render",
  "fs-components-workbenches",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
+ "fs-people-server",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 

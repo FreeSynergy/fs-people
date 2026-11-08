@@ -1,0 +1,102 @@
+//! The window's adapter over the socket: `RemotePeople` against a real server and a real store.
+//!
+//! Pattern: Integration test — the server runs on its own thread and socket, the adapter is the one
+//! the window uses.
+
+use std::path::Path;
+use std::sync::Arc;
+
+use fs_components_workbenches::ErrorKind;
+use fs_components_workbenches::people::PeopleSource;
+use fs_interfaces::people_capnp::people;
+use fs_interfaces::rpc::{bind_socket, serve};
+use fs_objects::{Store, TursoStore};
+use fs_people_app::{NoRoles, PeopleAdapter, RemotePeople};
+use fs_people_core::PeopleRepo;
+use fs_people_server::PeopleServer;
+
+/// A server on `socket`, on a thread of its own; it ends with the process.
+fn start_server(socket: &Path) {
+    let socket = socket.to_path_buf();
+    let (up, started) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        tokio::task::LocalSet::new().block_on(&runtime, async move {
+            let store: Arc<dyn Store> = Arc::new(TursoStore::open_in_memory().await.unwrap());
+            let repo = Arc::new(PeopleRepo::new(store, "https://local.invalid/users/owner"));
+            let root: people::Client =
+                PeopleServer::new(repo.clone(), repo.clone(), repo).into_client();
+            let bound = bind_socket(&socket).await.unwrap();
+            up.send(()).unwrap();
+            serve(bound, root.client, std::future::pending()).await.ok();
+        });
+    });
+    started.recv().unwrap();
+}
+
+mod common;
+
+use common::person;
+use fs_people_core::People;
+
+#[test]
+fn create_list_search_read_edit_delete_over_the_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("people.sock");
+    start_server(&socket);
+    let remote = Arc::new(RemotePeople::connect(&socket).unwrap());
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let adapter = PeopleAdapter::new(remote.clone(), Arc::new(NoRoles), runtime.handle().clone());
+
+    let ada = runtime
+        .block_on(remote.create(person("Ada Lovelace", "ada@example.org")))
+        .unwrap();
+    runtime
+        .block_on(remote.create(person("Grace Hopper", "grace@example.org")))
+        .unwrap();
+    let key = ada.envelope.id.to_string();
+
+    assert_eq!(adapter.rows("", 0, 100).unwrap().len(), 2);
+    let found = adapter.rows("lovelace", 0, 100).unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].key, key);
+    assert_eq!(adapter.rows("", 1, 100).unwrap().len(), 1, "offset");
+    assert_eq!(adapter.rows("", 0, 1).unwrap().len(), 1, "limit");
+
+    let sheet = adapter.read(&key).unwrap();
+    assert_eq!(sheet.title, "Ada Lovelace");
+
+    let mut edit = adapter.draft(&key).unwrap();
+    let email = edit
+        .groups
+        .iter_mut()
+        .flat_map(|g| g.fields.iter_mut())
+        .find(|f| f.value == "ada@example.org")
+        .unwrap();
+    email.value = "ada@new.example".into();
+    adapter.save(&key, &edit).unwrap();
+    let shown: String = adapter
+        .read(&key)
+        .unwrap()
+        .sections
+        .iter()
+        .flat_map(|s| s.fields.iter().map(|f| f.value.clone()))
+        .collect();
+    assert!(shown.contains("ada@new.example"), "{shown}");
+
+    adapter.delete(&key).unwrap();
+    assert_eq!(adapter.rows("", 0, 100).unwrap().len(), 1);
+    assert_eq!(adapter.read(&key).unwrap_err().kind, ErrorKind::NotFound);
+}
+
+#[test]
+fn nothing_on_the_socket_is_said_plainly() {
+    let dir = tempfile::tempdir().unwrap();
+    let message = RemotePeople::connect(&dir.path().join("none.sock"))
+        .err()
+        .unwrap();
+    assert!(message.contains("fs-people serve"), "{message}");
+}

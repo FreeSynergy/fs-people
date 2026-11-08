@@ -19,6 +19,10 @@ pub struct Args {
     pub snapshot: Option<PathBuf>,
     /// Size of the window or picture.
     pub size: (u32, u32),
+    /// The server's socket (default: the people socket of this user).
+    pub socket: Option<PathBuf>,
+    /// Keep the people in this process, not at the server (also implied by `--store`, `--import`, `--export`).
+    pub local: bool,
     /// `--help` was given.
     pub help: bool,
 }
@@ -32,6 +36,8 @@ impl Default for Args {
             export_sensitive: Vec::new(),
             snapshot: None,
             size: (1200, 800),
+            socket: None,
+            local: false,
             help: false,
         }
     }
@@ -57,6 +63,8 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
             "--export-sensitive" => out.export_sensitive.push(value("--export-sensitive")?),
             "--snapshot" => out.snapshot = Some(PathBuf::from(value("--snapshot")?)),
             "--size" => out.size = fs_components_app::parse_size(&value("--size")?)?,
+            "--socket" => out.socket = Some(PathBuf::from(value("--socket")?)),
+            "--local" => out.local = true,
             "-h" | "--help" => out.help = true,
             other => return Err(format!("unknown option {other}")),
         }
@@ -70,7 +78,10 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
 /// The help text.
 pub const HELP: &str = "fs-people: the people window (without arguments it opens)
 
-  --store <file>     keep the people in this store file (default: in memory, gone at the end)
+  --socket <path>    the people server to talk to (default: $XDG_RUNTIME_DIR/freesynergy/people.sock);
+                     start it with `fs-people serve`
+  --local            keep the people in this process instead of at the server (nothing is shared)
+  --store <file>     (local) keep the people in this store file (default: in memory, gone at the end)
   --import <file>    import a vCard file first; people already known are skipped, never replaced
   --export <file>    write everyone to a new vCard file and stop; an existing file is not replaced,
                      people marked sensitive are left out and named
