@@ -160,3 +160,21 @@ async fn taking_over_is_an_interface_only() {
         Err(Error::Unsupported(_))
     ));
 }
+
+#[tokio::test]
+async fn a_sensitive_card_is_never_named_in_a_rejection() {
+    let r = repo().await;
+    let mut secret = person("Secret", "same@example.org");
+    secret.mark_sensitive(["pd:HealthRecord"]);
+    let a = r
+        .create(person("Ada", "same@example.org"))
+        .await
+        .unwrap()
+        .envelope
+        .id;
+    let s = r.create(secret).await.unwrap().envelope.id;
+    assert!(matches!(
+        r.reject_same_person(a, s).await,
+        Err(Error::Sensitive(_))
+    ));
+}

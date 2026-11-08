@@ -78,7 +78,6 @@ impl PeopleRepo {
         if !is_link {
             return Err(fs_objects::Error::NotFound(relationship).into());
         }
-        ProposalState::Confirmed.on(Step::Unlink)?;
         let pair = found.as_ref().and_then(|o| {
             let (a, b) = rel_ids(o);
             Some((a?, b?))
@@ -88,7 +87,11 @@ impl PeopleRepo {
             && self.get(a).await?.is_some()
             && self.get(b).await?.is_some()
         {
-            self.reject_same_person(a, b).await?;
+            // Already rejected (a stale rejection beside the link) is the answer we wanted.
+            match self.reject_same_person(a, b).await {
+                Ok(_) | Err(Error::Conflict(_) | Error::Sensitive(_)) => {}
+                Err(e) => return Err(e),
+            }
         }
         Ok(())
     }

@@ -158,6 +158,11 @@ impl PeopleRepo {
             for link in self.relationships_of(id).await? {
                 self.objects.delete(link.envelope.id, &self.actor).await?;
             }
+            for rejection in self.rejections_of(id).await? {
+                self.objects
+                    .delete(rejection.envelope.id, &self.actor)
+                    .await?;
+            }
         }
         Ok(stored)
     }

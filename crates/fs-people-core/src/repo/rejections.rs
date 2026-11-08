@@ -11,6 +11,7 @@ use fs_objects::{Envelope, ObjectId, Query, StoredObject};
 use serde_json::json;
 
 use super::consts::{AS2_TYPE, CONTEXT, REJECTION_TYPE, SAME_AS};
+use super::envelope::card_of;
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
 use crate::matching::{ProposalState, Step};
@@ -54,6 +55,12 @@ impl PeopleRepo {
             self.get(a).await?.ok_or(Error::NotFound(a))?,
             self.get(b).await?.ok_or(Error::NotFound(b))?,
         );
+        // Like a link: nothing sensitive is named in a stored object (ADR 0029).
+        for o in [&oa, &ob] {
+            if !o.envelope.sensitive.is_empty() || card_of(o)?.is_sensitive() {
+                return Err(Error::Sensitive(o.envelope.id));
+            }
+        }
         let key = ordered(a, b);
         // A pair nobody answered is `Proposed`; a linked or already rejected one cannot be rejected.
         ProposalState::on(
@@ -62,13 +69,7 @@ impl PeopleRepo {
                 .unwrap_or(ProposalState::Proposed),
             Step::Reject,
         )?;
-        let mut env = Envelope::new(
-            REJECTION_TYPE,
-            format!(
-                "{} != {} (not the same person)",
-                oa.envelope.name, ob.envelope.name
-            ),
-        );
+        let mut env = Envelope::new(REJECTION_TYPE, "not the same person");
         env.context = Some(CONTEXT.into());
         env.attributed_to = Some(self.actor.clone());
         env.to = vec![self.actor.clone()];
