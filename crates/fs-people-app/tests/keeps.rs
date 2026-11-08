@@ -68,7 +68,7 @@ fn editing_one_phone_changes_that_number_and_nothing_else() {
     let before = json_of(&w.card(&key));
     let mut s = w.state();
     s.begin_edit();
-    s.set_field("phones/p1", "+49 30 2");
+    s.set_field("phones/p1", "+49 30 2345678");
     s.save();
     assert_eq!(
         s.editing().map(|e| e.error.clone()),
@@ -77,7 +77,7 @@ fn editing_one_phone_changes_that_number_and_nothing_else() {
         s.notice()
     );
     let mut expected = before;
-    expected["phones"]["p1"]["number"] = json!("+49 30 2");
+    expected["phones"]["p1"]["number"] = json!("+49 30 2345678");
     assert_eq!(json_of(&w.card(&key)), expected);
 }
 

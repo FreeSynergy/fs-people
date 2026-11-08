@@ -32,6 +32,7 @@ mod role_book;
 pub mod roles;
 mod subject;
 pub mod validate;
+pub mod values;
 pub mod vcard;
 
 pub use adoption::{Adoption, Offered};

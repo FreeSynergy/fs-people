@@ -4,7 +4,7 @@
 //! labelled fields. A field's key names what it belongs to on the card (`emails/e1`), so a save
 //! finds the very entry again and keeps everything else about it.
 
-use fs_components_workbenches::people::{DraftField, DraftGroup, PersonDraft};
+use fs_components_workbenches::people::{DraftField, DraftGroup, FieldCheck, PersonDraft};
 use fs_people_core::Card;
 
 use crate::words::field;
@@ -73,13 +73,15 @@ pub(super) fn draft_of(card: &Card, revision: Option<String>) -> PersonDraft {
                 field::EMAIL,
                 true,
                 entries(EMAILS, field::EMAIL, emails),
-            ),
+            )
+            .with_check(FieldCheck::Email),
             DraftGroup::new(
                 PHONES,
                 field::PHONE,
                 true,
                 entries(PHONES, field::PHONE, phones),
-            ),
+            )
+            .with_check(FieldCheck::Phone),
             DraftGroup::new(
                 ORGANISATIONS,
                 field::ORGANISATION,
@@ -106,8 +108,8 @@ pub(super) fn blank_draft() -> PersonDraft {
                 false,
                 vec![DraftField::new(NAME, field::NAME, "")],
             ),
-            added(EMAILS, field::EMAIL),
-            added(PHONES, field::PHONE),
+            added(EMAILS, field::EMAIL).with_check(FieldCheck::Email),
+            added(PHONES, field::PHONE).with_check(FieldCheck::Phone),
             added(ORGANISATIONS, field::ORGANISATION),
         ],
     )

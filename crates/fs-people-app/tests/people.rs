@@ -228,3 +228,48 @@ fn after_a_delete_someone_sensitive_is_not_opened_alone() {
     assert_eq!(s.rows()[0].cells[0], "Bob Secret");
     assert_eq!(s.selected(), None);
 }
+
+#[test]
+fn e_mail_and_phone_fields_are_checked_by_the_core_values_with_the_programs_words() {
+    use fs_components_workbenches::people::FieldCheck;
+    let w = World::in_memory();
+    let key = w.add(person("Ada", "ada@x.org"));
+    let draft = w.adapter.draft(&key).unwrap();
+    let kinds: Vec<(String, FieldCheck)> =
+        draft.fields().map(|f| (f.key.clone(), f.check)).collect();
+    assert!(
+        kinds.contains(&("emails/e1".into(), FieldCheck::Email)),
+        "{kinds:?}"
+    );
+    assert!(
+        w.adapter
+            .check(FieldCheck::Email, "ada@bücher.example")
+            .is_none()
+    );
+    assert!(
+        w.adapter.check(FieldCheck::Email, "").is_none(),
+        "empty removes the value"
+    );
+    let said = w.adapter.check(FieldCheck::Email, "ada").unwrap();
+    assert!(said.contains('@'), "{said}");
+    assert!(
+        w.adapter
+            .check(FieldCheck::Phone, "+49 30 1234567")
+            .is_none()
+    );
+    assert!(
+        w.adapter
+            .check(FieldCheck::Phone, "030 1234567")
+            .unwrap()
+            .contains('+')
+    );
+    assert!(w.adapter.check(FieldCheck::Text, "anything").is_none());
+    // A field added by the person holds the same kind.
+    let blank = w.adapter.blank().unwrap();
+    assert!(
+        blank
+            .groups
+            .iter()
+            .any(|g| g.key == "phones" && g.check == FieldCheck::Phone)
+    );
+}

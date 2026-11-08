@@ -13,9 +13,10 @@ use std::sync::Arc;
 
 use fs_components_workbenches::SourceError;
 use fs_components_workbenches::people::{
-    PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
+    FieldCheck, PeopleCapabilities, PeopleSource, PersonDraft, PersonRow, PersonSheet,
 };
 use fs_objects::{ObjectId, StoredObject};
+use fs_people_core::values::{ContactValue, EmailAddress, PhoneNumber};
 use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
 use tokio::runtime::Handle;
 
@@ -145,6 +146,19 @@ impl PeopleSource for PeopleAdapter {
         let mut draft = draft_of(&card, Some(revision_of(&object)));
         draft.marks.extend(sensitive_mark(&card, &object));
         Ok(draft)
+    }
+
+    /// The core's value objects judge, and the program's words say what is wrong.
+    fn check(&self, check: FieldCheck, text: &str) -> Option<String> {
+        if text.trim().is_empty() {
+            return None;
+        }
+        let found = match check {
+            FieldCheck::Email => EmailAddress::check(text),
+            FieldCheck::Phone => PhoneNumber::check(text),
+            _ => Ok(()),
+        };
+        found.err().map(|p| crate::words::problem(p).to_string())
     }
 
     fn blank(&self) -> Result<PersonDraft, SourceError> {
