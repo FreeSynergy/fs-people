@@ -40,7 +40,7 @@ fn start_server(socket: &Path) -> Arc<PeopleRepo> {
 mod common;
 
 use common::person;
-use fs_people_core::{People, RoleBook};
+use fs_people_core::People;
 
 #[test]
 fn create_list_search_read_edit_delete_over_the_socket() {
