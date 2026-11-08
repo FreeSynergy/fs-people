@@ -968,7 +968,7 @@ checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.3",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -1456,8 +1456,8 @@ checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 
 [[package]]
 name = "fs-components-app"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.1#320de5f62953b1b3c259aa4746e606f3ece9a8dc"
+version = "0.0.2"
+source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.2#ba60f1fbf42c06e7a2178ccc626bc1da52050e3b"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1470,20 +1470,20 @@ dependencies = [
 
 [[package]]
 name = "fs-components-primitives"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.1#320de5f62953b1b3c259aa4746e606f3ece9a8dc"
+version = "0.0.2"
+source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.2#ba60f1fbf42c06e7a2178ccc626bc1da52050e3b"
 dependencies = [
  "blinc_cn",
  "blinc_core",
  "blinc_layout",
  "blinc_theme",
- "fs-interfaces 0.52.0",
+ "fs-interfaces",
 ]
 
 [[package]]
 name = "fs-components-render"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.1#320de5f62953b1b3c259aa4746e606f3ece9a8dc"
+version = "0.0.2"
+source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.2#ba60f1fbf42c06e7a2178ccc626bc1da52050e3b"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1497,8 +1497,8 @@ dependencies = [
 
 [[package]]
 name = "fs-components-widgets"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.1#320de5f62953b1b3c259aa4746e606f3ece9a8dc"
+version = "0.0.2"
+source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.2#ba60f1fbf42c06e7a2178ccc626bc1da52050e3b"
 dependencies = [
  "blinc_cn",
  "blinc_core",
@@ -1513,8 +1513,8 @@ dependencies = [
 
 [[package]]
 name = "fs-components-workbenches"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.1#320de5f62953b1b3c259aa4746e606f3ece9a8dc"
+version = "0.0.2"
+source = "git+https://github.com/FreeSynergy/fs-components?tag=v0.0.2#ba60f1fbf42c06e7a2178ccc626bc1da52050e3b"
 dependencies = [
  "blinc_app",
  "blinc_cn",
@@ -1544,15 +1544,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs-interfaces"
-version = "0.52.0"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?rev=9a288a6#9a288a6e7a1e5400cacca1a893fcc5c519bfe3b2"
-dependencies = [
- "capnp",
- "idna",
-]
-
-[[package]]
 name = "fs-objects"
 version = "0.0.1"
 source = "git+https://github.com/FreeSynergy/fs-objects?tag=v0.0.1#7cf0f05e3a9835b582aa2ac22014f2a1f1bff200"
@@ -1572,10 +1563,10 @@ dependencies = [
 
 [[package]]
 name = "fs-people"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-app",
  "fs-people-cli",
@@ -1588,14 +1579,14 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "capnp",
  "fs-components-app",
  "fs-components-render",
  "fs-components-workbenches",
- "fs-interfaces 0.0.1",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1606,10 +1597,10 @@ dependencies = [
 
 [[package]]
 name = "fs-people-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1620,12 +1611,12 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "calcard",
  "chrono",
- "fs-interfaces 0.0.1",
+ "fs-interfaces",
  "fs-objects",
  "proptest",
  "serde",
@@ -1637,12 +1628,12 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-trait",
  "capnp",
  "capnp-rpc",
- "fs-interfaces 0.0.1",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "serde_json",
