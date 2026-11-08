@@ -7,7 +7,9 @@
 //! Provisional: only what the window needs (read, list, search, create, update, delete). Roles are
 //! not asked, so the window shows none over the socket (`RoleBook` is not implemented here).
 
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 
 use async_trait::async_trait;
@@ -16,22 +18,28 @@ use fs_interfaces::people_capnp::{people, person, persons};
 use fs_interfaces::rpc::{Problem, connect, read_envelope, write_uuid};
 use fs_interfaces::{Capabilities, Unsupported};
 use fs_objects::{ObjectId, StoredObject};
-use fs_people_core::{Card, Error, ListFilter, People, Result};
+use fs_people_core::{Card, Error, ListFilter, People, Result, Revision};
 use tokio::sync::{mpsc, oneshot};
 
 type Reply<T> = oneshot::Sender<Result<T>>;
+
+/// The server's revision of each person as last read here. The adapter reads a person right before it
+/// writes, so the entry is the revision of what it compared; a rebuilt object could not give it back.
+type Revisions = Arc<Mutex<HashMap<ObjectId, u64>>>;
 
 enum Call {
     Get(ObjectId, Reply<Option<StoredObject>>),
     List(ListFilter, Reply<Vec<StoredObject>>),
     Create(String, Reply<StoredObject>),
     Update(ObjectId, String, Reply<StoredObject>),
+    UpdateIf(ObjectId, u64, String, Reply<StoredObject>),
     Delete(ObjectId, Reply<()>),
 }
 
 /// The people server behind a socket, as a provider of [`People`].
 pub struct RemotePeople {
     calls: mpsc::UnboundedSender<Call>,
+    revisions: Revisions,
 }
 
 impl RemotePeople {
@@ -43,12 +51,14 @@ impl RemotePeople {
         let (calls, inbox) = mpsc::unbounded_channel();
         let (ready, started) = std::sync::mpsc::channel();
         let socket = socket.to_path_buf();
+        let revisions = Revisions::default();
+        let shared = Arc::clone(&revisions);
         thread::Builder::new()
             .name("people-rpc".into())
-            .spawn(move || worker(&socket, inbox, &ready))
+            .spawn(move || worker(&socket, inbox, &ready, &shared))
             .map_err(|e| e.to_string())?;
         started.recv().map_err(|e| e.to_string())??;
-        Ok(Self { calls })
+        Ok(Self { calls, revisions })
     }
 
     async fn ask<T>(&self, make: impl FnOnce(Reply<T>) -> Call) -> Result<T> {
@@ -66,6 +76,7 @@ fn worker(
     socket: &Path,
     mut inbox: mpsc::UnboundedReceiver<Call>,
     ready: &std::sync::mpsc::Sender<std::result::Result<(), String>>,
+    revisions: &Revisions,
 ) {
     let runtime = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -107,25 +118,28 @@ fn worker(
         };
         let _ = ready.send(Ok(()));
         while let Some(call) = inbox.recv().await {
-            let persons = persons.clone();
-            tokio::task::spawn_local(async move { carry_out(&persons, call).await });
+            let (persons, revisions) = (persons.clone(), Arc::clone(revisions));
+            tokio::task::spawn_local(async move { carry_out(&persons, &revisions, call).await });
         }
     });
 }
 
-async fn carry_out(persons: &persons::Client, call: Call) {
+async fn carry_out(persons: &persons::Client, revisions: &Revisions, call: Call) {
     match call {
         Call::Get(id, reply) => {
-            let _ = reply.send(get(persons, id).await);
+            let _ = reply.send(get(persons, revisions, id).await);
         }
         Call::List(filter, reply) => {
-            let _ = reply.send(list(persons, &filter).await);
+            let _ = reply.send(list(persons, revisions, &filter).await);
         }
         Call::Create(text, reply) => {
-            let _ = reply.send(create(persons, &text).await);
+            let _ = reply.send(create(persons, revisions, &text).await);
         }
         Call::Update(id, text, reply) => {
-            let _ = reply.send(update(persons, id, &text).await);
+            let _ = reply.send(update(persons, revisions, id, &text).await);
+        }
+        Call::UpdateIf(id, revision, text, reply) => {
+            let _ = reply.send(update_if(persons, revisions, id, revision, &text).await);
         }
         Call::Delete(id, reply) => {
             let _ = reply.send(delete(persons, id).await);
@@ -138,19 +152,32 @@ fn problem(error: &capnp::Error, id: Option<ObjectId>) -> Error {
     match Problem::from_error(error) {
         Some(p) if p.is_unsupported() => Error::Unsupported(Unsupported::new("people", p.detail)),
         Some(p) if p.status == 404 => id.map_or(Error::Conflict(p.detail), Error::NotFound),
+        // The server's compare-and-set says `conflict:` and names no revision.
+        Some(p) if p.detail.starts_with("conflict:") && id.is_some() => {
+            id.map_or(Error::Conflict(p.detail), Error::Changed)
+        }
         Some(p) => Error::Conflict(p.detail),
         None => Error::Stored(error.to_string()),
     }
 }
 
-fn stored(p: person::Reader<'_>) -> capnp::Result<StoredObject> {
+fn stored(revisions: &Revisions, p: person::Reader<'_>) -> capnp::Result<StoredObject> {
     let envelope = read_envelope(p.get_envelope()?)?;
     let content = serde_json::from_str(&p.get_jscontact()?.to_string()?)
         .map_err(|e| capnp::Error::failed(e.to_string()))?;
+    let id = envelope.id;
+    revisions
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(id, p.get_revision());
     Ok(StoredObject::new(envelope, "application/json", content))
 }
 
-async fn get(persons: &persons::Client, id: ObjectId) -> Result<Option<StoredObject>> {
+async fn get(
+    persons: &persons::Client,
+    revisions: &Revisions,
+    id: ObjectId,
+) -> Result<Option<StoredObject>> {
     let mut request = persons.get_request();
     write_uuid(request.get().init_id(), Some(id.as_uuid()));
     let answer = request
@@ -164,14 +191,21 @@ async fn get(persons: &persons::Client, id: ObjectId) -> Result<Option<StoredObj
     }
     let person = r
         .get_person()
-        .and_then(stored)
+        .and_then(|p| stored(revisions, p))
         .map_err(|e| problem(&e, Some(id)))?;
     Ok(Some(person))
 }
 
-async fn list(persons: &persons::Client, filter: &ListFilter) -> Result<Vec<StoredObject>> {
+async fn list(
+    persons: &persons::Client,
+    revisions: &Revisions,
+    filter: &ListFilter,
+) -> Result<Vec<StoredObject>> {
     let (mut found, mut cursor) = (Vec::new(), Vec::<u8>::new());
     let mut skip = filter.offset;
+    if filter.limit == Some(0) {
+        return Ok(found);
+    }
     loop {
         let mut request = persons.list_request();
         {
@@ -201,7 +235,7 @@ async fn list(persons: &persons::Client, filter: &ListFilter) -> Result<Vec<Stor
                 skip -= 1;
                 continue;
             }
-            found.push(stored(item).map_err(|e| problem(&e, None))?);
+            found.push(stored(revisions, item).map_err(|e| problem(&e, None))?);
             if filter.limit.is_some_and(|limit| found.len() >= limit) {
                 return Ok(found);
             }
@@ -217,7 +251,11 @@ async fn list(persons: &persons::Client, filter: &ListFilter) -> Result<Vec<Stor
     }
 }
 
-async fn create(persons: &persons::Client, card: &str) -> Result<StoredObject> {
+async fn create(
+    persons: &persons::Client,
+    revisions: &Revisions,
+    card: &str,
+) -> Result<StoredObject> {
     let mut request = persons.create_request();
     request.get().set_jscontact(card);
     let answer = request
@@ -228,11 +266,16 @@ async fn create(persons: &persons::Client, card: &str) -> Result<StoredObject> {
     answer
         .get()
         .and_then(persons::create_results::Reader::get_person)
-        .and_then(stored)
+        .and_then(|p| stored(revisions, p))
         .map_err(|e| problem(&e, None))
 }
 
-async fn update(persons: &persons::Client, id: ObjectId, card: &str) -> Result<StoredObject> {
+async fn update(
+    persons: &persons::Client,
+    revisions: &Revisions,
+    id: ObjectId,
+    card: &str,
+) -> Result<StoredObject> {
     let mut request = persons.update_request();
     write_uuid(request.get().init_id(), Some(id.as_uuid()));
     request.get().set_jscontact(card);
@@ -244,7 +287,30 @@ async fn update(persons: &persons::Client, id: ObjectId, card: &str) -> Result<S
     answer
         .get()
         .and_then(persons::update_results::Reader::get_person)
-        .and_then(stored)
+        .and_then(|p| stored(revisions, p))
+        .map_err(|e| problem(&e, Some(id)))
+}
+
+async fn update_if(
+    persons: &persons::Client,
+    revisions: &Revisions,
+    id: ObjectId,
+    revision: u64,
+    card: &str,
+) -> Result<StoredObject> {
+    let mut request = persons.update_if_request();
+    write_uuid(request.get().init_id(), Some(id.as_uuid()));
+    request.get().set_revision(revision);
+    request.get().set_jscontact(card);
+    let answer = request
+        .send()
+        .promise
+        .await
+        .map_err(|e| problem(&e, Some(id)))?;
+    answer
+        .get()
+        .and_then(persons::update_if_results::Reader::get_person)
+        .and_then(|p| stored(revisions, p))
         .map_err(|e| problem(&e, Some(id)))
 }
 
@@ -291,6 +357,29 @@ impl People for RemotePeople {
     async fn update(&self, id: ObjectId, card: Card) -> Result<StoredObject> {
         let text = serde_json::to_string(&card)?;
         self.ask(|r| Call::Update(id, text, r)).await
+    }
+
+    /// Compare and write in one step at the server, so another window's change is a conflict. The
+    /// revision sent is the server's own of the last read of this person (`expected`, computed from a
+    /// rebuilt object, would not equal it).
+    async fn update_checked(
+        &self,
+        id: ObjectId,
+        _expected: Revision,
+        card: Card,
+    ) -> Result<StoredObject> {
+        let text = serde_json::to_string(&card)?;
+        let known = self
+            .revisions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&id)
+            .copied();
+        // Never read here: there is nothing to compare with, so nothing is written blindly.
+        let Some(revision) = known else {
+            return Err(Error::Changed(id));
+        };
+        self.ask(|r| Call::UpdateIf(id, revision, text, r)).await
     }
 
     async fn delete(&self, id: ObjectId) -> Result<()> {

@@ -56,9 +56,9 @@ Version 0.5.0 (typed problem extensions, `SupportReport.instance`): provider of 
 
 ## Frontend `fs-people-app` (first version, provisional)
 
-Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default in memory), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
+Imports no `blinc_*` crate (ADR 0009). Arguments: `--store <file>` (default: `app.db` in the data folder, in memory for a picture or an export), `--import <file.vcf>`, `--export <file>`, `--snapshot <png>`, `--size WxH`.
 
-**Over the socket (ADR 0063):** the window talks to the server of `fs-people serve` through `RemotePeople` (a proxy: a worker thread owns the Cap'n Proto connection, the window thread waits for the answers). It reads, lists (the term is the server's own search), creates, updates and deletes. **Roles are not asked over the socket yet** (`NoRoles`: the window shows none). `--local` (or `--store`, `--import`, `--export`) keeps the people in the process of the window as before: nothing is shared then. The window needs a running server, and says `start it with fs-people serve` if none answers. `tests/remote.rs` runs it against a real server and store.
+**Over the socket (ADR 0063):** the window talks to the server of `fs-people serve` through `RemotePeople` (a proxy: a worker thread owns the Cap'n Proto connection, the window thread waits for the answers). It reads, lists (the term is the server's own search), creates, updates and deletes. **Roles are not asked over the socket yet** (`NoRoles`: the window shows none). `--local` (or `--store`, `--import`, `--export`, or a `--snapshot` without `--socket`) keeps the people in the process of the window: nothing is shared then; the store is `app.db` in the data folder (`$XDG_DATA_HOME/freesynergy/people`), memory only for a picture or an export. A save over the socket is `Persons.updateIf` with the server's revision of the last read of that person, so another window's change is a conflict and nothing is written; no timeout yet: a server that never answers freezes the window. The window needs a running server, and says `start it with fs-people serve` if none answers. `tests/remote.rs` runs it against a real server and store.
 
 | Area | State |
 |---|---|

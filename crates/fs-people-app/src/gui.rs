@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use fs_components_app::{Status, WindowOptions, launch};
-use fs_interfaces::rpc::default_socket;
+use fs_interfaces::rpc::{default_data_dir, default_socket, prepare_data_dir};
 use fs_objects::{Store, TursoStore};
 use fs_people_core::PeopleRepo;
 
@@ -29,8 +29,13 @@ pub fn run(words: &[String]) -> Result<(), String> {
     }
     let runtime = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
     let handle = runtime.handle().clone();
-    let local =
-        args.local || args.store.is_some() || args.import.is_some() || args.export.is_some();
+    // A picture alone needs no server; with `--socket` it draws what that server holds.
+    let picture_only = args.snapshot.is_some() && args.socket.is_none();
+    let local = args.local
+        || picture_only
+        || args.store.is_some()
+        || args.import.is_some()
+        || args.export.is_some();
     let mut status = None;
     let adapter = if local {
         let repo = open_local(&runtime, &args)?;
@@ -78,11 +83,26 @@ pub fn run(words: &[String]) -> Result<(), String> {
     launch(options, app).map_err(|e| e.to_string())
 }
 
-/// The people kept in this process: in a file with `--store`, else in memory.
+/// The people kept in this process: in the file of `--store`; else, for a picture only, in memory;
+/// else (also for an export) in `app.db` in the data folder of the user (`$XDG_DATA_HOME/freesynergy/people`), so the
+/// people are there at the next start.
 fn open_local(runtime: &tokio::runtime::Runtime, args: &Args) -> Result<Arc<PeopleRepo>, String> {
+    let file = match (
+        &args.store,
+        args.snapshot.is_some() || args.export.is_some(),
+    ) {
+        (Some(file), _) => Some(file.clone()),
+        (None, true) => None,
+        (None, false) => {
+            let dir = default_data_dir("people")
+                .ok_or("no data folder: give --store or set $XDG_DATA_HOME or $HOME")?;
+            let dir = prepare_data_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+            Some(dir.join("app.db"))
+        }
+    };
     let store: Arc<dyn Store> = runtime
         .block_on(async {
-            match &args.store {
+            match &file {
                 Some(file) => TursoStore::open(file).await,
                 None => TursoStore::open_in_memory().await,
             }

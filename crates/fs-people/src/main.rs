@@ -17,6 +17,12 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("serve") => serve(&args[1..]),
         None | Some("gui") => window(args.get(1..).unwrap_or_default()),
+        // `fs-people --socket PATH serve`: the option may stand before the word.
+        Some("--socket") if args.get(2).map(String::as_str) == Some("serve") => {
+            let mut words = vec!["--socket".to_string(), args[1].clone()];
+            words.extend(args[3..].iter().cloned());
+            serve(&words)
+        }
         Some(_) if has_command(&args) => exit(fs_people_cli::command_line(&args)),
         Some(_) => window(&args),
     }

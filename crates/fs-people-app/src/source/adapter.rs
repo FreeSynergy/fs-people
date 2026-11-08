@@ -3,9 +3,9 @@
 //! Pattern: Adapter over the program's contract, driven with a tokio handle from the interface
 //! thread. Provisional: in process, not RPC, until the Cap'n Proto servers exist (`DESIGN.md`).
 //!
-//! Revision: the store's `updated` time and a fingerprint of the content. `People::update` takes no
-//! revision, so `save` compares and then writes; this is **not atomic** (another writer can slip in
-//! between). A compare-and-set in the store is a wish for `fs-people-core`.
+//! Revision: the store's `updated` time and a fingerprint of the content, compared first; the write
+//! itself is `People::update_checked` (compare and set in one step, also over the socket), and a
+//! provider without it gets a plain `update` (then not atomic).
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -17,7 +17,7 @@ use fs_components_workbenches::people::{
 };
 use fs_objects::{ObjectId, StoredObject};
 use fs_people_core::values::{ContactValue, EmailAddress, PhoneNumber};
-use fs_people_core::{Card, Error, ListFilter, People, RoleBook, card_of};
+use fs_people_core::{Card, Error, ListFilter, People, Revision, RoleBook, card_of};
 use tokio::runtime::Handle;
 
 use crate::words::field;
@@ -65,6 +65,9 @@ fn reason(error: &Error) -> SourceError {
         Error::Store(fs_objects::Error::EncryptionRequired(_)) => SourceError::failed(format!(
             "this card is marked sensitive and this store is not encrypted, so it was refused ({error})"
         )),
+        Error::Changed(_) => {
+            SourceError::conflict("Someone else changed this person since you started.")
+        }
         Error::NotFound(_) | Error::ListNotFound(_) => SourceError::not_found(error.to_string()),
         Error::Unsupported(_) => SourceError::unsupported(error.to_string()),
         _ => SourceError::failed(error.to_string()),
@@ -176,10 +179,20 @@ impl PeopleSource for PeopleAdapter {
         }
         let mut card = card_of(&object).map_err(|e| reason(&e))?;
         apply_draft(&mut card, draft)?;
-        self.runtime
-            .block_on(self.people.update(id, card))
-            .map(|_| ())
-            .map_err(|e| reason(&e))
+        // Compare and write in one step where the provider can; the check above stays as the first line.
+        let checked = self.runtime.block_on(self.people.update_checked(
+            id,
+            Revision::of(&object),
+            card.clone(),
+        ));
+        match checked {
+            Err(Error::Unsupported(_)) => self
+                .runtime
+                .block_on(self.people.update(id, card))
+                .map(|_| ())
+                .map_err(|e| reason(&e)),
+            other => other.map(|_| ()).map_err(|e| reason(&e)),
+        }
     }
 
     fn create(&self, draft: &PersonDraft) -> Result<String, SourceError> {

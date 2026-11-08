@@ -100,3 +100,51 @@ fn nothing_on_the_socket_is_said_plainly() {
         .unwrap();
     assert!(message.contains("fs-people serve"), "{message}");
 }
+
+#[test]
+fn two_windows_on_one_server_a_stale_save_is_a_conflict_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("people.sock");
+    start_server(&socket);
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let a_remote = Arc::new(RemotePeople::connect(&socket).unwrap());
+    let b_remote = Arc::new(RemotePeople::connect(&socket).unwrap());
+    let a = PeopleAdapter::new(
+        a_remote.clone(),
+        Arc::new(NoRoles),
+        runtime.handle().clone(),
+    );
+    let b = PeopleAdapter::new(b_remote, Arc::new(NoRoles), runtime.handle().clone());
+    let ada = runtime
+        .block_on(a_remote.create(person("Ada Lovelace", "ada@example.org")))
+        .unwrap();
+    let key = ada.envelope.id.to_string();
+
+    let mut in_a = a.draft(&key).unwrap();
+    let mut in_b = b.draft(&key).unwrap();
+    let email = |d: &mut fs_components_workbenches::people::PersonDraft, to: &str| {
+        let field = d
+            .groups
+            .iter_mut()
+            .flat_map(|g| g.fields.iter_mut())
+            .find(|f| f.value == "ada@example.org")
+            .unwrap();
+        field.value = to.into();
+    };
+    email(&mut in_b, "b@example.org");
+    b.save(&key, &in_b).unwrap();
+    email(&mut in_a, "a@example.org");
+    let refused = a.save(&key, &in_a).unwrap_err();
+    assert_eq!(refused.kind, ErrorKind::Conflict, "{refused:?}");
+    let shown: String = b
+        .read(&key)
+        .unwrap()
+        .sections
+        .iter()
+        .flat_map(|s| s.fields.iter().map(|f| f.value.clone()))
+        .collect();
+    assert!(
+        shown.contains("b@example.org") && !shown.contains("a@example.org"),
+        "{shown}"
+    );
+}
