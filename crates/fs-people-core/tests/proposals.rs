@@ -74,10 +74,11 @@ async fn same_person_proposals_and_confirmation() {
         r.confirm_same_person(b, a).await,
         Err(Error::Conflict(_))
     ));
-    // unlink = delete of the relationship; proposal returns
+    // unlink = delete of the relationship; the pair then counts as rejected (ADR 0058), so the
+    // proposal does not return until the rejection is taken back
     r.unlink(rel.envelope.id).await.unwrap();
     assert!(
-        r.find_same_person_proposals()
+        !r.find_same_person_proposals()
             .await
             .unwrap()
             .iter()

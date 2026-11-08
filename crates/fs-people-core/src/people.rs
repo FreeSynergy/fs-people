@@ -12,7 +12,7 @@ use fs_objects::{ObjectId, StoreId, StoredObject};
 use crate::card::Card;
 use crate::error::Result;
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
-use crate::matching::SameAsProposal;
+use crate::matching::{ProposalState, SameAsProposal};
 use crate::repo::{ImportReport, ListFilter, ReleasedExport};
 use crate::revision::Revision;
 
@@ -161,6 +161,18 @@ pub trait People: Send + Sync {
     /// `same.link`: remove a same-person link.
     async fn unlink(&self, _relationship: ObjectId) -> Result<()> {
         not_possible("same.link")
+    }
+    /// `same.link`: say two cards are not the same person; the pair is not proposed again (ADR 0058).
+    async fn reject_same_person(&self, _a: ObjectId, _b: ObjectId) -> Result<StoredObject> {
+        not_possible("same.link")
+    }
+    /// `same.link`: take a rejection back; the pair may be proposed again.
+    async fn reopen_same_person(&self, _rejection: ObjectId) -> Result<()> {
+        not_possible("same.link")
+    }
+    /// `same.read`: where a pair stands: linked, rejected, or `None` (nobody has answered).
+    async fn same_person_state(&self, _a: ObjectId, _b: ObjectId) -> Result<Option<ProposalState>> {
+        not_possible("same.read")
     }
     /// `same.read`: cards linked to `id` by `owl:sameAs`.
     async fn linked_to(&self, _id: ObjectId) -> Result<Vec<ObjectId>> {

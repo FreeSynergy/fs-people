@@ -13,6 +13,9 @@ pub enum MatchKind {
     Email,
     /// A shared normalised phone number.
     Phone,
+    /// The same sortable name at the same organisation: a weaker hint than a shared contact point,
+    /// which is why it is only ever a question to the person (ADR 0058).
+    NameAndOrganisation,
 }
 
 /// One reason for a proposal.
@@ -47,4 +50,8 @@ pub struct Candidate {
     pub emails: Vec<String>,
     /// Normalised phone numbers.
     pub phones: Vec<String>,
+    /// The sortable, case-folded name (empty if the card has none).
+    pub name: String,
+    /// Case-folded organisation names.
+    pub orgs: Vec<String>,
 }

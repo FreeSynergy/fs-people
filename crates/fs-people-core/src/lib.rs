@@ -17,6 +17,7 @@
     clippy::module_name_repetitions
 )]
 
+mod adoption;
 pub mod card;
 mod clock;
 mod error;
@@ -33,18 +34,20 @@ mod subject;
 pub mod validate;
 pub mod vcard;
 
+pub use adoption::{Adoption, Offered};
 pub use card::Card;
 pub use clock::now_utc;
 pub use error::{Error, Issue, MAX_CARD_BYTES, Result};
 pub use feed::{PeopleFeed, PersonChange, PersonListener, Subscription};
 pub use format::{Exporter, ImportItems, ImportedCard, Importer, JsContactFormat, VCardFormat};
 pub use matching::{
-    Candidate, MatchKind, MatchReason, MatchStrategy, SameAsProposal, SharedContactPoint,
+    Candidate, MatchKind, MatchReason, MatchRule, MatchStrategy, ProposalState, RuleMatcher,
+    SameAsProposal, SameNameAtOrganisation, SharedContactPoint, SharedEmail, SharedPhone, Step,
 };
 pub use people::People;
 pub use repo::{
-    CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, RELATIONSHIP_TYPE,
-    ROLE_DEFINITION_TYPE, ReleasedExport, RoleRestore, card_of,
+    CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, REJECTION_TYPE,
+    RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE, ReleasedExport, RoleRestore, card_of,
 };
 pub use revision::Revision;
 pub use role_book::RoleBook;

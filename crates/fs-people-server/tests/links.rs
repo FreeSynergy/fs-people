@@ -3,6 +3,7 @@
 mod common;
 
 use common::{CONFLICT, create, expect_problem, id_of, json_of, persons_of, uuids, with_server};
+use fs_interfaces::people_capnp::SameState;
 use fs_interfaces::rpc::{read_uuid, write_uuid};
 
 #[tokio::test(flavor = "current_thread")]
@@ -87,6 +88,66 @@ async fn proposals_link_and_unlink() {
         write_uuid(linked.get().init_id(), Some(a));
         let answer = linked.send().promise.await.unwrap();
         assert!(uuids(answer.get().unwrap().get_ids().unwrap()).is_empty());
+    })
+    .await;
+}
+
+async fn state_of(
+    persons: &fs_interfaces::people_capnp::persons::Client,
+    a: uuid::Uuid,
+    b: uuid::Uuid,
+) -> SameState {
+    let mut req = persons.same_state_request();
+    write_uuid(req.get().init_a(), Some(a));
+    write_uuid(req.get().init_b(), Some(b));
+    let answer = req.send().promise.await.unwrap();
+    answer.get().unwrap().get_state().unwrap()
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_no_is_kept_and_taken_back() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let a = create(&persons, "uid-1", "Ada", "ada@x.org").await;
+        let b = create(&persons, "uid-2", "A. King", "ada@x.org").await;
+        assert!(matches!(state_of(&persons, a, b).await, SameState::Open));
+
+        let mut reject = persons.reject_same_request();
+        write_uuid(reject.get().init_a(), Some(b));
+        write_uuid(reject.get().init_b(), Some(a));
+        let answer = reject.send().promise.await.unwrap();
+        let rejection = read_uuid(answer.get().unwrap().get_rejection().unwrap()).unwrap();
+        assert!(matches!(
+            state_of(&persons, a, b).await,
+            SameState::Rejected
+        ));
+        let answer = persons.proposals_request().send().promise.await.unwrap();
+        assert_eq!(
+            answer.get().unwrap().get_items().unwrap().len(),
+            0,
+            "not asked again"
+        );
+
+        let mut twice = persons.reject_same_request();
+        write_uuid(twice.get().init_a(), Some(a));
+        write_uuid(twice.get().init_b(), Some(b));
+        expect_problem(twice.send().promise.await, CONFLICT);
+
+        let mut reopen = persons.reopen_same_request();
+        write_uuid(reopen.get().init_rejection(), Some(rejection));
+        reopen.send().promise.await.unwrap();
+        assert!(matches!(state_of(&persons, a, b).await, SameState::Open));
+        let answer = persons.proposals_request().send().promise.await.unwrap();
+        assert_eq!(answer.get().unwrap().get_items().unwrap().len(), 1);
+
+        let mut confirm = persons.confirm_same_request();
+        write_uuid(confirm.get().init_a(), Some(a));
+        write_uuid(confirm.get().init_b(), Some(b));
+        confirm.send().promise.await.unwrap();
+        assert!(matches!(
+            state_of(&persons, a, b).await,
+            SameState::Confirmed
+        ));
     })
     .await;
 }

@@ -12,6 +12,7 @@ use super::consts::{AS2_TYPE, CONTEXT, RELATIONSHIP_TYPE, SAME_AS};
 use super::envelope::card_of;
 use super::handle::PeopleRepo;
 use crate::error::{Error, Result};
+use crate::matching::{ProposalState, Step};
 
 impl PeopleRepo {
     /// A person confirmed a proposal: store an AS2 `Relationship` (`owl:sameAs`) between the two
@@ -31,6 +32,11 @@ impl PeopleRepo {
         let key = if a < b { (a, b) } else { (b, a) };
         if self.linked_pairs().await?.contains(&key) {
             return Err(Error::Conflict("these cards are already linked".into()));
+        }
+        // Linking by hand a pair that was rejected is the person's own call: the rejection goes.
+        let rejection = self.rejection_of(key).await?;
+        if rejection.is_some() {
+            ProposalState::Rejected.on(Step::Confirm)?;
         }
         let iri_of = |o: &StoredObject, id| o.envelope.iri.clone().unwrap_or_else(|| self.iri(id));
         let name = format!("{} = {} (same person)", oa.envelope.name, ob.envelope.name);
@@ -52,11 +58,15 @@ impl PeopleRepo {
             .with_index("object", key.1.to_string());
         let id = obj.envelope.id;
         self.objects.put(obj, &self.actor).await?;
+        if let Some(r) = rejection {
+            self.objects.delete(r.envelope.id, &self.actor).await?;
+        }
         self.objects.get(id).await?.ok_or(Error::NotFound(id))
     }
 
     /// Remove a same-person link (the store's undo can bring it back). Any other object with this
-    /// id stays.
+    /// id stays. The pair then counts as rejected, so the system does not ask about it again
+    /// (ADR 0058); `reopen_same_person` takes that back.
     pub async fn unlink(&self, relationship: ObjectId) -> Result<()> {
         let found = self.objects.get(relationship).await?;
         let is_link = found.as_ref().is_some_and(|o| {
@@ -68,7 +78,18 @@ impl PeopleRepo {
         if !is_link {
             return Err(fs_objects::Error::NotFound(relationship).into());
         }
+        ProposalState::Confirmed.on(Step::Unlink)?;
+        let pair = found.as_ref().and_then(|o| {
+            let (a, b) = rel_ids(o);
+            Some((a?, b?))
+        });
         self.objects.delete(relationship, &self.actor).await?;
+        if let Some((a, b)) = pair
+            && self.get(a).await?.is_some()
+            && self.get(b).await?.is_some()
+        {
+            self.reject_same_person(a, b).await?;
+        }
         Ok(())
     }
 

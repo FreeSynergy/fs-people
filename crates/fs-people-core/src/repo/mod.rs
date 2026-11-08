@@ -16,6 +16,7 @@ mod handle;
 mod holders;
 mod links;
 mod proposals;
+mod rejections;
 mod relations;
 mod release;
 mod removal;
@@ -26,7 +27,9 @@ mod roles;
 mod transfer;
 mod types;
 
-pub use consts::{CONTENT_TYPE, CONTEXT, PROFILE_TYPE, RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE};
+pub use consts::{
+    CONTENT_TYPE, CONTEXT, PROFILE_TYPE, REJECTION_TYPE, RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE,
+};
 pub use envelope::card_of;
 pub use handle::PeopleRepo;
 pub use release::ReleasedExport;

@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 
 use super::backend::StoreAdapter;
 use crate::feed::Registry;
-use crate::matching::{MatchStrategy, SharedContactPoint};
+use crate::matching::{MatchStrategy, RuleMatcher};
 use crate::roles::{RoleDirectory, RoleRegistry};
 
 /// People over an object store. Cheap to clone; clones share their subscribers.
@@ -47,7 +47,7 @@ impl PeopleRepo {
         Self {
             objects,
             reads,
-            matcher: Arc::new(SharedContactPoint),
+            matcher: Arc::new(RuleMatcher::standard()),
             registry: Arc::new(RoleRegistry::known()),
             info: None,
             feed: Arc::default(),

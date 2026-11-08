@@ -53,12 +53,13 @@ impl PeopleRepo {
     /// The links and roles of `id`. `NotFound` if there was neither a card nor anything of this.
     async fn remove_what_belongs_to(&self, id: ObjectId, card_was_there: bool) -> Result<()> {
         let links = self.relationships_of(id).await?;
+        let rejections = self.rejections_of(id).await?;
         let roles = self.roles_of(id).await?;
         let scoped = self.assignments_scoped_to(&self.iri(id)).await?;
         if !card_was_there && links.is_empty() && roles.is_empty() && scoped.is_empty() {
             return Err(Error::NotFound(id));
         }
-        for link in links {
+        for link in links.into_iter().chain(rejections) {
             self.objects.delete(link.envelope.id, &self.actor).await?;
         }
         for held in scoped {

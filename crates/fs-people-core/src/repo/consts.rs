@@ -6,6 +6,8 @@
 pub const PROFILE_TYPE: &str = "Profile";
 /// AS2 type of a confirmed same-person link.
 pub const RELATIONSHIP_TYPE: &str = "Relationship";
+/// AS2 type of a refused same-person proposal (an AS2 `Reject` of the proposed link).
+pub const REJECTION_TYPE: &str = "Reject";
 /// `context` of all objects of this program.
 pub const CONTEXT: &str = "people";
 /// Media type of the card content.

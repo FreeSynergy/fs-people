@@ -139,6 +139,21 @@ impl People for PeopleRepo {
         let _turn = self.writes.lock().await;
         PeopleRepo::unlink(self, relationship).await
     }
+    async fn reject_same_person(&self, a: ObjectId, b: ObjectId) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
+        PeopleRepo::reject_same_person(self, a, b).await
+    }
+    async fn reopen_same_person(&self, rejection: ObjectId) -> Result<()> {
+        let _turn = self.writes.lock().await;
+        PeopleRepo::reopen_same_person(self, rejection).await
+    }
+    async fn same_person_state(
+        &self,
+        a: ObjectId,
+        b: ObjectId,
+    ) -> Result<Option<crate::matching::ProposalState>> {
+        PeopleRepo::same_person_state(self, a, b).await
+    }
     async fn linked_to(&self, id: ObjectId) -> Result<Vec<ObjectId>> {
         PeopleRepo::linked_to(self, id).await
     }

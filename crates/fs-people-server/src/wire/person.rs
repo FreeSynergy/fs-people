@@ -171,6 +171,7 @@ pub(crate) fn write_proposals(
             let kind = match r.kind {
                 MatchKind::Email => "email",
                 MatchKind::Phone => "phone",
+                MatchKind::NameAndOrganisation => "name-organisation",
             };
             reasons.set(j, format!("{kind}:{}", r.value).as_str());
         }

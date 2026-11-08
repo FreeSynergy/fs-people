@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use fs_interfaces::people_capnp::persons as wire;
+use fs_interfaces::people_capnp::{SameState, persons as wire};
 use fs_interfaces::rpc::{check_intake, read_object_id, write_object_id};
-use fs_people_core::People;
+use fs_people_core::{People, ProposalState};
 
 use crate::errors::{finish, rpc_error};
 use crate::wire::{
@@ -98,5 +98,40 @@ pub(super) async fn linked_to(
     let id = read_object_id(params.get()?.get_id()?)?;
     let found = people.linked_to(id).await.map_err(rpc_error)?;
     write_ids(results.get().init_ids(ids_count(&found)?), &found);
+    Ok(())
+}
+
+pub(super) async fn reject_same(
+    people: &Arc<dyn People>,
+    params: wire::RejectSameParams,
+    mut results: wire::RejectSameResults,
+) -> Done {
+    let p = params.get()?;
+    let (a, b) = (read_object_id(p.get_a()?)?, read_object_id(p.get_b()?)?);
+    let people = people.clone();
+    let rejection = finish(async move { people.reject_same_person(a, b).await }).await?;
+    write_object_id(results.get().init_rejection(), rejection.envelope.id);
+    Ok(())
+}
+
+pub(super) async fn reopen_same(people: &Arc<dyn People>, params: wire::ReopenSameParams) -> Done {
+    let rejection = read_object_id(params.get()?.get_rejection()?)?;
+    let people = people.clone();
+    finish(async move { people.reopen_same_person(rejection).await }).await
+}
+
+pub(super) async fn same_state(
+    people: &Arc<dyn People>,
+    params: wire::SameStateParams,
+    mut results: wire::SameStateResults,
+) -> Done {
+    let p = params.get()?;
+    let (a, b) = (read_object_id(p.get_a()?)?, read_object_id(p.get_b()?)?);
+    let state = people.same_person_state(a, b).await.map_err(rpc_error)?;
+    results.get().set_state(match state {
+        None | Some(ProposalState::Proposed) => SameState::Open,
+        Some(ProposalState::Confirmed) => SameState::Confirmed,
+        Some(ProposalState::Rejected) => SameState::Rejected,
+    });
     Ok(())
 }

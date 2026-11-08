@@ -101,6 +101,27 @@ impl wire::Server for PersonsImpl {
     ) -> Done {
         links::confirm_same(&self.people, p, r).await
     }
+    async fn reject_same(
+        self: Rc<Self>,
+        p: wire::RejectSameParams,
+        r: wire::RejectSameResults,
+    ) -> Done {
+        links::reject_same(&self.people, p, r).await
+    }
+    async fn reopen_same(
+        self: Rc<Self>,
+        p: wire::ReopenSameParams,
+        _: wire::ReopenSameResults,
+    ) -> Done {
+        links::reopen_same(&self.people, p).await
+    }
+    async fn same_state(
+        self: Rc<Self>,
+        p: wire::SameStateParams,
+        r: wire::SameStateResults,
+    ) -> Done {
+        links::same_state(&self.people, p, r).await
+    }
     async fn unlink_same(
         self: Rc<Self>,
         p: wire::UnlinkSameParams,

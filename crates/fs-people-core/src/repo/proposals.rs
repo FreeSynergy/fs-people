@@ -17,10 +17,11 @@ impl PeopleRepo {
     /// address or phone number).
     ///
     /// Never proposed: cards with sensitive categories (ADR 0029), groups, pairs of different
-    /// `kind`, pairs that are already linked. Pure function of the store's state; nothing is
+    /// `kind`, pairs that are already linked, and pairs a person rejected (ADR 0058). Pure function of the store's state; nothing is
     /// written.
     pub async fn find_same_person_proposals(&self) -> Result<Vec<SameAsProposal>> {
         let linked = self.linked_pairs().await?;
+        let rejected = self.rejected_pairs().await?;
         let mut candidates = vec![];
         for o in self.list(&ListFilter::default()).await? {
             // One card that does not read blocks nobody: it is not proposed, `unreadable_cards` names it.
@@ -34,10 +35,12 @@ impl PeopleRepo {
                 kind: card.kind().to_string(),
                 emails: values("email"),
                 phones: values("phone"),
+                name: values("name_sort").into_iter().next().unwrap_or_default(),
+                orgs: values("org"),
             });
         }
         let mut proposals = self.matcher.propose(&candidates);
-        proposals.retain(|p| !linked.contains(&(p.a, p.b)));
+        proposals.retain(|p| !linked.contains(&(p.a, p.b)) && !rejected.contains(&(p.a, p.b)));
         Ok(proposals)
     }
 
