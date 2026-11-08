@@ -24,8 +24,8 @@ fs-people-server = { path = "../fs-people-server" }
 fs-people-app = { path = "../fs-people-app", optional = true }
 
 [dev-dependencies]
-fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", rev = "9a288a6", features = ["rpc"] }
-fs-objects = { git = "https://github.com/FreeSynergy/fs-objects", tag = "v0.5.0" }
+fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.1", features = ["rpc"] }
+fs-objects = { git = "https://github.com/FreeSynergy/fs-objects", tag = "v0.0.1" }
 fs-people-core = { path = "../fs-people-core" }
 capnp = "0.27"
 serde_json = "1"
