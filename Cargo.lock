@@ -1560,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people"
-version = "0.6.1-rc.3"
+version = "0.6.1-rc.4"
 dependencies = [
  "capnp",
  "fs-interfaces",
@@ -1576,7 +1576,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.6.1-rc.3"
+version = "0.6.1-rc.4"
 dependencies = [
  "async-trait",
  "capnp",
@@ -1594,7 +1594,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-cli"
-version = "0.6.1-rc.3"
+version = "0.6.1-rc.4"
 dependencies = [
  "capnp",
  "fs-interfaces",
@@ -1608,7 +1608,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.6.1-rc.3"
+version = "0.6.1-rc.4"
 dependencies = [
  "async-trait",
  "calcard",
@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.6.1-rc.3"
+version = "0.6.1-rc.4"
 dependencies = [
  "async-trait",
  "capnp",

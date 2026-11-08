@@ -11,6 +11,7 @@ jobs:
     uses: FreeSynergy/fs-release/.github/workflows/release.yml@main
     with:
       binaries: fs-people
+      cargo-package: fs-people
       name: fs-people
       kind: app
       app-id: net.freesynergy.People
