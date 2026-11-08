@@ -3,6 +3,7 @@
 //! Pattern: Facade consumer — parse arguments, open the store, import, then export or show. The
 //! runtime lives as long as the window: the workbench's calls run on it.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use fs_components_app::{Status, WindowOptions, launch};
@@ -65,7 +66,7 @@ pub fn run(words: &[String]) -> Result<(), String> {
             .clone()
             .or_else(|| default_socket("people"))
             .ok_or("no socket: give --socket or set XDG_RUNTIME_DIR")?;
-        let remote = RemotePeople::connect(&socket)?;
+        let remote = connect_or_start(&socket, args.socket.is_none())?;
         PeopleAdapter::new(Arc::new(remote), Arc::new(NoRoles), handle)
     };
     let app = app_widget(Arc::new(adapter)).map_err(|e| e.to_string())?;
@@ -110,4 +111,33 @@ fn open_local(runtime: &tokio::runtime::Runtime, args: &Args) -> Result<Arc<Peop
         .map(|s| Arc::new(s) as Arc<dyn Store>)
         .map_err(|e| format!("cannot open the store: {e}"))?;
     Ok(Arc::new(PeopleRepo::new(store, ACTOR)))
+}
+
+/// Connect to the server; if none answers on the user's own socket, start `fs-people serve` (detached,
+/// so other windows can use it too and it keeps the people after this window closes) and wait for it.
+/// A socket given with `--socket` is never answered by starting anything: the person chose it.
+fn connect_or_start(socket: &Path, may_start: bool) -> Result<RemotePeople, String> {
+    let first = RemotePeople::connect(socket);
+    if first.is_ok() || !may_start {
+        return first;
+    }
+    let me = std::env::current_exe().map_err(|e| e.to_string())?;
+    let mut server = std::process::Command::new(me);
+    server
+        .arg("serve")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut server, 0);
+    server
+        .spawn()
+        .map_err(|e| format!("could not start the people server: {e}"))?;
+    for _ in 0..50 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(remote) = RemotePeople::connect(socket) {
+            return Ok(remote);
+        }
+    }
+    first
 }
