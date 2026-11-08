@@ -4,6 +4,8 @@ description = "The people program of FreeSynergy, first window: list, search, re
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [dependencies]
 fs-people-core = { path = "../fs-people-core" }
