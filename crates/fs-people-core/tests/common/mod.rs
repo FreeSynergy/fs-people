@@ -10,11 +10,8 @@ use fs_people_core::{Card, PeopleRepo};
 pub mod yielding;
 
 pub const ME: &str = "https://local.invalid/users/owner";
-/// The demo cards; `FS_PEOPLE_DEMO` names a copy to read instead of the documentation tree.
-pub const DEMO: &str = match option_env!("FS_PEOPLE_DEMO") {
-    Some(copy) => copy,
-    None => "/srv/FreeSynergy/fs-documentation/temp/demo-data/contacts.json",
-};
+/// The demo cards: a copy of the documentation tree's `temp/demo-data/contacts.json`, kept here so the tests need nothing outside the repository.
+pub const DEMO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/contacts.json");
 
 /// A repository over a fresh in-memory store.
 pub async fn repo() -> PeopleRepo {

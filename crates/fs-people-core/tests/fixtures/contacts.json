@@ -1,0 +1,1711 @@
+[
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-ba80-7f7a-8dff-9f85769beae3",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "NLnet Foundation"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Stichting NLnet"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Science Park"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "400"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "1098 XH"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Amsterdam"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "The Netherlands"
+          }
+        ],
+        "countryCode": "NL",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "webcontact@nlnet.nl",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+31 20 8884252",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://nlnet.nl"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Funds open internet technology through NGI Zero grants and is the most natural first funder for FreeSynergy's privacy-respecting, standards-based components."
+      }
+    },
+    "freesynergy.net:legalForm": "Stichting (foundation, NL)",
+    "freesynergy.net:source": {
+      "url": "https://nlnet.nl/contact/address.html",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-be68-7ae4-a617-74bec1090d13",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Sovereign Tech Agency"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Sovereign Tech Agency GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Gartenstr."
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "7"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10115"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@sovereign.tech",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.sovereign.tech"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "German federal agency investing in open digital infrastructure, a fit for FreeSynergy's reusable Rust building blocks."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://www.sovereign.tech/imprint",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-c250-75a7-859b-934a531f8806",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Prototype Fund (Open Knowledge Foundation Deutschland)"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Open Knowledge Foundation Deutschland e. V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Singerstr."
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "109"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10179"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@okfn.de",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 97894230",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.prototypefund.de"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Operates the Prototype Fund, which supports individual public-interest open-source developers in Germany like the FreeSynergy project owner."
+      }
+    },
+    "freesynergy.net:legalForm": "e. V. (registered association)",
+    "freesynergy.net:source": {
+      "url": "https://okfn.de/impressum/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-c638-70ae-a24a-eff39b55268a",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Free Software Foundation Europe"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Free Software Foundation Europe e.V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Revaler Straße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "19"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "floor",
+            "value": "5. floor"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10245"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "contact@fsfe.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://fsfe.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Europe's leading Free Software advocacy organisation, aligned with FreeSynergy's forever-free licensing and user-freedom goals."
+      }
+    },
+    "freesynergy.net:legalForm": "e.V. (registered charitable association)",
+    "freesynergy.net:source": {
+      "url": "https://fsfe.org/contact/contact.en.html",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-ca20-72ad-879a-7cd92cafa451",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Open Source Business Alliance"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Open Source Business Alliance – Bundesverband für digitale Souveränität e.V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Pariser Platz"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "6a"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10117"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@osb-alliance.com",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 300 149 3377",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.osb-alliance.com"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "German open-source business association focused on digital sovereignty, offering access to public-sector and SME adopters."
+      }
+    },
+    "freesynergy.net:legalForm": "e.V. (registered association)",
+    "freesynergy.net:source": {
+      "url": "https://osb-alliance.de/impressum",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-ce08-797e-a443-9aa19653dfc3",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "KDE e.V."
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "KDE e.V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Prinzenstraße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "85 F"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10969"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "kde-ev-board@kde.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 2023 7305-0",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://ev.kde.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Represents the KDE community, whose PIM stack (contacts, calendar, mail) overlaps with FreeSynergy's domain."
+      }
+    },
+    "freesynergy.net:legalForm": "e.V. (registered association)",
+    "freesynergy.net:source": {
+      "url": "https://ev.kde.org/contact/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-d1f0-72ae-86c8-9f9b4a822ff5",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "GNOME Foundation"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "GNOME Foundation"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "1875"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Mission St"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "room",
+            "value": "Ste 103 #605"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "San Francisco"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "region",
+            "value": "CA"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "94103"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "USA"
+          }
+        ],
+        "countryCode": "US",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@gnome.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+1 707 435 3731",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://foundation.gnome.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Stewards the GNOME desktop and its contacts/calendar apps, a potential integration partner for FreeSynergy's open data formats."
+      }
+    },
+    "freesynergy.net:source": {
+      "url": "https://foundation.gnome.org/contact/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-d5d8-7129-8175-68880c4f8c8b",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Codeberg e.V."
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Codeberg e.V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Arminiusstraße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "2 - 4"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10551"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "contact@codeberg.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://codeberg.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Non-profit, Forgejo-based code hosting in Germany, a candidate home for FreeSynergy's repositories and community."
+      }
+    },
+    "freesynergy.net:legalForm": "e.V. (non-profit registered association)",
+    "freesynergy.net:source": {
+      "url": "https://codeberg.org/codeberg/org/src/branch/main/Imprint.md",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-d9c0-78c7-89a3-2d144f1d151a",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Nextcloud GmbH"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Nextcloud GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Hauptmannsreute"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "44a"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "70192"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Stuttgart"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "contact@nextcloud.com",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 711 25 24 28 90",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://nextcloud.com"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Leading German self-hosted collaboration suite (files, contacts, calendar, talk), a key interoperability peer for FreeSynergy."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://nextcloud.com/impressum/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-dda8-7d73-9870-d3917c706b5b",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Collabora Productivity"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Collabora Productivity Ltd"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "building",
+            "value": "St John's Innovation Centre"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Cowley Road"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Cambridge"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "CB4 0WS"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "United Kingdom"
+          }
+        ],
+        "countryCode": "GB",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+44 1223 362967",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.collaboraonline.com"
+      },
+      "l2": {
+        "@type": "Link",
+        "kind": "contact",
+        "uri": "https://www.collaboraonline.com/contact-us/"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Builds Collabora Online (LibreOffice-based), a natural document-editing companion to FreeSynergy's wiki and collaboration tools."
+      }
+    },
+    "freesynergy.net:legalForm": "Ltd",
+    "freesynergy.net:source": {
+      "url": "https://www.collaboraonline.com/contact-us/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-e190-7a30-9021-0d051ef1ac5f",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "OpenProject GmbH"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "OpenProject GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Krausenstraße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "9"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10117"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@openproject.com",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 288 777 07",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.openproject.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Berlin-based open-source project management vendor and openDesk component, relevant for calendar and task interoperability."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://www.openproject.org/legal/imprint/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-e578-78b4-9fd4-389543682a1c",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Element (Element Software GmbH)"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Element Software GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "building",
+            "value": "c/o tradeo legal GmbH & Co. KG"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "floor",
+            "value": "3rd floor"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Kaiserswerther Straße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "135"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "40474"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Düsseldorf"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://element.io"
+      },
+      "l2": {
+        "@type": "Link",
+        "kind": "contact",
+        "uri": "https://element.io/legal/company-information"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Main commercial Matrix vendor; FreeSynergy's messenger builds on Matrix via tuwunel, so Element is a key ecosystem partner."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://element.io/legal/company-information",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-e960-7423-8864-0fbaa2c1cbb2",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "The Matrix.org Foundation"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "The Matrix.org Foundation C.I.C."
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "support@matrix.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://matrix.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Neutral custodian of the Matrix standard that FreeSynergy's messenger implements, so spec alignment and visibility matter."
+      }
+    },
+    "freesynergy.net:legalForm": "C.I.C. (UK Community Interest Company)",
+    "freesynergy.net:source": {
+      "url": "https://matrix.org/contact/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-ed48-7c0b-bd3c-dd6bf1355390",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Thunderbird (MZLA Technologies Corporation)"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "MZLA Technologies Corporation"
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "partnerships@thunderbird.net",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.thunderbird.net"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Thunderbird is the leading free mail/contacts/calendar client and a prime interoperability target for JSContact/JSCalendar data."
+      }
+    },
+    "freesynergy.net:legalForm": "Corporation (subsidiary of the Mozilla Foundation)",
+    "freesynergy.net:source": {
+      "url": "https://www.thunderbird.net/en-US/contact/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-f130-7b51-9d1b-b9d5f80b28d4",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "FOSSGIS e.V."
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "FOSSGIS e.V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Bundesallee"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "23"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10717"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@fossgis.de",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 62932037",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.fossgis.de"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "German association for free GIS and OpenStreetMap (local OSM chapter), relevant to FreeSynergy's maps module."
+      }
+    },
+    "freesynergy.net:legalForm": "e.V. (registered association)",
+    "freesynergy.net:source": {
+      "url": "https://www.fossgis.de/impressum/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-f518-776d-a260-d8d4761d7fed",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "ZenDiS"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Zentrum für Digitale Souveränität der Öffentlichen Verwaltung (ZenDiS) GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Suttner-Nobel-Allee"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "4"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "44803"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Bochum"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "hallo@zendis.de",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 234 3671503-0",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.zendis.de"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Federal centre for digital sovereignty behind openDesk, a potential public-sector adopter of open, standards-based collaboration software."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://www.zendis.de/impressum",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-f900-7f73-a64c-a74b77e485cb",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Wikimedia Deutschland"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Wikimedia Deutschland – Gesellschaft zur Förderung Freien Wissens e. V."
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Tempelhofer Ufer"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "23/24"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10963"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@wikimedia.de",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 577 11 62-0",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.wikimedia.de"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Promotes free knowledge and wiki software in Germany, relevant to FreeSynergy's wiki and open-data approach."
+      }
+    },
+    "freesynergy.net:legalForm": "e. V. (registered association)",
+    "freesynergy.net:source": {
+      "url": "https://www.wikimedia.de/impressum/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaef-fce8-739d-b131-9b43e0ff3c62",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "The Document Foundation"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "The Document Foundation"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Winterfeldtstraße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "52"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "10781"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Berlin"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@documentfoundation.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 30 55579920",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.documentfoundation.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Home of LibreOffice and ODF advocacy, sharing FreeSynergy's open-standards-first philosophy."
+      }
+    },
+    "freesynergy.net:legalForm": "Stiftung des bürgerlichen Rechts (charitable foundation under German law)",
+    "freesynergy.net:source": {
+      "url": "https://www.documentfoundation.org/imprint/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaf0-00d0-78dd-8abf-3a447d377db6",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Rust Foundation"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Rust Foundation"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "8"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "The Green"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "room",
+            "value": "Suite # 11976"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Dover"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "region",
+            "value": "DE"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "19901"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "USA"
+          }
+        ],
+        "countryCode": "US",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "contact@rustfoundation.org",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://foundation.rust-lang.org"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "Supports the Rust language that the entire FreeSynergy suite is written in, a good fit for showcase and community visibility."
+      }
+    },
+    "freesynergy.net:source": {
+      "url": "https://foundation.rust-lang.org/contact/",
+      "retrieved": "2026-11-05"
+    }
+  },
+  {
+    "@type": "Card",
+    "version": "1.0",
+    "uid": "urn:uuid:01a1aaf0-04b8-7992-ab1a-966de952cf0f",
+    "kind": "org",
+    "created": "2026-11-05T09:00:00Z",
+    "updated": "2026-11-05T09:00:00Z",
+    "name": {
+      "@type": "Name",
+      "full": "Univention GmbH"
+    },
+    "organizations": {
+      "o1": {
+        "@type": "Organization",
+        "name": "Univention GmbH"
+      }
+    },
+    "addresses": {
+      "a1": {
+        "@type": "Address",
+        "components": [
+          {
+            "@type": "AddressComponent",
+            "kind": "name",
+            "value": "Mary-Somerville-Straße"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "number",
+            "value": "1"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "postcode",
+            "value": "28359"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "locality",
+            "value": "Bremen"
+          },
+          {
+            "@type": "AddressComponent",
+            "kind": "country",
+            "value": "Germany"
+          }
+        ],
+        "countryCode": "DE",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "emails": {
+      "e1": {
+        "@type": "EmailAddress",
+        "address": "info@univention.de",
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "phones": {
+      "p1": {
+        "@type": "Phone",
+        "number": "+49 421 22232-0",
+        "features": {
+          "voice": true
+        },
+        "contexts": {
+          "work": true
+        }
+      }
+    },
+    "links": {
+      "l1": {
+        "@type": "Link",
+        "uri": "https://www.univention.de"
+      }
+    },
+    "notes": {
+      "n1": {
+        "@type": "Note",
+        "note": "German open-source identity and access management vendor (Nubus, openDesk IAM), relevant to FreeSynergy's Kanidm-based identity layer."
+      }
+    },
+    "freesynergy.net:legalForm": "GmbH",
+    "freesynergy.net:source": {
+      "url": "https://www.univention.de/impressum/",
+      "retrieved": "2026-11-05"
+    }
+  }
+]
