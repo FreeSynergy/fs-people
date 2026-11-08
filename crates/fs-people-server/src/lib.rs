@@ -14,6 +14,7 @@ mod errors;
 mod facts;
 mod feed;
 mod formats;
+pub mod lease;
 mod people_service;
 mod persons;
 mod program;

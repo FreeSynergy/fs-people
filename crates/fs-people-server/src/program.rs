@@ -13,7 +13,7 @@ use fs_people_core::PeopleRepo;
 use crate::PeopleServer;
 
 /// The help text of `fs-people serve`.
-pub const HELP: &str = "fs-people serve [--socket PATH] [--data DIR] [--actor IRI]\nDefaults: $XDG_RUNTIME_DIR/freesynergy/people.sock, $XDG_DATA_HOME/freesynergy/people, the local owner";
+pub const HELP: &str = "fs-people serve [--socket PATH] [--data DIR] [--actor IRI] [--lease FILE]\n--lease FILE: end when no window holds this lock any more (started by a window, not by hand)\nDefaults: $XDG_RUNTIME_DIR/freesynergy/people.sock, $XDG_DATA_HOME/freesynergy/people, the local owner";
 
 /// Why `serve` ended without serving.
 #[derive(Debug, PartialEq, Eq)]
@@ -29,6 +29,8 @@ pub enum ServeError {
 /// # Errors
 /// [`ServeError::Usage`] for unknown or incomplete words, [`ServeError::Failed`] for everything else.
 pub fn serve(args: impl IntoIterator<Item = OsString>) -> Result<(), ServeError> {
+    let (lease, args) =
+        crate::lease::take_lease(args.into_iter().collect()).map_err(ServeError::Usage)?;
     let Some(options) = ServerOptions::parse("people", args).map_err(ServeError::Usage)? else {
         println!("{HELP}");
         return Ok(());
@@ -39,6 +41,15 @@ pub fn serve(args: impl IntoIterator<Item = OsString>) -> Result<(), ServeError>
         actor,
         instance,
     } = options;
+    if let Some(lease) = lease {
+        // The window that started this server holds the lease; when none does, end as a signal would.
+        crate::lease::watch(lease, || {
+            let _ = rustix::process::kill_process(
+                rustix::process::getpid(),
+                rustix::process::Signal::TERM,
+            );
+        });
+    }
     run_until_signal(&socket, || async move {
         prepare_data_dir(&data)?;
         let store = TursoStore::open(data.join("objects.db"))

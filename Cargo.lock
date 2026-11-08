@@ -1563,7 +1563,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "capnp",
  "fs-interfaces",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-trait",
  "capnp",
@@ -1597,7 +1597,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-cli"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "capnp",
  "fs-interfaces",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-trait",
  "calcard",
@@ -1628,7 +1628,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-trait",
  "capnp",
@@ -1636,6 +1636,7 @@ dependencies = [
  "fs-interfaces",
  "fs-objects",
  "fs-people-core",
+ "rustix 1.1.6",
  "serde_json",
  "tempfile",
  "tokio",

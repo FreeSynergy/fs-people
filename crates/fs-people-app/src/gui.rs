@@ -118,27 +118,67 @@ fn open_local(runtime: &tokio::runtime::Runtime, args: &Args) -> Result<Arc<Peop
 /// so other windows can use it too and it keeps the people after this window closes) and wait for it.
 /// A socket given with `--socket` is never answered by starting anything: the person chose it.
 fn connect_or_start(socket: &Path, may_start: bool) -> Result<RemotePeople, String> {
+    // This window is a user of the server for as long as it lives: the shared lock on the lease is
+    // let go by the system when the process ends, however it ends. A server this window starts ends
+    // itself when no window holds the lease any more (and a server somebody started by hand has none).
+    let lease = socket.with_extension("lease");
+    if may_start {
+        hold_lease(&lease);
+    }
     let first = RemotePeople::connect(socket);
     if first.is_ok() || !may_start {
         return first;
     }
     let me = std::env::current_exe().map_err(|e| e.to_string())?;
+    // What the server says when it cannot start goes to a file next to the socket, so the window can
+    // tell the person instead of only waiting.
+    let log = socket.with_extension("log");
+    let log_file = std::fs::File::create(&log).ok();
     let mut server = std::process::Command::new(me);
     server
         .arg("serve")
+        .arg("--lease")
+        .arg(&lease)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null());
+        .stderr(log_file.map_or_else(std::process::Stdio::null, std::process::Stdio::from));
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut server, 0);
-    server
+    let mut child = server
         .spawn()
         .map_err(|e| format!("could not start the people server: {e}"))?;
     for _ in 0..50 {
         std::thread::sleep(std::time::Duration::from_millis(100));
         if let Ok(remote) = RemotePeople::connect(socket) {
+            let _ = std::fs::remove_file(&log);
             return Ok(remote);
         }
+        if let Ok(Some(status)) = child.try_wait() {
+            let said = std::fs::read_to_string(&log).unwrap_or_default();
+            let _ = std::fs::remove_file(&log);
+            return Err(format!(
+                "the people server stopped at once ({status}): {}",
+                said.trim()
+            ));
+        }
     }
+    // Still waiting: the child lives on (it may just be slow); reap it if it ends later.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
     first
+}
+
+/// Hold the shared lock on `path` until this process ends.
+fn hold_lease(path: &Path) {
+    static HELD: std::sync::OnceLock<std::fs::File> = std::sync::OnceLock::new();
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path);
+    if let Ok(file) = file
+        && file.lock_shared().is_ok()
+    {
+        let _ = HELD.set(file);
+    }
 }
