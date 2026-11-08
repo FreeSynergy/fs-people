@@ -38,6 +38,7 @@ pub fn take_lease(args: Vec<OsString>) -> Result<(Option<PathBuf>, Vec<OsString>
 }
 
 /// Whether nobody holds the lease right now (and the lease file is there to ask).
+#[must_use]
 pub fn unused(path: &Path) -> bool {
     let Ok(file) = OpenOptions::new().create(true).append(true).open(path) else {
         return false;
