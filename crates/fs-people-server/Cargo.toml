@@ -11,10 +11,6 @@ rust-version.workspace = true
 [lib]
 name = "fs_people_server"
 
-[[bin]]
-name = "fs-people-server"
-path = "src/main.rs"
-
 [dependencies]
 fs-people-core = { path = "../fs-people-core" }
 fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.45.0", features = ["rpc"] }

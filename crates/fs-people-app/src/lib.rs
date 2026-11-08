@@ -11,6 +11,7 @@
 #![allow(clippy::must_use_candidate, clippy::module_name_repetitions)]
 
 pub mod args;
+pub mod gui;
 mod source;
 mod surface;
 mod transfer;

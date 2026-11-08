@@ -10,7 +10,7 @@ jobs:
   release:
     uses: FreeSynergy/fs-release/.github/workflows/release.yml@main
     with:
-      binaries: fs-people-server,fs-people-app
+      binaries: fs-people
       name: fs-people
       kind: app
       app-id: net.freesynergy.People

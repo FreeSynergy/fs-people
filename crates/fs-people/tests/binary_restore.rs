@@ -29,7 +29,8 @@ async fn seed(data: &Path, contents: &[serde_json::Value]) {
 }
 
 fn run_and_read_stderr(socket: &Path, data: &Path) -> String {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_fs-people-server"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_fs-people"))
+        .arg("serve")
         .arg("--socket")
         .arg(socket)
         .arg("--data")
@@ -68,7 +69,7 @@ async fn each_skipped_role_file_is_one_line_on_stderr() {
     assert_eq!(lines.len(), 2, "{text:?}");
     for line in lines {
         assert!(
-            line.starts_with("fs-people-server: skipped stored role file: role configuration "),
+            line.starts_with("fs-people: skipped stored role file: role configuration "),
             "{line}"
         );
     }

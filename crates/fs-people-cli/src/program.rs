@@ -1,27 +1,30 @@
-//! `fs-people`: wiring only.
+//! The command line as a function of the one program (ADR 0063).
 //!
-//! Pattern: none (thin binary) — parse, connect to the socket, run one command, print.
+//! Pattern: Facade — parse, connect to the socket, run one command, print. `fs-people <command>`
+//! calls [`command_line`]; the exit code is the answer.
 
 use fs_interfaces::people_capnp::people;
 use fs_interfaces::rpc::{connect, default_socket};
-use fs_people_cli::{HELP, parse, run};
 
-fn main() {
-    let words: Vec<String> = std::env::args().skip(1).collect();
-    let args = match parse(&words) {
+use crate::{HELP, parse, run};
+
+/// Carry out the words after `fs-people` (a command, maybe with `--socket`). The exit code: 0 done,
+/// 1 the server or the system refused, 2 the words were wrong.
+pub fn command_line(words: &[String]) -> i32 {
+    let args = match parse(words) {
         Ok(a) => a,
         Err(e) => {
             eprintln!("fs-people: {e}");
-            std::process::exit(2);
+            return 2;
         }
     };
     let Some(command) = args.command else {
         println!("{HELP}");
-        return;
+        return 0;
     };
     let Some(socket) = args.socket.or_else(|| default_socket("people")) else {
         eprintln!("fs-people: no socket: give --socket or set XDG_RUNTIME_DIR");
-        std::process::exit(2);
+        return 2;
     };
     let runtime = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -30,7 +33,7 @@ fn main() {
         Ok(r) => r,
         Err(e) => {
             eprintln!("fs-people: {e}");
-            std::process::exit(1);
+            return 1;
         }
     };
     let local = tokio::task::LocalSet::new();
@@ -41,10 +44,13 @@ fn main() {
         run(&connection.client, command).await
     });
     match out {
-        Ok(text) => println!("{text}"),
+        Ok(text) => {
+            println!("{text}");
+            0
+        }
         Err(e) => {
             eprintln!("fs-people: {e}");
-            std::process::exit(1);
+            1
         }
     }
 }

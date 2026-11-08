@@ -1,29 +1,26 @@
-//! The binary: wiring only.
+//! The window of `fs-people` (ADR 0063): wiring only.
 //!
 //! Pattern: Facade consumer — parse arguments, open the store, import, then export or show. The
 //! runtime lives as long as the window: the workbench's calls run on it.
 
 use std::sync::Arc;
 
+use crate::args::{HELP, parse};
+use crate::{PeopleAdapter, app_widget, export_all, import_file};
 use fs_components_app::{Status, WindowOptions, launch};
 use fs_objects::{Store, TursoStore};
-use fs_people_app::args::{HELP, parse};
-use fs_people_app::{PeopleAdapter, app_widget, export_all, import_file};
 use fs_people_core::PeopleRepo;
 
 /// Who acts on this store. Provisional: there is no sign-in yet.
 const ACTOR: &str = "https://localhost/actors/owner";
 
-fn main() {
-    if let Err(message) = run() {
-        eprintln!("fs-people-app: {message}");
-        std::process::exit(1);
-    }
-}
-
-fn run() -> Result<(), String> {
-    let argv: Vec<String> = std::env::args().skip(1).collect();
-    let args = parse(&argv)?;
+/// Open the window (or do the one thing the words ask for). `argv` are the words without the
+/// program name.
+///
+/// # Errors
+/// The message for the person: bad words, a store that does not open, a file that cannot be read.
+pub fn run(argv: &[String]) -> Result<(), String> {
+    let args = parse(argv)?;
     if args.help {
         println!("{HELP}");
         return Ok(());

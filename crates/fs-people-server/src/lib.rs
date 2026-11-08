@@ -16,7 +16,9 @@ mod feed;
 mod formats;
 mod people_service;
 mod persons;
+mod program;
 mod roles_service;
 mod wire;
 
 pub use people_service::{CONTRACT_VERSION, PeopleServer};
+pub use program::{HELP, ServeError, serve};

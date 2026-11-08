@@ -6,8 +6,10 @@
 //! the store; the CLI is a second user of `people.capnp` (the first is the MCP tools).
 
 pub mod args;
+mod program;
 mod run;
 mod show;
 
 pub use args::{Command, HELP, parse};
+pub use program::command_line;
 pub use run::run;

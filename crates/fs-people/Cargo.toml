@@ -1,0 +1,33 @@
+[package]
+name = "fs-people"
+description = "FreeSynergy.People: contacts and people. Without arguments the window opens; subcommands work like git; `serve` runs the server."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "fs-people"
+path = "src/main.rs"
+
+[features]
+default = ["gui"]
+# The window (Blinc). Without it the binary has the commands and the server only:
+# `cargo build --no-default-features`.
+gui = ["dep:fs-people-app"]
+
+[dependencies]
+fs-people-cli = { path = "../fs-people-cli" }
+fs-people-server = { path = "../fs-people-server" }
+fs-people-app = { path = "../fs-people-app", optional = true }
+
+[dev-dependencies]
+fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.45.0", features = ["rpc"] }
+fs-objects = { git = "https://github.com/FreeSynergy/fs-objects", tag = "v0.5.0" }
+fs-people-core = { path = "../fs-people-core" }
+capnp = "0.27"
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }

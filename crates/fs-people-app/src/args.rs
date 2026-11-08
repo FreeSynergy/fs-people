@@ -68,7 +68,7 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
 }
 
 /// The help text.
-pub const HELP: &str = "fs-people-app: the people program
+pub const HELP: &str = "fs-people: the people window (without arguments it opens)
 
   --store <file>     keep the people in this store file (default: in memory, gone at the end)
   --import <file>    import a vCard file first; people already known are skipped, never replaced
