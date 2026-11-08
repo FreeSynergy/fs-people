@@ -12,7 +12,7 @@ use fs_objects::{Store, TursoStore};
 use fs_people_core::PeopleRepo;
 
 use crate::args::{Args, HELP, parse};
-use crate::{NoRoles, PeopleAdapter, RemotePeople, app_widget, export_all, import_file};
+use crate::{PeopleAdapter, RemotePeople, app_widget, export_all, import_file};
 
 /// Who acts on this store. Provisional: there is no sign-in yet.
 const ACTOR: &str = "https://localhost/actors/owner";
@@ -67,7 +67,8 @@ pub fn run(words: &[String]) -> Result<(), String> {
             .or_else(|| default_socket("people"))
             .ok_or("no socket: give --socket or set XDG_RUNTIME_DIR")?;
         let remote = connect_or_start(&socket, args.socket.is_none())?;
-        PeopleAdapter::new(Arc::new(remote), Arc::new(NoRoles), handle)
+        let remote = Arc::new(remote);
+        PeopleAdapter::new(remote.clone(), remote, handle)
     };
     let app = app_widget(Arc::new(adapter)).map_err(|e| e.to_string())?;
     app.set_status(status);

@@ -14,11 +14,14 @@ use std::thread;
 
 use async_trait::async_trait;
 use fs_interfaces::common_capnp;
-use fs_interfaces::people_capnp::{people, person, persons};
-use fs_interfaces::rpc::{Problem, connect, read_envelope, write_uuid};
+use fs_interfaces::people_capnp::{people, person, persons, roles};
+use fs_interfaces::rpc::{Problem, connect, read_envelope, read_object_id, write_uuid};
 use fs_interfaces::{Capabilities, Unsupported};
 use fs_objects::{ObjectId, StoredObject};
-use fs_people_core::{Card, Error, ListFilter, People, Result, Revision};
+use fs_people_core::{
+    Card, Error, ListFilter, People, Result, Revision, RoleAssignment, RoleBook, RoleDefinition,
+    RoleScope,
+};
 use tokio::sync::{mpsc, oneshot};
 
 type Reply<T> = oneshot::Sender<Result<T>>;
@@ -34,6 +37,8 @@ enum Call {
     Update(ObjectId, String, Reply<StoredObject>),
     UpdateIf(ObjectId, u64, String, Reply<StoredObject>),
     Delete(ObjectId, Reply<()>),
+    RolesOf(ObjectId, Reply<Vec<RoleAssignment>>),
+    Role(String, Reply<Option<RoleDefinition>>),
 }
 
 /// The people server behind a socket, as a provider of [`People`].
@@ -116,16 +121,43 @@ fn worker(
                 return;
             }
         };
+        let roles = match connection.client.roles_request().send().promise.await {
+            Ok(r) => match r.get().and_then(people::roles_results::Reader::get_roles) {
+                Ok(p) => p,
+                Err(e) => {
+                    let _ = ready.send(Err(e.to_string()));
+                    return;
+                }
+            },
+            Err(e) => {
+                let _ = ready.send(Err(e.to_string()));
+                return;
+            }
+        };
         let _ = ready.send(Ok(()));
         while let Some(call) = inbox.recv().await {
-            let (persons, revisions) = (persons.clone(), Arc::clone(revisions));
-            tokio::task::spawn_local(async move { carry_out(&persons, &revisions, call).await });
+            let (persons, roles, revisions) =
+                (persons.clone(), roles.clone(), Arc::clone(revisions));
+            tokio::task::spawn_local(async move {
+                carry_out(&persons, &roles, &revisions, call).await;
+            });
         }
     });
 }
 
-async fn carry_out(persons: &persons::Client, revisions: &Revisions, call: Call) {
+async fn carry_out(
+    persons: &persons::Client,
+    roles: &roles::Client,
+    revisions: &Revisions,
+    call: Call,
+) {
     match call {
+        Call::RolesOf(id, reply) => {
+            let _ = reply.send(roles_of(roles, id).await);
+        }
+        Call::Role(id, reply) => {
+            let _ = reply.send(role(roles, &id).await);
+        }
         Call::Get(id, reply) => {
             let _ = reply.send(get(persons, revisions, id).await);
         }
@@ -314,6 +346,74 @@ async fn update_if(
         .map_err(|e| problem(&e, Some(id)))
 }
 
+async fn roles_of(roles: &roles::Client, id: ObjectId) -> Result<Vec<RoleAssignment>> {
+    let mut request = roles.roles_of_request();
+    write_uuid(request.get().init_person(), Some(id.as_uuid()));
+    let answer = request
+        .send()
+        .promise
+        .await
+        .map_err(|e| problem(&e, Some(id)))?;
+    let items = answer
+        .get()
+        .and_then(roles::roles_of_results::Reader::get_items)
+        .map_err(|e| problem(&e, Some(id)))?;
+    let mut held = Vec::new();
+    for a in items {
+        let (Ok(assignment), Ok(person)) = (
+            a.get_id().and_then(read_object_id),
+            a.get_person().and_then(read_object_id),
+        ) else {
+            continue;
+        };
+        let scope = a
+            .get_scope()
+            .and_then(|t| t.to_string().map_err(Into::into))
+            .map_err(|e: capnp::Error| problem(&e, Some(id)))?;
+        held.push(RoleAssignment {
+            id: assignment,
+            person,
+            role: a
+                .get_role()
+                .and_then(|t| t.to_string().map_err(Into::into))
+                .map_err(|e: capnp::Error| problem(&e, Some(id)))?,
+            scope: (!scope.is_empty()).then_some(scope),
+            details: serde_json::Map::new(),
+        });
+    }
+    Ok(held)
+}
+
+/// What the window needs of a role: its id and its names.
+async fn role(roles: &roles::Client, id: &str) -> Result<Option<RoleDefinition>> {
+    let mut request = roles.get_request();
+    request.get().set_id(id);
+    let answer = request
+        .send()
+        .promise
+        .await
+        .map_err(|e| problem(&e, None))?;
+    let r = answer.get().map_err(|e| problem(&e, None))?;
+    if !r.get_found() {
+        return Ok(None);
+    }
+    let wire = r.get_definition().map_err(|e| problem(&e, None))?;
+    let mut definition = RoleDefinition::new(id, "", "", RoleScope::default());
+    definition.names.clear();
+    for n in wire.get_names().map_err(|e| problem(&e, None))? {
+        let (language, text) = (
+            n.get_language()
+                .and_then(|t| t.to_string().map_err(Into::into))
+                .map_err(|e: capnp::Error| problem(&e, None))?,
+            n.get_text()
+                .and_then(|t| t.to_string().map_err(Into::into))
+                .map_err(|e: capnp::Error| problem(&e, None))?,
+        );
+        definition.names.insert(language, text);
+    }
+    Ok(Some(definition))
+}
+
 async fn delete(persons: &persons::Client, id: ObjectId) -> Result<()> {
     let mut request = persons.delete_request();
     write_uuid(request.get().init_id(), Some(id.as_uuid()));
@@ -393,6 +493,18 @@ impl People for RemotePeople {
             ..ListFilter::default()
         };
         self.ask(|r| Call::List(filter, r)).await
+    }
+}
+
+#[async_trait]
+impl RoleBook for RemotePeople {
+    async fn roles_of(&self, person: ObjectId) -> Result<Vec<RoleAssignment>> {
+        self.ask(|r| Call::RolesOf(person, r)).await
+    }
+
+    async fn role(&self, id: &str) -> Result<Option<RoleDefinition>> {
+        let id = id.to_string();
+        self.ask(|r| Call::Role(id, r)).await
     }
 }
 

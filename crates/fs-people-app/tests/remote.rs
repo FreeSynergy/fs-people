@@ -16,9 +16,9 @@ use fs_people_core::PeopleRepo;
 use fs_people_server::PeopleServer;
 
 /// A server on `socket`, on a thread of its own; it ends with the process.
-fn start_server(socket: &Path) {
+fn start_server(socket: &Path) -> Arc<PeopleRepo> {
     let socket = socket.to_path_buf();
-    let (up, started) = std::sync::mpsc::channel();
+    let (up, started) = std::sync::mpsc::channel::<Arc<PeopleRepo>>();
     std::thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -28,19 +28,19 @@ fn start_server(socket: &Path) {
             let store: Arc<dyn Store> = Arc::new(TursoStore::open_in_memory().await.unwrap());
             let repo = Arc::new(PeopleRepo::new(store, "https://local.invalid/users/owner"));
             let root: people::Client =
-                PeopleServer::new(repo.clone(), repo.clone(), repo).into_client();
+                PeopleServer::new(repo.clone(), repo.clone(), repo.clone()).into_client();
             let bound = bind_socket(&socket).await.unwrap();
-            up.send(()).unwrap();
+            up.send(repo.clone()).unwrap();
             serve(bound, root.client, std::future::pending()).await.ok();
         });
     });
-    started.recv().unwrap();
+    started.recv().unwrap()
 }
 
 mod common;
 
 use common::person;
-use fs_people_core::People;
+use fs_people_core::{People, RoleBook};
 
 #[test]
 fn create_list_search_read_edit_delete_over_the_socket() {
@@ -147,4 +147,33 @@ fn two_windows_on_one_server_a_stale_save_is_a_conflict_and_writes_nothing() {
         shown.contains("b@example.org") && !shown.contains("a@example.org"),
         "{shown}"
     );
+}
+
+#[test]
+fn the_roles_of_a_person_are_read_over_the_socket_with_their_names() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("people.sock");
+    let repo = start_server(&socket);
+    let remote = Arc::new(RemotePeople::connect(&socket).unwrap());
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let adapter = PeopleAdapter::new(remote.clone(), remote.clone(), runtime.handle().clone());
+    let ada = runtime
+        .block_on(remote.create(person("Ada Lovelace", "ada@example.org")))
+        .unwrap();
+    runtime
+        .block_on(repo.assign_role(
+            ada.envelope.id,
+            "user",
+            Some("https://example.org/groups/team"),
+            serde_json::Map::new(),
+        ))
+        .unwrap();
+    let sheet = adapter.read(&ada.envelope.id.to_string()).unwrap();
+    let roles: Vec<String> = sheet
+        .sections
+        .iter()
+        .filter(|s| s.title == "Roles")
+        .flat_map(|s| s.fields.iter().map(|f| f.value.clone()))
+        .collect();
+    assert_eq!(roles, ["User"], "{sheet:?}");
 }
