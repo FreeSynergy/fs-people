@@ -1561,7 +1561,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.6.0"
+version = "0.6.1-rc.1"
 dependencies = [
  "fs-components-app",
  "fs-components-render",
@@ -1574,7 +1574,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.6.0"
+version = "0.6.1-rc.1"
 dependencies = [
  "async-trait",
  "calcard",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.6.0"
+version = "0.6.1-rc.1"
 dependencies = [
  "async-trait",
  "capnp",

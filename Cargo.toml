@@ -3,7 +3,9 @@ resolver = "2"
 members = ["crates/fs-people-core", "crates/fs-people-server", "crates/fs-people-app"]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1-rc.1"
+authors = ["FreeSynergy <support@freesynergy.net>"]
+repository = "https://github.com/FreeSynergy/fs-people"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.85"
