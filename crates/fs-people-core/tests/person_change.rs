@@ -284,3 +284,26 @@ async fn a_new_value_never_takes_the_id_of_an_entry_still_there_or_just_gone() {
         "the id of the dropped b is not reused"
     );
 }
+
+#[tokio::test]
+async fn a_shown_value_that_is_older_than_the_rules_sent_back_is_not_a_change() {
+    let r = repo().await;
+    let card: Card = serde_json::from_value(json!({
+        "@type": "Card", "version": "1.0", "uid": "urn:uuid:9f8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+        "kind": "example.com:robot",
+        "keywords": {"Rust": true},
+        "name": {"isOrdered": true, "sortAs": {"surname": "L"}, "components": [
+            {"kind": "surname", "value": "Lovelace"}, {"kind": "separator", "value": ", "}, {"kind": "given", "value": "Ada"}]}
+    }))
+    .unwrap();
+    let id = stored(&r, card).await;
+    let before = r.get(id).await.unwrap().unwrap().content;
+    let shown_name =
+        fs_people_core::person::values_of(&r.get_card(id).await.unwrap().unwrap(), "name").unwrap();
+    let edit = Edit::new()
+        .set(&["kind"], BasicType::Choice, &["example.com:robot"])
+        .set(&["keywords"], BasicType::Keywords, &["Rust"])
+        .set(&["name"], BasicType::Name, &[shown_name[0].as_str()]);
+    let done = People::change(&r, id, &edit).await.unwrap();
+    assert_eq!(done.content, before);
+}

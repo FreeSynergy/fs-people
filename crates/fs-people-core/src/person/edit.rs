@@ -9,6 +9,7 @@ use fs_types::{BasicRules, DescribesType, Edit};
 
 use super::fields::{self, Field};
 use super::sync::sync;
+use super::values::values_of;
 use crate::card::Card;
 use crate::card::{
     Address, Anniversary, AnniversaryDate, Calendar, CryptoKey, Directory, EmailAddress,
@@ -27,6 +28,13 @@ fn refuse(path: String, code: &str) -> Error {
 /// The card with `edit` applied. Nothing is changed in `card`.
 pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
     let rules = BasicRules::standard();
+    // A field sent back exactly as the card shows it is not a change, and is not judged: a shown value may be older
+    // than the rules (a vendor `kind`, a name not in canonical form, a keyword with capitals).
+    let mut edit = edit.clone();
+    edit.fields.retain(|f| {
+        f.path.len() != 1
+            || values_of(card, &f.path[0]).is_none_or(|shown| shown.is_empty() || shown != f.values)
+    });
     let checked = edit.check(&Card::describe(), &rules).map_err(|issues| {
         Error::Invalid(
             issues
