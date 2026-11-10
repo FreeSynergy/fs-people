@@ -10,9 +10,10 @@ use fs_interfaces::{Capabilities, Unsupported};
 use fs_objects::{ObjectId, StoreId, StoredObject};
 
 use crate::card::Card;
-use crate::error::Result;
+use crate::error::{Issue, Result};
 use crate::format::{Exporter, Importer, JsContactFormat, VCardFormat};
 use crate::matching::{ProposalState, SameAsProposal};
+use crate::person::PatchObject;
 use crate::repo::{ImportReport, ListFilter, ReleasedExport};
 use crate::revision::Revision;
 
@@ -53,6 +54,20 @@ pub trait People: Send + Sync {
     /// `person.update`: replace the card of `id` (the `uid` cannot change).
     async fn update(&self, _id: ObjectId, _card: Card) -> Result<StoredObject> {
         not_possible("person.update")
+    }
+    /// `person.update`: change a card by a `PatchObject` (RFC 8984 section 1.4.9): the paths named are set or
+    /// removed, everything else stays. All or nothing; the result is validated like any update.
+    async fn patch(&self, _id: ObjectId, _patch: &PatchObject) -> Result<StoredObject> {
+        not_possible("person.update")
+    }
+    /// `person.check`: the card against RFC 9553 and the rules of its basic types. Reports; changes nothing.
+    async fn check(&self, _id: ObjectId) -> Result<Vec<Issue>> {
+        not_possible("person.check")
+    }
+    /// `person.suggest`: completions of `typed` for a field of the person (for an e-mail address: the
+    /// domains of the addresses already in the book).
+    async fn suggest(&self, _field: &str, _typed: &str) -> Result<Vec<String>> {
+        not_possible("person.suggest")
     }
     /// `person.update`, compare-and-set: replace the card only if it still has `expected` (the
     /// [`Revision`] the caller read); otherwise [`Error::Changed`](crate::Error::Changed) and nothing is

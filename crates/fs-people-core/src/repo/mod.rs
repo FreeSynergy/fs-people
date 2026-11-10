@@ -7,6 +7,7 @@ mod ai;
 mod assign;
 mod backend;
 mod book;
+mod commands;
 mod consts;
 mod crud;
 mod envelope;

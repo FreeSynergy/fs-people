@@ -14,10 +14,11 @@ use super::handle::PeopleRepo;
 use super::release::ReleasedExport;
 use super::types::{ImportReport, ListFilter};
 use crate::card::Card;
-use crate::error::{Error, Result};
+use crate::error::{Error, Issue, Result};
 use crate::format::{Exporter, Importer};
 use crate::matching::SameAsProposal;
 use crate::people::People;
+use crate::person::PatchObject;
 use crate::revision::Revision;
 
 #[async_trait]
@@ -43,6 +44,16 @@ impl People for PeopleRepo {
     }
     async fn relations(&self, id: ObjectId) -> Result<Vec<(String, String)>> {
         PeopleRepo::relations(self, id).await
+    }
+    async fn patch(&self, id: ObjectId, patch: &PatchObject) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
+        PeopleRepo::patch(self, id, patch).await
+    }
+    async fn check(&self, id: ObjectId) -> Result<Vec<Issue>> {
+        PeopleRepo::check(self, id).await
+    }
+    async fn suggest(&self, field: &str, typed: &str) -> Result<Vec<String>> {
+        PeopleRepo::suggest(self, field, typed).await
     }
     async fn create(&self, card: Card) -> Result<StoredObject> {
         let _turn = self.writes.lock().await;
@@ -167,6 +178,8 @@ fn capabilities() -> Capabilities {
         "person.read",
         "person.update",
         "person.delete",
+        "person.check",
+        "person.suggest",
         "person.find",
         "person.import",
         "person.export",

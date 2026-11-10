@@ -26,6 +26,7 @@ pub mod format;
 pub mod index;
 pub mod matching;
 mod people;
+pub mod person;
 mod repo;
 mod revision;
 mod role_book;
@@ -47,6 +48,7 @@ pub use matching::{
     SameAsProposal, SameNameAtOrganisation, SharedContactPoint, SharedEmail, SharedPhone, Step,
 };
 pub use people::People;
+pub use person::PatchObject;
 pub use repo::{
     CONTENT_TYPE, CONTEXT, ImportReport, ListFilter, PROFILE_TYPE, PeopleRepo, REJECTION_TYPE,
     RELATIONSHIP_TYPE, ROLE_DEFINITION_TYPE, ReleasedExport, RoleRestore, card_of,
