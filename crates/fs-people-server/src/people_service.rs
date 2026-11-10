@@ -10,7 +10,8 @@ use std::sync::Arc;
 use capnp_rpc::new_client;
 use fs_interfaces::people_capnp::people;
 use fs_interfaces::rpc::write_uuid;
-use fs_people_core::{People, PeopleFeed, RoleBook};
+use fs_people_core::{Card, People, PeopleFeed, RoleBook};
+use fs_types::{TypeRegistry, describe::CatalogServer};
 
 use crate::feed::subscribe;
 use crate::persons::PersonsImpl;
@@ -85,6 +86,21 @@ impl people::Server for PeopleServer {
             roles: self.roles.clone(),
         };
         results.get().set_roles(new_client(roles));
+        Ok(())
+    }
+
+    async fn types(
+        self: Rc<Self>,
+        _: people::TypesParams,
+        mut results: people::TypesResults,
+    ) -> Done {
+        let mut registry = TypeRegistry::new();
+        registry.register::<Card>().map_err(|e| {
+            capnp::Error::failed(format!("the description of Person is unsound: {e:?}"))
+        })?;
+        results
+            .get()
+            .set_catalog(new_client(CatalogServer::new(registry)));
         Ok(())
     }
 

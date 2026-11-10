@@ -4,6 +4,7 @@
 //! behind it, so no file passes the size limit (ADR 0043).
 
 mod cards;
+mod commands;
 mod links;
 mod lists;
 mod service;

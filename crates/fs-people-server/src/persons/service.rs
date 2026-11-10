@@ -9,7 +9,7 @@ use std::sync::Arc;
 use fs_interfaces::people_capnp::persons as wire;
 use fs_people_core::People;
 
-use super::{cards, links, lists};
+use super::{cards, commands, links, lists};
 
 pub(crate) struct PersonsImpl {
     pub(crate) people: Arc<dyn People>,
@@ -162,5 +162,14 @@ impl wire::Server for PersonsImpl {
     }
     async fn lists_of(self: Rc<Self>, p: wire::ListsOfParams, r: wire::ListsOfResults) -> Done {
         lists::lists_of(&self.people, p, r).await
+    }
+    async fn patch(self: Rc<Self>, p: wire::PatchParams, r: wire::PatchResults) -> Done {
+        commands::patch(&self.people, p, r).await
+    }
+    async fn check(self: Rc<Self>, p: wire::CheckParams, r: wire::CheckResults) -> Done {
+        commands::check(&self.people, p, r).await
+    }
+    async fn suggest(self: Rc<Self>, p: wire::SuggestParams, r: wire::SuggestResults) -> Done {
+        commands::suggest(&self.people, p, r).await
     }
 }

@@ -13,6 +13,9 @@ use crate::error::{Error, Issue, Result};
 /// At most this many cards are read to learn the known values of a field.
 pub const SCAN_LIMIT: usize = 1000;
 
+/// At most this many completions are given: a form shows a short list.
+pub const MAX_SUGGESTIONS: usize = 20;
+
 /// Whether `field` is one the program completes.
 #[must_use]
 pub fn is_suggestible(field: &str) -> bool {
@@ -40,5 +43,7 @@ pub fn suggest<'a>(
         .collect();
     let known: Vec<&str> = known.iter().map(String::as_str).collect();
     let choices: Vec<String> = f.choices.iter().map(|s| (*s).to_owned()).collect();
-    Ok(rules.suggest(f.basic, typed, &known, &choices))
+    let mut found = rules.suggest(f.basic, typed, &known, &choices);
+    found.truncate(MAX_SUGGESTIONS);
+    Ok(found)
 }

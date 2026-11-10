@@ -11,4 +11,4 @@ mod suggest;
 pub use check::check;
 pub use describe::{PERSON, PROGRAM};
 pub use patch::PatchObject;
-pub use suggest::{SCAN_LIMIT, is_suggestible, suggest};
+pub use suggest::{MAX_SUGGESTIONS, SCAN_LIMIT, is_suggestible, suggest};

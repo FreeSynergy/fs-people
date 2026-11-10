@@ -194,3 +194,15 @@ async fn suggest_offers_the_choices_of_a_choice_field() {
         .unwrap();
     assert_eq!(got, ["feminine"]);
 }
+
+#[tokio::test]
+async fn suggest_gives_a_short_list() {
+    let r = repo().await;
+    for i in 0..30 {
+        r.create(person(&format!("P{i}"), &format!("p{i}@d{i}.test")))
+            .await
+            .unwrap();
+    }
+    let got = People::suggest(&r, "emails", "x").await.unwrap();
+    assert_eq!(got.len(), fs_people_core::person::MAX_SUGGESTIONS);
+}
