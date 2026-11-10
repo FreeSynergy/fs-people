@@ -46,8 +46,6 @@ fn each<T>(items: &Map<T>, pick: impl Fn(&T) -> Option<String>) -> Vec<Read> {
         .collect()
 }
 
-/// A URI that is worth judging as a link: a `data:` URI holds a file (a photo, a key), whose size
-/// the limit of a link (2048 bytes) was not made for.
 /// The address of a medium the form shows: a picture. A sound (`kind: sound`) is no image and is not the form's to show,
 /// judge or drop; it stays with the card.
 pub(crate) fn image_of(m: &crate::card::Media) -> Option<String> {
@@ -57,6 +55,8 @@ pub(crate) fn image_of(m: &crate::card::Media) -> Option<String> {
     not_data(&m.uri)
 }
 
+/// A URI that is worth judging as a link: a `data:` URI holds a file (a photo, a key), whose size
+/// the limit of a link (2048 bytes) was not made for.
 pub(crate) fn not_data(uri: &str) -> Option<String> {
     (!uri.starts_with("data:")).then(|| uri.to_owned())
 }

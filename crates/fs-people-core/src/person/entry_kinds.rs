@@ -1,7 +1,7 @@
 //! The kind a new entry gets: which kinds are allowed, and the one that is preselected.
 //!
 //! Pattern: Strategy table — one row per multiple field whose entries have a `kind` in RFC 9553. The
-//! description reports each row as a choice field (`mediaKind`: `photo`, `logo`, `sound`), so a form
+//! description reports each row as a choice field (`mediaKind`: `photo`, `logo`), so a form
 //! asks for the kind with a selection that the program, not the frontend, defines. A choice key is lower
 //! case words (`free-busy`); the RFC value (`freeBusy`) is in the parallel list.
 

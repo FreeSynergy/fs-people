@@ -219,4 +219,9 @@ async fn a_sound_on_the_card_is_not_the_image_forms_to_show_or_drop() {
         serde_json::from_value(People::change(&r, id, &edit).await.unwrap().content).unwrap();
     assert_eq!(card.media.len(), 2, "the sound stays");
     assert_eq!(card.media["m1"].kind.as_deref(), Some("sound"));
+    // Clearing the images leaves the sound.
+    let clear = Edit::new().clear(&["media"], BasicType::Image);
+    let card: Card =
+        serde_json::from_value(People::change(&r, id, &clear).await.unwrap().content).unwrap();
+    assert_eq!(card.media.keys().collect::<Vec<_>>(), ["m1"]);
 }
