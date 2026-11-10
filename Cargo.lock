@@ -1572,7 +1572,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "capnp",
  "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
@@ -1588,7 +1588,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "async-trait",
  "capnp",
@@ -1606,7 +1606,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-cli"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "capnp",
  "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
@@ -1620,7 +1620,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "async-trait",
  "calcard",
@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "async-trait",
  "capnp",
