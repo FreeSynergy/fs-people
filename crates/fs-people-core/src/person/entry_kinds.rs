@@ -40,8 +40,10 @@ pub(crate) const ENTRY_KINDS: [EntryKind; 5] = [
     EntryKind {
         field: "media",
         selector: "mediaKind",
-        keys: &["photo", "logo", "sound"],
-        rfc: &["photo", "logo", "sound"],
+        // No `sound`: `media` is an image field (basic type `image`), which only knows pictures. A sound would be a field
+        // of its own with a type for sound, which `types.capnp` has not (named in DESIGN.md).
+        keys: &["photo", "logo"],
+        rfc: &["photo", "logo"],
         default: "photo",
     },
     EntryKind {

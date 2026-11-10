@@ -241,7 +241,7 @@ fn write(
             uri: s.into(),
             ..Link::default()
         }),
-        "media" => list!(card.media, "m", |o| fields::not_data(&o.uri), |s| Media {
+        "media" => list!(card.media, "m", fields::image_of, |s| Media {
             kind: Some(kinds.kind("media")),
             uri: s.into(),
             ..Media::default()

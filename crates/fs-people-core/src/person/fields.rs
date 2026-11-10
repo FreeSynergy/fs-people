@@ -48,6 +48,15 @@ fn each<T>(items: &Map<T>, pick: impl Fn(&T) -> Option<String>) -> Vec<Read> {
 
 /// A URI that is worth judging as a link: a `data:` URI holds a file (a photo, a key), whose size
 /// the limit of a link (2048 bytes) was not made for.
+/// The address of a medium the form shows: a picture. A sound (`kind: sound`) is no image and is not the form's to show,
+/// judge or drop; it stays with the card.
+pub(crate) fn image_of(m: &crate::card::Media) -> Option<String> {
+    if m.kind.as_deref() == Some("sound") {
+        return None;
+    }
+    not_data(&m.uri)
+}
+
 pub(crate) fn not_data(uri: &str) -> Option<String> {
     (!uri.starts_with("data:")).then(|| uri.to_owned())
 }
@@ -220,9 +229,7 @@ fn rows() -> Vec<Field> {
         field!("links", Link, true, |c| each(&c.links, |o| Some(
             o.uri.clone()
         ))),
-        field!("media", Image, true, |c| each(&c.media, |o| not_data(
-            &o.uri
-        ))),
+        field!("media", Image, true, |c| each(&c.media, image_of)),
         field!("anniversaries", Date, true, |c| each(
             &c.anniversaries,
             day_of

@@ -70,7 +70,11 @@ fn the_description_reports_the_allowed_kinds_and_the_first_is_the_default() {
         );
     }
     let media = p.find_field("mediaKind").unwrap();
-    assert_eq!(media.choices, ["photo", "logo", "sound"]);
+    assert_eq!(
+        media.choices,
+        ["photo", "logo"],
+        "an image field takes no sound"
+    );
     assert_eq!(
         p.find_field("calendarKind").unwrap().choices,
         ["calendar", "free-busy"]
@@ -159,6 +163,7 @@ async fn a_kind_that_is_not_allowed_is_refused_and_nothing_is_written() {
     let before = r.get(id).await.unwrap().unwrap().content;
     for (selector, bad) in [
         ("mediaKind", "video"),
+        ("mediaKind", "sound"),
         ("calendarKind", "freeBusy"),
         ("personalInfoKind", "Interest"),
     ] {
@@ -188,4 +193,30 @@ async fn a_kind_alone_changes_nothing() {
     let before = r.get(id).await.unwrap().unwrap().content;
     let edit = Edit::new().set(&["mediaKind"], BasicType::Choice, &["logo"]);
     assert_eq!(People::change(&r, id, &edit).await.unwrap().content, before);
+}
+
+#[tokio::test]
+async fn a_sound_on_the_card_is_not_the_image_forms_to_show_or_drop() {
+    let r = repo().await;
+    let mut c = person("Ada", "ada@example.org");
+    c.media.insert(
+        "m1".into(),
+        serde_json::from_value(
+            serde_json::json!({"kind": "sound", "uri": "https://example.org/hello.ogg"}),
+        )
+        .unwrap(),
+    );
+    let id = r.create(c).await.unwrap().envelope.id;
+    let card = r.get_card(id).await.unwrap().unwrap();
+    assert!(
+        fs_people_core::person::values_of(&card, "media")
+            .unwrap()
+            .is_empty(),
+        "a sound is no image"
+    );
+    let edit = Edit::new().set(&["media"], BasicType::Image, &["https://example.org/a.png"]);
+    let card: Card =
+        serde_json::from_value(People::change(&r, id, &edit).await.unwrap().content).unwrap();
+    assert_eq!(card.media.len(), 2, "the sound stays");
+    assert_eq!(card.media["m1"].kind.as_deref(), Some("sound"));
 }
