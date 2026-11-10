@@ -206,7 +206,18 @@ async fn every_field_of_the_description_can_be_changed_or_is_named_read_only() {
             &[sample(f.basic, &f.choices).as_str()],
         );
         match People::change(&r, id, &edit).await {
-            Ok(_) => {}
+            Ok(done) => {
+                let card: Card = serde_json::from_value(done.content).unwrap();
+                let shown = fs_people_core::person::values_of(&card, &f.name).unwrap();
+                let wanted = fs_types::BasicRules::standard()
+                    .check(f.basic, &sample(f.basic, &f.choices), &f.choices)
+                    .unwrap();
+                assert!(
+                    shown.contains(&wanted),
+                    "{}: wrote {wanted:?}, the card shows {shown:?}",
+                    f.name
+                );
+            }
             Err(e) => {
                 let found = code(&e);
                 assert!(
@@ -218,4 +229,58 @@ async fn every_field_of_the_description_can_be_changed_or_is_named_read_only() {
             }
         }
     }
+}
+
+#[tokio::test]
+async fn what_a_form_shows_sent_back_unchanged_changes_nothing() {
+    let r = repo().await;
+    let full: Card = serde_json::from_str(include_str!("fixtures/full_card.json")).unwrap();
+    let id = stored(&r, full).await;
+    let before = r.get_card(id).await.unwrap().unwrap();
+    for f in Card::describe().fields {
+        if ["uid", "created", "updated", "prodId"].contains(&f.name.as_str()) {
+            continue;
+        }
+        let shown = fs_people_core::person::values_of(&before, &f.name).unwrap();
+        if shown.is_empty() {
+            continue;
+        }
+        let values: Vec<&str> = shown.iter().map(String::as_str).collect();
+        let edit = Edit::new().set(&[f.name.as_str()], f.basic, &values);
+        let done = People::change(&r, id, &edit)
+            .await
+            .unwrap_or_else(|e| panic!("{}: {e}", f.name));
+        let after: Card = serde_json::from_value(done.content).unwrap();
+        let (mut a, mut b) = (
+            serde_json::to_value(&before).unwrap(),
+            serde_json::to_value(&after).unwrap(),
+        );
+        for v in [&mut a, &mut b] {
+            v.as_object_mut().unwrap().remove("updated");
+        }
+        assert_eq!(a, b, "{} came back different", f.name);
+    }
+}
+
+#[tokio::test]
+async fn a_new_value_never_takes_the_id_of_an_entry_still_there_or_just_gone() {
+    let r = repo().await;
+    let mut c = person("Ada", "a@example.org");
+    c.add_email("b@example.org");
+    let id = stored(&r, c).await;
+    let edit = Edit::new().set(
+        &["emails"],
+        BasicType::Email,
+        &["c@example.org", "a@example.org"],
+    );
+    let card: Card =
+        serde_json::from_value(People::change(&r, id, &edit).await.unwrap().content).unwrap();
+    let mut got: Vec<_> = card.emails.values().map(|e| e.address.as_str()).collect();
+    got.sort_unstable();
+    assert_eq!(got, ["a@example.org", "c@example.org"]);
+    assert!(card.emails.contains_key("e1"), "a stays e1");
+    assert!(
+        !card.emails.contains_key("e2"),
+        "the id of the dropped b is not reused"
+    );
 }

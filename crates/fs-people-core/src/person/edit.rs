@@ -89,10 +89,19 @@ fn write(
             }
         }
         "name" => {
-            card.name = one(v).map(|full| Name {
-                full: Some(full),
-                ..Name::default()
-            });
+            // The name as the form shows it, sent back unchanged, leaves the name as it is (components, sortAs ...).
+            let shown = fields::name_text(card);
+            match one(v) {
+                Some(full) if shown.as_deref() == Some(full.as_str()) => {}
+                Some(full) => {
+                    let name = card.name.get_or_insert_with(Name::default);
+                    name.components.clear();
+                    name.is_ordered = None;
+                    name.default_separator = None;
+                    name.full = Some(full);
+                }
+                None => card.name = None,
+            }
         }
         "nicknames" => list!(card.nicknames, "n", |o| Some(o.name.clone()), |s| {
             Nickname {
@@ -209,12 +218,16 @@ fn write(
             }
         }),
         "keywords" => {
-            card.keywords = one(v)
-                .iter()
-                .flat_map(|k| k.split(','))
-                .map(|w| (w.trim().to_owned(), true))
-                .filter(|(w, _)| !w.is_empty())
-                .collect();
+            // Sent back as shown (the joined text), the set stays; a keyword that holds a comma cannot be told apart
+            // from two, which is the limit of this one-text form.
+            if fields::keywords_text(card) != one(v) {
+                card.keywords = one(v)
+                    .iter()
+                    .flat_map(|k| k.split(','))
+                    .map(|w| (w.trim().to_owned(), true))
+                    .filter(|(w, _)| !w.is_empty())
+                    .collect();
+            }
         }
         "notes" => list!(card.notes, "n", |o| Some(o.note.clone()), |s| Note {
             note: s.into(),

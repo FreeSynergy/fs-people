@@ -8,13 +8,14 @@ use fs_types::BasicRules;
 use super::fields::Field;
 use crate::card::Map;
 
-/// The entry id after `prefix` that is not taken: `e1`, `e2`, ...
-fn fresh<T>(map: &Map<T>, prefix: &str) -> String {
-    // A map of n entries leaves one of the n + 1 ids free.
-    (1..=map.len() + 1)
+/// The entry id after `prefix`: `e1`, `e2`, ... that neither `map` nor `used` (the ids the card had before this edit,
+/// kept or dropped) holds, so a dropped entry's id is never given to another value.
+fn fresh<T>(map: &Map<T>, used: &[String], prefix: &str) -> String {
+    (1..)
         .map(|n| format!("{prefix}{n}"))
-        .find(|id| !map.contains_key(id))
-        .unwrap_or_else(|| format!("{prefix}{}", map.len() + 1))
+        .take(map.len() + used.len() + 1)
+        .find(|id| !map.contains_key(id) && !used.contains(id))
+        .unwrap_or_else(|| format!("{prefix}{}", map.len() + used.len() + 1))
 }
 
 /// Replace the shown values of a map of sub-objects. An entry whose shown value is among `values`
@@ -36,6 +37,7 @@ pub(super) fn sync<T>(
                 .is_ok_and(|canonical| canonical == value)
     };
     let mut old = std::mem::take(map);
+    let used: Vec<String> = old.keys().cloned().collect();
     let hidden: Vec<String> = old
         .iter()
         .filter(|(_, o)| read(o).is_none())
@@ -54,7 +56,7 @@ pub(super) fn sync<T>(
         if let Some((id, o)) = kept.and_then(|id| old.remove_entry(&id)) {
             map.insert(id, o);
         } else {
-            let id = fresh(map, prefix);
+            let id = fresh(map, &used, prefix);
             map.insert(id, make(value));
         }
     }

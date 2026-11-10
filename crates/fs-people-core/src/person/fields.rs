@@ -51,16 +51,20 @@ pub(crate) fn not_data(uri: &str) -> Option<String> {
     (!uri.starts_with("data:")).then(|| uri.to_owned())
 }
 
-fn name_of(card: &Card) -> Vec<Read> {
-    let Some(name) = &card.name else {
-        return vec![];
-    };
-    let text = name.full.clone().unwrap_or_else(|| {
+pub(crate) fn name_text(card: &Card) -> Option<String> {
+    let name = card.name.as_ref()?;
+    Some(name.full.clone().unwrap_or_else(|| {
         let sep = name.default_separator.as_deref().unwrap_or(" ");
         let parts: Vec<&str> = name.components.iter().map(|c| c.value.as_str()).collect();
         parts.join(sep)
-    });
-    vec![(ONE.to_owned(), text)]
+    }))
+}
+
+fn name_of(card: &Card) -> Vec<Read> {
+    name_text(card)
+        .map(|t| (ONE.to_owned(), t))
+        .into_iter()
+        .collect()
 }
 
 pub(crate) fn address_text(a: &crate::card::Address) -> Option<String> {
@@ -81,12 +85,21 @@ pub(crate) fn day_of(a: &crate::card::Anniversary) -> Option<String> {
     }
 }
 
+pub(crate) fn keywords_text(card: &Card) -> Option<String> {
+    (!card.keywords.is_empty()).then(|| {
+        card.keywords
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
 fn keywords_of(card: &Card) -> Vec<Read> {
-    if card.keywords.is_empty() {
-        return vec![];
-    }
-    let words: Vec<&str> = card.keywords.keys().map(String::as_str).collect();
-    vec![(ONE.to_owned(), words.join(", "))]
+    keywords_text(card)
+        .map(|t| (ONE.to_owned(), t))
+        .into_iter()
+        .collect()
 }
 
 macro_rules! field {

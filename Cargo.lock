@@ -1477,7 +1477,7 @@ dependencies = [
  "blinc_core",
  "blinc_layout",
  "blinc_theme",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.1)",
+ "fs-interfaces",
 ]
 
 [[package]]
@@ -1529,16 +1529,6 @@ dependencies = [
 [[package]]
 name = "fs-interfaces"
 version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.1#9f2d3a0626d7382b478c754eb31834146188dfab"
-dependencies = [
- "capnp",
- "idna",
-]
-
-[[package]]
-name = "fs-interfaces"
-version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4#d61cf1c612427302097aacc091cfef43108885a4"
 dependencies = [
  "capnp",
  "capnp-rpc",
@@ -1575,7 +1565,7 @@ name = "fs-people"
 version = "0.0.5"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-app",
  "fs-people-cli",
@@ -1595,7 +1585,7 @@ dependencies = [
  "fs-components-app",
  "fs-components-render",
  "fs-components-workbenches",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1609,7 +1599,7 @@ name = "fs-people-cli"
 version = "0.0.5"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1625,7 +1615,7 @@ dependencies = [
  "async-trait",
  "calcard",
  "chrono",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "fs-objects",
  "fs-types",
  "proptest",
@@ -1643,7 +1633,7 @@ dependencies = [
  "async-trait",
  "capnp",
  "capnp-rpc",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "fs-objects",
  "fs-people-core",
  "fs-types",
@@ -1657,12 +1647,11 @@ dependencies = [
 [[package]]
 name = "fs-types"
 version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4#d61cf1c612427302097aacc091cfef43108885a4"
 dependencies = [
  "capnp",
  "capnp-rpc",
  "chrono",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.4)",
+ "fs-interfaces",
  "geo-uri",
  "iri-string",
  "oxilangtag",
