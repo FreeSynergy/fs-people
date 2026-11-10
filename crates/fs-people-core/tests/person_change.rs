@@ -307,3 +307,16 @@ async fn a_shown_value_that_is_older_than_the_rules_sent_back_is_not_a_change() 
     let done = People::change(&r, id, &edit).await.unwrap();
     assert_eq!(done.content, before);
 }
+
+#[tokio::test]
+async fn a_path_named_twice_is_refused_even_when_one_of_them_is_the_shown_value() {
+    let r = repo().await;
+    let id = stored(&r, Card::individual("Ada")).await;
+    let before = r.get(id).await.unwrap().unwrap().content;
+    let edit = Edit::new()
+        .set(&["kind"], BasicType::Choice, &["group"])
+        .set(&["kind"], BasicType::Choice, &["individual"]);
+    let err = People::change(&r, id, &edit).await.unwrap_err();
+    assert_eq!(code(&err)[0].1, "duplicate-path");
+    assert_eq!(r.get(id).await.unwrap().unwrap().content, before);
+}

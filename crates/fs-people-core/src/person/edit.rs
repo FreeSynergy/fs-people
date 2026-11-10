@@ -30,11 +30,21 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
     let rules = BasicRules::standard();
     // A field sent back exactly as the card shows it is not a change, and is not judged: a shown value may be older
     // than the rules (a vendor `kind`, a name not in canonical form, a keyword with capitals).
+    // A path named twice is judged as it is (the check refuses it), so only paths that occur once are dropped.
     let mut edit = edit.clone();
-    edit.fields.retain(|f| {
-        f.path.len() != 1
-            || values_of(card, &f.path[0]).is_none_or(|shown| shown.is_empty() || shown != f.values)
-    });
+    let once = |path: &[String]| edit.fields.iter().filter(|g| g.path == path).count() == 1;
+    let keep: Vec<bool> = edit
+        .fields
+        .iter()
+        .map(|f| {
+            f.path.len() != 1
+                || !once(&f.path)
+                || values_of(card, &f.path[0])
+                    .is_none_or(|shown| shown.is_empty() || shown != f.values)
+        })
+        .collect();
+    let mut flags = keep.into_iter();
+    edit.fields.retain(|_| flags.next().unwrap_or(true));
     let checked = edit.check(&Card::describe(), &rules).map_err(|issues| {
         Error::Invalid(
             issues
