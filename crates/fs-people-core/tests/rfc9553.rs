@@ -82,7 +82,16 @@ fn the_typed_members_hold_the_values() {
         Some("-//example.org//people 1//EN")
     );
     let name = card.name.as_ref().unwrap();
-    assert_eq!(name.sort_as.as_deref(), Some("Lovelace, Ada"));
+    assert_eq!(
+        name.sort_as,
+        Some(fs_people_core::card::SortAs::ByKind(
+            [
+                ("surname".to_owned(), "Lovelace".to_owned()),
+                ("given".to_owned(), "Ada".to_owned())
+            ]
+            .into()
+        ))
+    );
     assert_eq!(name.phonetic_system.as_deref(), Some("ipa"));
     assert_eq!(name.components[1].phonetic.as_deref(), Some("AY-duh"));
     assert_eq!(
@@ -146,11 +155,21 @@ fn the_full_card_is_valid() {
 fn a_card_of_an_older_version_keeps_every_property() {
     // Stored before these members were typed: they sat in `extra` and must come back unchanged.
     let older = json!({
-        "@type": "Card", "version": "1.0", "uid": "u", "name": {"full": "A"},
+        "@type": "Card", "version": "1.0", "uid": "u",
         "onlineServices": {"s": {"service": "X", "someday:new": 1}},
         "personalInfo": {"i": {"kind": "hobby", "value": "chess"}},
+        "name": {"full": "A", "sortAs": {"surname": "Lovelace"}},
         "someday:card": {"a": [1, 2]}
     });
     let card: Card = serde_json::from_value(older.clone()).unwrap();
     assert_eq!(serde_json::to_value(&card).unwrap(), older);
+}
+
+#[test]
+fn a_name_sorts_by_a_map_of_kinds_and_an_older_card_by_one_string() {
+    for sort_as in [json!({"surname": "Lovelace", "given": "Ada"}), json!("ADA")] {
+        let card = json!({"@type": "Card", "version": "1.0", "uid": "u", "name": {"full": "Ada", "sortAs": sort_as}});
+        let parsed: Card = serde_json::from_value(card.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&parsed).unwrap(), card);
+    }
 }

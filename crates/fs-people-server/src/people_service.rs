@@ -95,9 +95,9 @@ impl people::Server for PeopleServer {
         mut results: people::TypesResults,
     ) -> Done {
         let mut registry = TypeRegistry::new();
-        registry.register::<Card>().map_err(|e| {
-            capnp::Error::failed(format!("the description of Person is unsound: {e:?}"))
-        })?;
+        registry
+            .register::<Card>()
+            .map_err(|e| capnp::Error::failed(format!("types.unsound: {e:?}")))?;
         results
             .get()
             .set_catalog(new_client(CatalogServer::new(registry)));

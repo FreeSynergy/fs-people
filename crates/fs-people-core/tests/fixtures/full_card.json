@@ -18,7 +18,7 @@
     "isOrdered": true,
     "defaultSeparator": " ",
     "full": "Dr. Ada Lovelace",
-    "sortAs": "Lovelace, Ada",
+    "sortAs": {"surname": "Lovelace", "given": "Ada"},
     "phoneticScript": "Latn",
     "phoneticSystem": "ipa"
   },

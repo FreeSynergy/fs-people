@@ -19,10 +19,10 @@ impl PeopleRepo {
         let card = self.get_card(id).await?.ok_or(Error::NotFound(id))?;
         let mut value = card.to_value();
         patch.apply(&mut value)?;
-        let changed: Card = serde_json::from_value(value).map_err(|e| {
+        let changed: Card = serde_json::from_value(value).map_err(|_| {
             Error::Invalid(vec![Issue {
                 path: "/".into(),
-                message: format!("the patched card is no card: {e}"),
+                message: "patch.not-a-card".into(),
             }])
         })?;
         self.update(id, changed).await

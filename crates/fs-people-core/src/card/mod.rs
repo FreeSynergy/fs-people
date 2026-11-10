@@ -19,7 +19,7 @@ pub use about::{Anniversary, AnniversaryDate, Author, Note, PersonalInfo};
 pub use model::Card;
 pub use parts::{
     Address, AddressComponent, EmailAddress, LanguagePref, Name, NameComponent, Nickname,
-    OnlineService, OrgUnit, Organization, Phone, Pronouns, SpeakToAs, Title,
+    OnlineService, OrgUnit, Organization, Phone, Pronouns, SortAs, SpeakToAs, Title,
 };
 pub use resources::{Calendar, CryptoKey, Directory, Link, Media, SchedulingAddress};
 pub use types::{DESCRIBES_KEY, Extra, Map, SENSITIVE_KEY, UNCLEAR_SENSITIVE, VENDOR};

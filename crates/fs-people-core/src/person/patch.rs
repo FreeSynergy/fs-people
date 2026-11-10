@@ -20,7 +20,7 @@ pub struct PatchObject(BTreeMap<String, Value>);
 impl PatchObject {
     /// A patch from its JSON text (an object).
     pub fn parse(text: &str) -> Result<Self> {
-        let value: Value = serde_json::from_str(text)?;
+        let value: Value = serde_json::from_str(text).map_err(|_| refuse("", "patch.not-json"))?;
         Self::from_value(value)
     }
 
@@ -28,7 +28,7 @@ impl PatchObject {
     pub fn from_value(value: Value) -> Result<Self> {
         match value {
             Value::Object(map) => Ok(Self(map.into_iter().collect())),
-            _ => Err(refuse("", "a PatchObject is a JSON object")),
+            _ => Err(refuse("", "patch.not-object")),
         }
     }
 
@@ -46,22 +46,17 @@ impl PatchObject {
             let steps = steps(path)?;
             let (last, parents) = steps
                 .split_last()
-                .ok_or_else(|| refuse(path, "empty path"))?;
+                .ok_or_else(|| refuse(path, "patch.empty-path"))?;
             let mut at = &mut work;
             for step in parents {
                 at = at
                     .as_object_mut()
                     .and_then(|o| o.get_mut(step))
-                    .ok_or_else(|| {
-                        refuse(path, "a step of the path does not exist or is no object")
-                    })?;
+                    .ok_or_else(|| refuse(path, "patch.step-missing"))?;
             }
-            let object = at.as_object_mut().ok_or_else(|| {
-                refuse(
-                    path,
-                    "the parent is no object (a patch never goes into an array)",
-                )
-            })?;
+            let object = at
+                .as_object_mut()
+                .ok_or_else(|| refuse(path, "patch.parent-not-object"))?;
             if value.is_null() {
                 object.remove(last);
             } else {
@@ -78,7 +73,7 @@ impl PatchObject {
         for (i, a) in paths.iter().enumerate() {
             for b in &paths[i + 1..] {
                 if b.starts_with(&format!("{a}/")) || a.starts_with(&format!("{b}/")) {
-                    return Err(refuse(a, "another path of the patch lies inside this one"));
+                    return Err(refuse(a, "patch.paths-overlap"));
                 }
             }
         }
@@ -90,7 +85,7 @@ fn steps(path: &str) -> Result<Vec<String>> {
     path.split('/')
         .map(|s| {
             if s.is_empty() {
-                return Err(refuse(path, "an empty step in the path"));
+                return Err(refuse(path, "patch.empty-step"));
             }
             let mut out = String::new();
             let mut chars = s.chars();
@@ -102,7 +97,7 @@ fn steps(path: &str) -> Result<Vec<String>> {
                 match chars.next() {
                     Some('0') => out.push('~'),
                     Some('1') => out.push('/'),
-                    _ => return Err(refuse(path, "`~` must be followed by 0 or 1")),
+                    _ => return Err(refuse(path, "patch.bad-escape")),
                 }
             }
             Ok(out)

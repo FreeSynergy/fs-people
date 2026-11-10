@@ -11,6 +11,18 @@ use std::collections::BTreeMap;
 
 use super::sub_object::sub_object;
 
+/// `Name.sortAs`: RFC 9553 section 2.2.1.1 makes it a map from component kind to sort string
+/// (`{"surname": "Lovelace"}`). Cards written before carry a single string; both are read and written
+/// back as they came, so no stored card becomes unreadable.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum SortAs {
+    /// Component kind to sort string (the RFC form).
+    ByKind(BTreeMap<String, String>),
+    /// One string for the whole name (older cards).
+    Whole(String),
+}
+
 sub_object!(
     /// One part of a name (`given`, `surname`, ...).
     NameComponent {
@@ -34,7 +46,7 @@ sub_object!(
         #[serde(default, skip_serializing_if = "Option::is_none")]
         full: Option<String>,
         #[serde(default, rename = "sortAs", skip_serializing_if = "Option::is_none")]
-        sort_as: Option<String>,
+        sort_as: Option<SortAs>,
         #[serde(default, rename = "phoneticScript", skip_serializing_if = "Option::is_none")]
         phonetic_script: Option<String>,
         #[serde(default, rename = "phoneticSystem", skip_serializing_if = "Option::is_none")]

@@ -10,8 +10,6 @@ const FULL: &str = include_str!("fixtures/full_card.json");
 
 /// What `calcard` 0.3.14 does not bring back, by JSON path.
 const NOT_BACK: &[&str] = &[
-    // A name sorts by `sortAs`; vCard has SORT-AS on N but calcard does not map it back.
-    "/name/sortAs",
     // ORG-DIRECTORY: calcard writes `label;uri` as the value and reads it back as the uri; the
     // parameters (CONTEXTS, MEDIATYPE) do not come back.
     "/directories/d1/uri",
