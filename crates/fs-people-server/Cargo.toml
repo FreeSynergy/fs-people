@@ -13,7 +13,8 @@ name = "fs_people_server"
 
 [dependencies]
 fs-people-core = { path = "../fs-people-core" }
-fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.1", features = ["rpc"] }
+fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.2", features = ["rpc"] }
+fs-types = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.2", features = ["rpc"] }
 fs-objects = { git = "https://github.com/FreeSynergy/fs-objects", tag = "v0.0.1" }
 capnp = "0.27"
 rustix = { version = "1", features = ["process"] }
