@@ -100,3 +100,33 @@ async fn a_stored_blank_shown_and_sent_back_is_no_change() {
     let edit = Edit::new().set(&["prodId"], BasicType::Text, &[""]);
     assert_eq!(People::change(&r, id, &edit).await.unwrap().content, before);
 }
+
+#[tokio::test]
+async fn a_stored_blank_can_still_be_cleared() {
+    let r = repo().await;
+    let mut c = Card::individual("Ada");
+    c.notes.insert(
+        "n1".into(),
+        serde_json::from_value(json!({"note": "   "})).unwrap(),
+    );
+    let id = stored(&r, c).await;
+    let edit = Edit::new().clear(&["notes"], BasicType::MultilineText);
+    let card: Card =
+        serde_json::from_value(People::change(&r, id, &edit).await.unwrap().content).unwrap();
+    assert!(card.notes.is_empty());
+    // And a blank among values: sending only the real one drops the blank.
+    let mut c = Card::individual("Bob");
+    c.notes.insert(
+        "n1".into(),
+        serde_json::from_value(json!({"note": "a"})).unwrap(),
+    );
+    c.notes.insert(
+        "n2".into(),
+        serde_json::from_value(json!({"note": " "})).unwrap(),
+    );
+    let id = stored(&r, c).await;
+    let edit = Edit::new().set(&["notes"], BasicType::MultilineText, &["a"]);
+    let card: Card =
+        serde_json::from_value(People::change(&r, id, &edit).await.unwrap().content).unwrap();
+    assert_eq!(card.notes.len(), 1);
+}

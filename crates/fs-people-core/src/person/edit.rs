@@ -39,7 +39,7 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
         .map(|f| {
             f.path.len() != 1
                 || !once(&f.path)
-                || values_of(card, &f.path[0]).is_none_or(|shown| given(&shown) != given(&f.values))
+                || values_of(card, &f.path[0]).is_none_or(|shown| !unchanged(&shown, &f.values))
         })
         .collect();
     let mut flags = keep.into_iter();
@@ -67,6 +67,12 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
             .map_err(|code| refuse(format!("/{name}"), code))?;
     }
     Ok(out)
+}
+
+/// Whether the values sent are what the form was shown: the same, or nothing shown and nothing (blank) sent. A blank
+/// that is stored and shown is only dropped by sending it back as it is, never by sending less: clearing stays a change.
+fn unchanged(shown: &[String], sent: &[String]) -> bool {
+    shown == sent || (shown.is_empty() && given(sent).is_empty())
 }
 
 /// The values that count: a blank one is "not given" (as `Edit::check` reads it).
