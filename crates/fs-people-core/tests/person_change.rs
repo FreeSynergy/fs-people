@@ -206,6 +206,8 @@ async fn every_field_of_the_description_can_be_changed_or_is_named_read_only() {
             &[sample(f.basic, &f.choices).as_str()],
         );
         match People::change(&r, id, &edit).await {
+            // The kind a new entry gets is not shown: it applies to the entries an edit makes (`person_entry_kinds.rs`).
+            Ok(_) if f.name.ends_with("Kind") => {}
             Ok(done) => {
                 let card: Card = serde_json::from_value(done.content).unwrap();
                 let shown = fs_people_core::person::values_of(&card, &f.name).unwrap();

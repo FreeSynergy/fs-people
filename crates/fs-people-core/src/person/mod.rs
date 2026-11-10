@@ -5,6 +5,7 @@
 mod check;
 mod describe;
 mod edit;
+mod entry_kinds;
 mod fields;
 mod patch;
 mod suggest;

@@ -7,6 +7,7 @@
 
 use fs_types::BasicType;
 
+use super::entry_kinds::ENTRY_KINDS;
 use crate::card::{Card, Map};
 use crate::validate::KINDS;
 
@@ -131,6 +132,22 @@ pub(crate) const GENDERS: &[&str] = &[
 
 /// All fields, in the order of the RFC sections.
 pub(crate) fn table() -> Vec<Field> {
+    let mut rows = rows();
+    // The kind a new entry gets, asked as a choice (`mediaKind`). Nothing is shown of it: it applies to the entries an
+    // edit creates, an entry that exists keeps its kind.
+    rows.extend(ENTRY_KINDS.iter().map(|k| Field {
+        name: k.selector,
+        basic: BasicType::Choice,
+        multiple: false,
+        target: "",
+        choices: k.keys,
+        checked: true,
+        read: |_| Vec::new(),
+    }));
+    rows
+}
+
+fn rows() -> Vec<Field> {
     vec![
         field!("uid", Text, false, "", &[], false, |c| one(Some(&c.uid))),
         field!("kind", Choice, false, "", &KINDS, false, |c| one(c

@@ -7,6 +7,7 @@
 
 use fs_types::{BasicRules, DescribesType, Edit};
 
+use super::entry_kinds::{Chosen, is_selector};
 use super::fields::{self, Field};
 use super::sync::sync;
 use super::values::values_of;
@@ -57,13 +58,19 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
     })?;
     let table = fields::table();
     let mut out = card.clone();
-    for f in &checked.fields {
+    let mut chosen = Chosen::default();
+    for f in checked.fields.iter().filter(|f| is_selector(&f.path[0])) {
+        if let Some(key) = f.values.first() {
+            chosen.set(&f.path[0], key);
+        }
+    }
+    for f in checked.fields.iter().filter(|f| !is_selector(&f.path[0])) {
         let name = f.path[0].as_str();
         let field = table
             .iter()
             .find(|t| t.name == name)
             .ok_or_else(|| refuse(format!("/{name}"), "unknown-field"))?;
-        write(&mut out, field, &f.values, &rules)
+        write(&mut out, field, &f.values, &rules, &chosen)
             .map_err(|code| refuse(format!("/{name}"), code))?;
     }
     Ok(out)
@@ -99,6 +106,7 @@ fn write(
     f: &Field,
     v: &[String],
     rules: &BasicRules,
+    kinds: &Chosen,
 ) -> std::result::Result<(), &'static str> {
     macro_rules! list {
         ($map:expr, $p:literal, $read:expr, $make:expr) => {
@@ -108,6 +116,8 @@ fn write(
     match f.name {
         // Refused by `Edit::check` (the description says read-only); kept as a second lock.
         "uid" | "created" | "updated" | "prodId" => return Err("read-only"),
+        // The kind a new entry gets is applied where entries are made; nothing to write for the selector itself.
+        n if is_selector(n) => {}
         "kind" => card.kind = one(v),
         "language" => card.language = one(v),
         "members" => {
@@ -197,7 +207,7 @@ fn write(
             }
         ),
         "calendars" => list!(card.calendars, "c", |o| Some(o.uri.clone()), |s| Calendar {
-            kind: Some("calendar".into()),
+            kind: Some(kinds.kind("calendars")),
             uri: s.into(),
             ..Calendar::default()
         }),
@@ -222,7 +232,7 @@ fn write(
         }),
         "directories" => list!(card.directories, "d", |o| Some(o.uri.clone()), |s| {
             Directory {
-                kind: Some("directory".into()),
+                kind: Some(kinds.kind("directories")),
                 uri: s.into(),
                 ..Directory::default()
             }
@@ -232,7 +242,7 @@ fn write(
             ..Link::default()
         }),
         "media" => list!(card.media, "m", |o| fields::not_data(&o.uri), |s| Media {
-            kind: Some("photo".into()),
+            kind: Some(kinds.kind("media")),
             uri: s.into(),
             ..Media::default()
         }),
@@ -240,6 +250,7 @@ fn write(
             let (year, month, day) =
                 parse_day(s).map_or((None, None, None), |(y, m, d)| (Some(y), Some(m), Some(d)));
             Anniversary {
+                kind: Some(kinds.kind("anniversaries")),
                 date: Some(AnniversaryDate {
                     type_: Some("PartialDate".into()),
                     year,
@@ -268,7 +279,7 @@ fn write(
         }),
         "personalInfo" => list!(card.personal_info, "i", |o| Some(o.value.clone()), |s| {
             PersonalInfo {
-                kind: Some("interest".into()),
+                kind: Some(kinds.kind("personalInfo")),
                 value: s.into(),
                 ..PersonalInfo::default()
             }
