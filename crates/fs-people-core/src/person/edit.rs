@@ -39,7 +39,7 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
         .map(|f| {
             f.path.len() != 1
                 || !once(&f.path)
-                || values_of(card, &f.path[0]).is_none_or(|shown| shown != given(&f.values))
+                || values_of(card, &f.path[0]).is_none_or(|shown| given(&shown) != given(&f.values))
         })
         .collect();
     let mut flags = keep.into_iter();

@@ -89,3 +89,14 @@ async fn an_empty_text_box_sent_back_for_a_read_only_field_is_no_change() {
     let done = People::change(&r, id, &edit).await.unwrap();
     assert_eq!(done.content, before);
 }
+
+#[tokio::test]
+async fn a_stored_blank_shown_and_sent_back_is_no_change() {
+    let r = repo().await;
+    let mut c = Card::individual("Ada");
+    c.prod_id = Some(String::new());
+    let id = stored(&r, c).await;
+    let before = r.get(id).await.unwrap().unwrap().content;
+    let edit = Edit::new().set(&["prodId"], BasicType::Text, &[""]);
+    assert_eq!(People::change(&r, id, &edit).await.unwrap().content, before);
+}
