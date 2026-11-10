@@ -41,6 +41,7 @@ impl PeopleRepo {
         original: Option<Blob>,
     ) -> Result<StoredObject> {
         let now = now_utc();
+        card.rewrite_legacy();
         card.created.get_or_insert_with(|| now.clone());
         card.updated.get_or_insert(now);
         validate(&card)?;
@@ -140,6 +141,7 @@ impl PeopleRepo {
         if card.kind() != old_card.kind() {
             self.check_kind_against_roles(id, card.kind()).await?;
         }
+        card.rewrite_legacy();
         card.keep_marks_of(&old_card);
         card.created = card.created.or(old_card.created);
         card.updated = Some(now_utc());

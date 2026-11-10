@@ -6,6 +6,7 @@
 mod about;
 mod build;
 mod display;
+mod legacy;
 mod marks;
 mod model;
 mod parts;

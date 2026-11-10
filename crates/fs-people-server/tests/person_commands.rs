@@ -36,10 +36,7 @@ async fn the_server_reports_the_description_of_person() {
             .iter()
             .map(|c| c.get_name().unwrap().to_string().unwrap())
             .collect();
-        assert_eq!(
-            commands,
-            ["create", "patch", "find", "delete", "check", "suggest"]
-        );
+        assert_eq!(commands, ["create", "find", "delete", "check", "suggest"]);
     })
     .await;
 }

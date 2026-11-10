@@ -91,21 +91,24 @@ fn the_commands_are_the_ones_the_task_names() {
         kinds,
         [
             ("create", CommandKind::Create),
-            ("patch", CommandKind::Change),
             ("find", CommandKind::Find),
             ("delete", CommandKind::Delete),
             ("check", CommandKind::Check),
             ("suggest", CommandKind::Suggest),
         ]
     );
-    let patch = p.find_command("patch").unwrap();
+    // No PatchObject and no free JSON text in a form (decision of the strategy): `change` comes with the typed
+    // action of `types.capnp`; until then the description offers none.
+    assert!(p.find_command("patch").is_none());
+    let find = p.find_command("find").unwrap();
     assert!(
-        patch
-            .input
-            .iter()
-            .any(|f| f.name == "id" && f.required && f.target == "Person")
+        find.input.iter().all(|f| !f.required),
+        "an empty term lists everybody"
     );
-    assert!(patch.input.iter().any(|f| f.name == "patch" && f.required));
+    assert!(
+        find.input.iter().any(|f| f.name == "cursor")
+            && find.result.iter().any(|f| f.name == "next")
+    );
 }
 
 #[test]

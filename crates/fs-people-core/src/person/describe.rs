@@ -77,17 +77,13 @@ impl DescribesType for Card {
                 .result(person_ref("create", "id").required()),
         )
         .command(
-            CommandDescription::new("patch", CommandKind::Change, "person.patch")
-                .input(person_ref("patch", "id").required())
-                // A PatchObject (RFC 8984 section 1.4.9) has no basic type; it travels as JSON text.
-                .input(input("patch", "patch", BasicType::MultilineText).required())
-                .result(person_ref("patch", "id").required()),
-        )
-        .command(
             CommandDescription::new("find", CommandKind::Find, "person.find")
-                .input(input("find", "term", BasicType::Text).required())
+                // An empty term lists everybody: there is no list command, a list is `find` with paging.
+                .input(input("find", "term", BasicType::Text))
                 .input(input("find", "kind", BasicType::Choice).choices(&kinds))
-                .result(person_ref("find", "persons").multiple()),
+                .input(input("find", "cursor", BasicType::Text))
+                .result(person_ref("find", "persons").multiple())
+                .result(input("find", "next", BasicType::Text)),
         )
         .command(
             CommandDescription::new("delete", CommandKind::Delete, "person.delete")
