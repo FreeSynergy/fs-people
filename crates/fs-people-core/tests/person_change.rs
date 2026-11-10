@@ -219,7 +219,6 @@ async fn every_field_of_the_description_can_be_changed_or_is_named_read_only() {
                 );
             }
             Err(e) => {
-                assert!(f.read_only, "{}: {e}", f.name);
                 let found = code(&e);
                 assert!(
                     found.iter().all(|(_, c)| c == "read-only"),

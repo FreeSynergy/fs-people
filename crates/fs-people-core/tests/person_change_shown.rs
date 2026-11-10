@@ -56,3 +56,26 @@ async fn a_path_named_twice_is_refused_even_when_one_of_them_is_the_shown_value(
     assert_eq!(code(&err)[0].1, "duplicate-path");
     assert_eq!(r.get(id).await.unwrap().unwrap().content, before);
 }
+
+#[tokio::test]
+async fn a_whole_form_sent_back_with_one_real_change_changes_only_that() {
+    let r = repo().await;
+    let id = stored(&r, Card::individual("Ada")).await;
+    let card = r.get_card(id).await.unwrap().unwrap();
+    let mut edit = Edit::new();
+    for f in <Card as fs_types::DescribesType>::describe().fields {
+        let shown = fs_people_core::person::values_of(&card, &f.name).unwrap();
+        let values: Vec<&str> = shown.iter().map(String::as_str).collect();
+        edit = edit.set(&[f.name.as_str()], f.basic, &values);
+    }
+    // The form's one real change: a phone number.
+    for f in &mut edit.fields {
+        if f.path[0] == "phones" {
+            f.values = vec!["+4930123456".into()];
+        }
+    }
+    let done = People::change(&r, id, &edit).await.unwrap();
+    let after: Card = serde_json::from_value(done.content).unwrap();
+    assert_eq!(after.phones.values().next().unwrap().number, "+4930123456");
+    assert_eq!(after.name.unwrap().full.as_deref(), Some("Ada"));
+}
