@@ -1538,7 +1538,7 @@ dependencies = [
 [[package]]
 name = "fs-interfaces"
 version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13#99fbce9d58f7300025aabea0db958e8f50d2f478"
+source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14#3f93a1a8531676fb243e09cb36a5537981c8ebf3"
 dependencies = [
  "capnp",
  "capnp-rpc",
@@ -1572,10 +1572,10 @@ dependencies = [
 
 [[package]]
 name = "fs-people"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "fs-objects",
  "fs-people-app",
  "fs-people-cli",
@@ -1588,14 +1588,14 @@ dependencies = [
 
 [[package]]
 name = "fs-people-app"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "async-trait",
  "capnp",
  "fs-components-app",
  "fs-components-render",
  "fs-components-workbenches",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1606,10 +1606,10 @@ dependencies = [
 
 [[package]]
 name = "fs-people-cli"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "capnp",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "fs-objects",
  "fs-people-core",
  "fs-people-server",
@@ -1620,12 +1620,12 @@ dependencies = [
 
 [[package]]
 name = "fs-people-core"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "async-trait",
  "calcard",
  "chrono",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "fs-objects",
  "fs-types",
  "proptest",
@@ -1638,12 +1638,12 @@ dependencies = [
 
 [[package]]
 name = "fs-people-server"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "async-trait",
  "capnp",
  "capnp-rpc",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "fs-objects",
  "fs-people-core",
  "fs-types",
@@ -1657,12 +1657,12 @@ dependencies = [
 [[package]]
 name = "fs-types"
 version = "0.0.1"
-source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13#99fbce9d58f7300025aabea0db958e8f50d2f478"
+source = "git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14#3f93a1a8531676fb243e09cb36a5537981c8ebf3"
 dependencies = [
  "capnp",
  "capnp-rpc",
  "chrono",
- "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.13)",
+ "fs-interfaces 0.0.1 (git+https://github.com/FreeSynergy/fs-interfaces?tag=v0.0.14)",
  "geo-uri",
  "iri-string",
  "oxilangtag",

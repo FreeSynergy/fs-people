@@ -41,16 +41,19 @@ pub fn serve(args: impl IntoIterator<Item = OsString>) -> Result<(), ServeError>
         actor,
         instance,
     } = options;
-    if let Some(lease) = lease {
-        // The window that started this server holds the lease; when none does, end as a signal would.
-        crate::lease::watch(lease, || {
-            let _ = rustix::process::kill_process(
-                rustix::process::getpid(),
-                rustix::process::Signal::TERM,
-            );
-        });
-    }
     run_until_signal(&socket, || async move {
+        // The watcher ends this process by SIGTERM, so it starts only here, where the stop signal is already registered
+        // (`run_until_signal` registers it before it binds): a look that finds nobody early can no longer kill the
+        // process by the signal.
+        if let Some(lease) = lease {
+            // The window that started this server holds the lease; when none does, end as a signal would.
+            crate::lease::watch(lease, || {
+                let _ = rustix::process::kill_process(
+                    rustix::process::getpid(),
+                    rustix::process::Signal::TERM,
+                );
+            });
+        }
         prepare_data_dir(&data)?;
         let store = TursoStore::open(data.join("objects.db"))
             .await
