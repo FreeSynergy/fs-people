@@ -16,6 +16,7 @@ pub fn issues(card: &Card) -> Vec<Issue> {
     header(&mut sink, card);
     name(&mut sink, card);
     sub_objects::check(&mut sink, card);
+    super::resources::check(&mut sink, card);
     members(&mut sink, card);
     sink.0
 }

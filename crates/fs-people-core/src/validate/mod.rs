@@ -6,6 +6,7 @@ mod check;
 mod datetime;
 mod kind;
 mod numbers;
+mod resources;
 mod sink;
 mod sub_objects;
 

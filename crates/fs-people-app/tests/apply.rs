@@ -169,7 +169,10 @@ fn item_12_an_organisation_of_units_alone_is_not_something_to_call_a_person_by()
     let mut card = person("Ada", "a@x.org");
     let org = card.add_organization("Engines");
     let entry = card.organizations.get_mut(&org).unwrap();
-    entry.units = vec![json!({"name": "Maths"})];
+    entry.units = vec![fs_people_core::card::OrgUnit {
+        name: "Maths".into(),
+        ..Default::default()
+    }];
     let key = w.add(card);
     let mut s = w.state();
     s.begin_edit();

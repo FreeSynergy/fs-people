@@ -100,7 +100,13 @@ async fn sensitive_cards_are_never_proposed_or_linked() {
     let b = person("Open", "s@example.org");
     // field-level mark counts as well
     let mut c = person("Field", "f@example.org");
-    c.extra.insert("personalInfo".into(), json!({"p1": {"kind":"expertise","value":"x","freesynergy.net:sensitive":["pd:HealthRecord"]}}));
+    c.personal_info.insert(
+        "p1".into(),
+        serde_json::from_value(
+            json!({"kind":"expertise","value":"x","freesynergy.net:sensitive":["pd:HealthRecord"]}),
+        )
+        .unwrap(),
+    );
     let d = person("Plain", "f@example.org");
     let oa = r.create(a).await.unwrap();
     assert_eq!(oa.envelope.sensitive, ["pd:SexualPreference"]);

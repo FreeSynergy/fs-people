@@ -58,12 +58,10 @@ pub(super) fn sheet_of(
 /// a `data:image/` URI. A web address is **not** fetched: opening a person must not make the program
 /// call out (and tell a server who is looked at); a local file is not read for the same reason.
 fn photo_of(card: &Card) -> Option<String> {
-    card.extra
-        .get("media")?
-        .as_object()?
+    card.media
         .values()
-        .filter(|m| m.get("kind").and_then(|k| k.as_str()) == Some("photo"))
-        .filter_map(|m| m.get("uri").and_then(|u| u.as_str()))
+        .filter(|m| m.kind.as_deref() == Some("photo"))
+        .map(|m| m.uri.as_str())
         .find(|uri| uri.starts_with("data:image/"))
         .map(str::to_string)
 }
@@ -180,6 +178,24 @@ fn role_section(
 /// The names of what the card holds beyond what is shown above.
 fn kept(card: &Card) -> PersonSection {
     let mut names: Vec<&str> = card.extra.keys().map(String::as_str).collect();
+    // Typed since the whole of RFC 9553 is, but not shown in the window (see DESIGN.md).
+    let unshown = [
+        ("language", card.language.is_some()),
+        ("prodId", card.prod_id.is_some()),
+        ("speakAs", card.speak_as.is_some()),
+        ("onlineServices", !card.online_services.is_empty()),
+        ("preferredLanguages", !card.preferred_languages.is_empty()),
+        ("calendars", !card.calendars.is_empty()),
+        ("schedulingAddresses", !card.scheduling_addresses.is_empty()),
+        ("cryptoKeys", !card.crypto_keys.is_empty()),
+        ("directories", !card.directories.is_empty()),
+        ("media", !card.media.is_empty()),
+        ("localizations", !card.localizations.is_empty()),
+        ("anniversaries", !card.anniversaries.is_empty()),
+        ("personalInfo", !card.personal_info.is_empty()),
+    ];
+    names.extend(unshown.iter().filter(|(_, held)| *held).map(|(n, _)| *n));
+    names.sort_unstable();
     if !card.members.is_empty() {
         names.push("members");
     }

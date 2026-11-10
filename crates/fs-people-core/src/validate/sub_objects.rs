@@ -8,7 +8,7 @@ use crate::card::{Address, EmailAddress, Link, Nickname, Note, Organization, Pho
 use crate::card::{Card, Map};
 
 /// Check one `Id[T]` property: empty ids, `@type` and a property specific problem.
-fn each<T>(
+pub(super) fn each<T>(
     sink: &mut Sink,
     field: &str,
     ty: &str,
@@ -30,7 +30,7 @@ fn each<T>(
     }
 }
 
-fn blank(s: &str) -> bool {
+pub(super) fn blank(s: &str) -> bool {
     s.trim().is_empty()
 }
 
