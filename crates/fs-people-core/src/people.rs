@@ -60,6 +60,11 @@ pub trait People: Send + Sync {
     async fn patch(&self, _id: ObjectId, _patch: &PatchObject) -> Result<StoredObject> {
         not_possible("person.update")
     }
+    /// `person.update`, the command `change` of the description: an [`Edit`](fs_types::Edit), field by field,
+    /// typed. The provider turns it into the card's PatchObject; all or nothing, validated like an update.
+    async fn change(&self, _id: ObjectId, _edit: &fs_types::Edit) -> Result<StoredObject> {
+        not_possible("person.update")
+    }
     /// `person.check`: the card against RFC 9553 and the rules of its basic types. Reports; changes nothing.
     async fn check(&self, _id: ObjectId) -> Result<Vec<Issue>> {
         not_possible("person.check")

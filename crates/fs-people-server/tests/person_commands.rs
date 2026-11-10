@@ -36,7 +36,10 @@ async fn the_server_reports_the_description_of_person() {
             .iter()
             .map(|c| c.get_name().unwrap().to_string().unwrap())
             .collect();
-        assert_eq!(commands, ["create", "find", "delete", "check", "suggest"]);
+        assert_eq!(
+            commands,
+            ["create", "change", "find", "delete", "check", "suggest"]
+        );
     })
     .await;
 }
@@ -136,6 +139,39 @@ async fn suggest_completes_from_the_book_and_refuses_a_field_it_does_not_know() 
         ask.get().set_field("nope");
         ask.get().set_typed("x");
         expect_problem(ask.send().promise.await, INVALID);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn change_takes_typed_values_field_by_field() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let id = create(&persons, "uid-ch", "Ada", "ada@x.org").await;
+        let send = |emails: &'static [&'static str]| {
+            let persons = persons.clone();
+            async move {
+                let mut req = persons.change_request();
+                write_uuid(req.get().init_id(), Some(id));
+                let edit = req.get().init_edit();
+                let mut fields = edit.init_fields(1);
+                let mut f = fields.reborrow().get(0);
+                f.reborrow().init_path(1).set(0, "emails");
+                f.set_basic(BasicType::Email);
+                let mut values = f.init_values(u32::try_from(emails.len()).unwrap());
+                for (i, e) in (0u32..).zip(emails) {
+                    values.set(i, *e);
+                }
+                req.send().promise.await
+            }
+        };
+        let done = send(&["ada@x.org", "second@y.org"]).await.unwrap();
+        let content = json_of(done.get().unwrap().get_person().unwrap());
+        assert_eq!(content["emails"].as_object().unwrap().len(), 2);
+        assert_eq!(content["emails"]["e1"]["address"], "ada@x.org");
+        // A value that breaks the rule of its basic type is a problem, and nothing is written.
+        let bad = problem_of(send(&["nonsense"]).await);
+        assert_eq!(bad.status, 422);
     })
     .await;
 }

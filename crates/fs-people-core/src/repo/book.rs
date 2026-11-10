@@ -49,6 +49,10 @@ impl People for PeopleRepo {
         let _turn = self.writes.lock().await;
         PeopleRepo::patch(self, id, patch).await
     }
+    async fn change(&self, id: ObjectId, edit: &fs_types::Edit) -> Result<StoredObject> {
+        let _turn = self.writes.lock().await;
+        PeopleRepo::change(self, id, edit).await
+    }
     async fn check(&self, id: ObjectId) -> Result<Vec<Issue>> {
         PeopleRepo::check(self, id).await
     }

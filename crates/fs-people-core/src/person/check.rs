@@ -44,11 +44,14 @@ pub fn check(card: &Card) -> Vec<Issue> {
 }
 
 /// The translation key suffix of a finding (`problem.<code>`).
-fn code_of(problem: RecordProblem) -> &'static str {
+pub(super) fn code_of(problem: RecordProblem) -> &'static str {
     match problem {
         RecordProblem::Value(p) => p.code(),
         RecordProblem::UnknownField => "unknown-field",
         RecordProblem::Missing => "missing",
         RecordProblem::NotMultiple => "not-multiple",
+        RecordProblem::WrongType => "wrong-type",
+        RecordProblem::NestedPath => "nested-path",
+        RecordProblem::DuplicatePath => "duplicate-path",
     }
 }

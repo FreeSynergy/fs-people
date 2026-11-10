@@ -10,7 +10,7 @@ use fs_people_core::validate::check_card_numbers;
 use fs_people_core::{PatchObject, People};
 
 use crate::errors::{finish, rpc_error};
-use crate::wire::{count, intake, required, write_person};
+use crate::wire::{count, intake, read_edit, required, write_person};
 
 type Done = Result<(), capnp::Error>;
 
@@ -26,6 +26,20 @@ pub(super) async fn patch(
     let patch = PatchObject::parse(text).map_err(rpc_error)?;
     let people = people.clone();
     let stored = finish(async move { people.patch(id, &patch).await }).await?;
+    write_person(results.get().init_person(), &stored);
+    Ok(())
+}
+
+pub(super) async fn change(
+    people: &Arc<dyn People>,
+    params: wire::ChangeParams,
+    mut results: wire::ChangeResults,
+) -> Done {
+    let p = params.get()?;
+    let id = read_object_id(p.get_id()?)?;
+    let edit = read_edit(p.get_edit()?)?;
+    let people = people.clone();
+    let stored = finish(async move { people.change(id, &edit).await }).await?;
     write_person(results.get().init_person(), &stored);
     Ok(())
 }

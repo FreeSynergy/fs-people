@@ -76,15 +76,14 @@ impl DescribesType for Card {
                 .input(input("create", "keywords", BasicType::Keywords))
                 .result(person_ref("create", "id").required()),
         )
-        .command(
-            CommandDescription::new("find", CommandKind::Find, "person.find")
-                // An empty term lists everybody: there is no list command, a list is `find` with paging.
-                .input(input("find", "term", BasicType::Text))
-                .input(input("find", "kind", BasicType::Choice).choices(&kinds))
-                .input(input("find", "cursor", BasicType::Text))
-                .result(person_ref("find", "persons").multiple())
-                .result(input("find", "next", BasicType::Text)),
-        )
+        // The command `change` takes an `Edit` (types.capnp) and no input fields of its own.
+        .command(CommandDescription::new(
+            "change",
+            CommandKind::Change,
+            "person.change",
+        ))
+        // A list is `find` with an empty term, paged by a cursor (rule of types.capnp).
+        .command(CommandDescription::standard_find("person.find", PERSON))
         .command(
             CommandDescription::new("delete", CommandKind::Delete, "person.delete")
                 .input(person_ref("delete", "id").required()),

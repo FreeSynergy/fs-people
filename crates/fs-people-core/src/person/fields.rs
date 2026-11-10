@@ -47,7 +47,7 @@ fn each<T>(items: &Map<T>, pick: impl Fn(&T) -> Option<String>) -> Vec<Read> {
 
 /// A URI that is worth judging as a link: a `data:` URI holds a file (a photo, a key), whose size
 /// the limit of a link (2048 bytes) was not made for.
-fn not_data(uri: &str) -> Option<String> {
+pub(crate) fn not_data(uri: &str) -> Option<String> {
     (!uri.starts_with("data:")).then(|| uri.to_owned())
 }
 
@@ -63,7 +63,7 @@ fn name_of(card: &Card) -> Vec<Read> {
     vec![(ONE.to_owned(), text)]
 }
 
-fn address_text(a: &crate::card::Address) -> Option<String> {
+pub(crate) fn address_text(a: &crate::card::Address) -> Option<String> {
     a.full.clone().or_else(|| {
         let sep = a.default_separator.as_deref().unwrap_or(" ");
         let parts: Vec<&str> = a.components.iter().map(|c| c.value.as_str()).collect();
@@ -72,7 +72,7 @@ fn address_text(a: &crate::card::Address) -> Option<String> {
 }
 
 /// Only a complete day counts; a year alone or a timestamp is not a `date`.
-fn day_of(a: &crate::card::Anniversary) -> Option<String> {
+pub(crate) fn day_of(a: &crate::card::Anniversary) -> Option<String> {
     let d = a.date.as_ref()?;
     let scale_ok = d.calendar_scale.as_deref().is_none_or(|s| s == "gregorian");
     match (d.year, d.month, d.day) {

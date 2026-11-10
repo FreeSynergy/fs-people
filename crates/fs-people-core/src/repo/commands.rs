@@ -28,6 +28,37 @@ impl PeopleRepo {
         self.update(id, changed).await
     }
 
+    /// Apply an `Edit`; see [`crate::People::change`]. The edit is made on a copy of the card, the
+    /// difference becomes a PatchObject (one path per changed property) and goes the way of `patch`.
+    pub async fn change(&self, id: ObjectId, edit: &fs_types::Edit) -> Result<StoredObject> {
+        let card = self.get_card(id).await?.ok_or(Error::NotFound(id))?;
+        let changed = person::change(&card, edit)?;
+        let (before, after) = (card.to_value(), changed.to_value());
+        let (Some(old), Some(new)) = (before.as_object(), after.as_object()) else {
+            return Err(Error::Stored("card is no object".into()));
+        };
+        let mut patch = serde_json::Map::new();
+        for (key, value) in new.iter().filter(|(k, v)| old.get(*k) != Some(v)) {
+            patch.insert(key.clone(), value.clone());
+        }
+        for key in old.keys().filter(|k| !new.contains_key(*k)) {
+            patch.insert(key.clone(), serde_json::Value::Null);
+        }
+        if patch.is_empty() {
+            return self.get(id).await?.ok_or(Error::NotFound(id));
+        }
+        // Keys are top-level property names, which may hold `/` or `~` (vendor names): the patch writes them escaped.
+        let escaped = patch
+            .into_iter()
+            .map(|(k, v)| (k.replace('~', "~0").replace('/', "~1"), v))
+            .collect();
+        self.patch(
+            id,
+            &PatchObject::from_value(serde_json::Value::Object(escaped))?,
+        )
+        .await
+    }
+
     /// The problems of a stored card; see [`crate::People::check`].
     pub async fn check(&self, id: ObjectId) -> Result<Vec<Issue>> {
         let card = self.get_card(id).await?.ok_or(Error::NotFound(id))?;

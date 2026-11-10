@@ -91,24 +91,21 @@ fn the_commands_are_the_ones_the_task_names() {
         kinds,
         [
             ("create", CommandKind::Create),
+            ("change", CommandKind::Change),
             ("find", CommandKind::Find),
             ("delete", CommandKind::Delete),
             ("check", CommandKind::Check),
             ("suggest", CommandKind::Suggest),
         ]
     );
-    // No PatchObject and no free JSON text in a form (decision of the strategy): `change` comes with the typed
-    // action of `types.capnp`; until then the description offers none.
+    // `change` takes an Edit and no fields of its own; no JSON text in a form (rules of types.capnp).
+    let change = p.find_command("change").unwrap();
+    assert!(change.input.is_empty() && change.supported);
     assert!(p.find_command("patch").is_none());
+    // A list is the standard `find`: an empty term lists everybody, paging is the cursor of the call.
     let find = p.find_command("find").unwrap();
-    assert!(
-        find.input.iter().all(|f| !f.required),
-        "an empty term lists everybody"
-    );
-    assert!(
-        find.input.iter().any(|f| f.name == "cursor")
-            && find.result.iter().any(|f| f.name == "next")
-    );
+    assert!(find.input.iter().all(|f| !f.required));
+    assert!(p.commands.iter().all(|c| c.supported));
 }
 
 #[test]

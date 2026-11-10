@@ -166,6 +166,9 @@ impl wire::Server for PersonsImpl {
     async fn patch(self: Rc<Self>, p: wire::PatchParams, r: wire::PatchResults) -> Done {
         commands::patch(&self.people, p, r).await
     }
+    async fn change(self: Rc<Self>, p: wire::ChangeParams, r: wire::ChangeResults) -> Done {
+        commands::change(&self.people, p, r).await
+    }
     async fn check(self: Rc<Self>, p: wire::CheckParams, r: wire::CheckResults) -> Done {
         commands::check(&self.people, p, r).await
     }

@@ -2,11 +2,13 @@
 //!
 //! Pattern: Adapter (declarations) — people, the report of an import and roles and their SKOS terms, one file each.
 
+mod edit;
 mod person;
 mod report;
 mod role;
 mod terms;
 
+pub(crate) use edit::read_edit;
 pub(crate) use person::{
     count, ids_count, intake, proposals_count, read_card, read_filter, relations_count, required,
     unpaged, write_ids, write_page, write_person, write_persons, write_proposals, write_relations,
