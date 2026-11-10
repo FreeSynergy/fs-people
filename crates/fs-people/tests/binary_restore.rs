@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 
 use fs_objects::{Envelope, Store, StoredObject, TursoStore};
 use fs_people_core::CONTEXT;
-use program::{terminate, wait_for};
+use program::{terminate, wait_ready};
 use serde_json::json;
 
 #[path = "common/program.rs"]
@@ -44,7 +44,8 @@ fn run_and_read_stderr(socket: &Path, data: &Path) -> String {
         .enable_all()
         .build()
         .unwrap();
-    rt.block_on(wait_for(socket));
+    let local = tokio::task::LocalSet::new();
+    local.block_on(&rt, wait_ready(socket));
     let server = program::Server(child);
     // `terminate` waits for exit 0, which closes the pipe, so reading to the end then ends.
     terminate(server);

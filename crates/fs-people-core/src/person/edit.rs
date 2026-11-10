@@ -39,7 +39,7 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
         .map(|f| {
             f.path.len() != 1
                 || !once(&f.path)
-                || values_of(card, &f.path[0]).is_none_or(|shown| shown != f.values)
+                || values_of(card, &f.path[0]).is_none_or(|shown| shown != given(&f.values))
         })
         .collect();
     let mut flags = keep.into_iter();
@@ -67,6 +67,15 @@ pub fn change(card: &Card, edit: &Edit) -> Result<Card> {
             .map_err(|code| refuse(format!("/{name}"), code))?;
     }
     Ok(out)
+}
+
+/// The values that count: a blank one is "not given" (as `Edit::check` reads it).
+fn given(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .filter(|v| !v.trim().is_empty())
+        .cloned()
+        .collect()
 }
 
 fn one(values: &[String]) -> Option<String> {

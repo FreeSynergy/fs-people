@@ -79,3 +79,13 @@ async fn a_whole_form_sent_back_with_one_real_change_changes_only_that() {
     assert_eq!(after.phones.values().next().unwrap().number, "+4930123456");
     assert_eq!(after.name.unwrap().full.as_deref(), Some("Ada"));
 }
+
+#[tokio::test]
+async fn an_empty_text_box_sent_back_for_a_read_only_field_is_no_change() {
+    let r = repo().await;
+    let id = stored(&r, Card::individual("Ada")).await;
+    let before = r.get(id).await.unwrap().unwrap().content;
+    let edit = Edit::new().set(&["prodId"], BasicType::Text, &[""]);
+    let done = People::change(&r, id, &edit).await.unwrap();
+    assert_eq!(done.content, before);
+}

@@ -49,6 +49,27 @@ pub async fn wait_for(socket: &Path) {
     panic!("the server did not come up");
 }
 
+/// The server answers a call. `wait_for` only sees the socket, which is bound before the store is opened and before the
+/// program listens for its stop signal; a TERM sent in between ends it by the signal (no exit code) instead of by the
+/// orderly stop. An answered call means both are done. Must run on a `LocalSet`.
+pub async fn wait_ready(socket: &Path) {
+    use fs_interfaces::people_capnp::people;
+    for _ in 0..1200 {
+        if let Ok(c) = fs_interfaces::rpc::connect::<people::Client>(socket).await
+            && c.client
+                .support_report_request()
+                .send()
+                .promise
+                .await
+                .is_ok()
+        {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    panic!("the server did not answer");
+}
+
 pub fn terminate(mut server: Server) {
     let child = &mut server.0;
     let status = Command::new("kill")
