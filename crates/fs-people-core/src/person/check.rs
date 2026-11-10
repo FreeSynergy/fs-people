@@ -52,6 +52,7 @@ pub(super) fn code_of(problem: RecordProblem) -> &'static str {
         RecordProblem::NotMultiple => "not-multiple",
         RecordProblem::WrongType => "wrong-type",
         RecordProblem::NestedPath => "nested-path",
+        RecordProblem::ReadOnly => "read-only",
         RecordProblem::DuplicatePath => "duplicate-path",
     }
 }

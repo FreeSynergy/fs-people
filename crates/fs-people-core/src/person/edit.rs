@@ -92,6 +92,7 @@ fn write(
         };
     }
     match f.name {
+        // Refused by `Edit::check` (the description says read-only); kept as a second lock.
         "uid" | "created" | "updated" | "prodId" => return Err("read-only"),
         "kind" => card.kind = one(v),
         "language" => card.language = one(v),

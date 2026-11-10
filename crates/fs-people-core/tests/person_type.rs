@@ -123,3 +123,15 @@ fn the_card_of_the_fixture_passes_the_check_of_its_own_description() {
         "Ada@example.org"
     );
 }
+
+#[test]
+fn what_the_program_sets_itself_is_read_only_and_nothing_else_is() {
+    let p = Card::describe();
+    let ro: Vec<&str> = p
+        .fields
+        .iter()
+        .filter(|f| f.read_only)
+        .map(|f| f.name.as_str())
+        .collect();
+    assert_eq!(ro, ["uid", "prodId", "created", "updated"]);
+}

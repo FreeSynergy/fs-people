@@ -175,3 +175,20 @@ async fn change_takes_typed_values_field_by_field() {
     })
     .await;
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn change_of_a_read_only_field_is_refused() {
+    with_server(|root| async move {
+        let persons = persons_of(&root).await;
+        let id = create(&persons, "uid-ro", "Ada", "ada@x.org").await;
+        let mut req = persons.change_request();
+        write_uuid(req.get().init_id(), Some(id));
+        let mut fields = req.get().init_edit().init_fields(1);
+        let mut f = fields.reborrow().get(0);
+        f.reborrow().init_path(1).set(0, "uid");
+        f.set_basic(BasicType::Text);
+        f.init_values(1).set(0, "other");
+        assert_eq!(problem_of(req.send().promise.await).status, 422);
+    })
+    .await;
+}

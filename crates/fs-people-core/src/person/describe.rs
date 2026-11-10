@@ -17,6 +17,9 @@ pub const PERSON: &str = "Person";
 /// The program that owns it (ADR 0050).
 pub const PROGRAM: &str = "fs-people";
 
+/// Set by the program itself, shown and never edited (`FieldDescription::read_only`).
+pub(crate) const READ_ONLY: [&str; 4] = ["uid", "created", "updated", "prodId"];
+
 /// `emailDomain` -> `email-domain`: the translation key part of a property name.
 fn kebab(name: &str) -> String {
     let mut out = String::new();
@@ -35,6 +38,9 @@ fn describe_field(f: &Field) -> FieldDescription {
     let mut d = FieldDescription::new(f.name, f.basic).label(&format!("person.{}", kebab(f.name)));
     if f.multiple {
         d = d.multiple();
+    }
+    if READ_ONLY.contains(&f.name) {
+        d = d.read_only();
     }
     if !f.target.is_empty() {
         d = d.target(f.target);
