@@ -17,7 +17,7 @@ mod surface;
 mod transfer;
 mod words;
 
-pub use source::{NoRoles, PeopleAdapter, RemotePeople, apply_draft};
+pub use source::{Limits, NoRoles, PeopleAdapter, RemotePeople, apply_draft};
 pub use surface::{PeopleScreen, app_widget};
 pub use transfer::{ExportReport, ImportSummary, export_all, import_file};
 pub use words::labels;

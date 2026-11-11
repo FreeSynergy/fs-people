@@ -71,7 +71,9 @@ pub(crate) fn rpc_error(e: Error) -> capnp::Error {
         // The person went and something of them stayed: a consumer has to be able to tell, and to
         // call again, without reading a message.
         Error::PartlyDeleted(..) => problem(PARTLY_DELETED, "Deleted, not everything of it", 500),
-        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) => failed(text.clone()),
+        Error::Store(StoreError::Key(_) | StoreError::Backend(_)) | Error::Unreachable(_) => {
+            failed(text.clone())
+        }
     }
 }
 

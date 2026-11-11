@@ -8,7 +8,7 @@ use fs_objects::{Envelope, StoredObject};
 use fs_people_core::{Card, People};
 use serde_json::json;
 
-fn with_sort_as(sort_as: serde_json::Value) -> Card {
+fn with_sort_as(sort_as: &serde_json::Value) -> Card {
     serde_json::from_value(json!({
         "@type": "Card", "version": "1.0", "uid": "urn:uuid:9f8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
         "name": {"full": "Ada", "sortAs": sort_as}
@@ -19,7 +19,7 @@ fn with_sort_as(sort_as: serde_json::Value) -> Card {
 #[tokio::test]
 async fn a_new_card_with_the_old_string_is_stored_as_a_map() {
     let r = repo().await;
-    let stored = r.create(with_sort_as(json!("ADA"))).await.unwrap();
+    let stored = r.create(with_sort_as(&json!("ADA"))).await.unwrap();
     assert_eq!(stored.content["name"]["sortAs"], json!({"surname": "ADA"}));
 }
 
@@ -27,7 +27,7 @@ async fn a_new_card_with_the_old_string_is_stored_as_a_map() {
 async fn a_stored_old_card_is_read_as_it_is_and_rewritten_on_the_next_save() {
     // Put the older form into the store directly, as a version before this one wrote it.
     let (r2, store) = common::setup().await;
-    let old = with_sort_as(json!("ADA"));
+    let old = with_sort_as(&json!("ADA"));
     let envelope = Envelope::new("Profile", "Ada");
     let id = envelope.id;
     let mut envelope = envelope;
@@ -52,6 +52,6 @@ async fn a_stored_old_card_is_read_as_it_is_and_rewritten_on_the_next_save() {
 async fn a_map_is_kept_as_it_is() {
     let r = repo().await;
     let map = json!({"surname": "Lovelace", "given": "Ada"});
-    let stored = r.create(with_sort_as(map.clone())).await.unwrap();
+    let stored = r.create(with_sort_as(&map)).await.unwrap();
     assert_eq!(stored.content["name"]["sortAs"], map);
 }

@@ -63,12 +63,7 @@ async fn patch_changes_what_it_names_and_a_bad_patch_is_a_problem() {
         assert_eq!(content["emails"]["e1"]["label"], "main");
         assert_eq!(content["emails"]["e1"]["address"], "ada@x.org");
 
-        for bad in [
-            r#"[1]"#,
-            "not json",
-            r#"{"nope/x":1}"#,
-            r#"{"uid":"other"}"#,
-        ] {
+        for bad in [r"[1]", "not json", r#"{"nope/x":1}"#, r#"{"uid":"other"}"#] {
             let mut patch = persons.patch_request();
             write_uuid(patch.get().init_id(), Some(id));
             patch.get().set_patch(bad);

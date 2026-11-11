@@ -8,11 +8,13 @@
 //! not asked, so the window shows none over the socket (`RoleBook` is not implemented here).
 
 use std::path::Path;
-use std::sync::{Arc, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 
 use async_trait::async_trait;
 use fs_interfaces::Capabilities;
+use fs_interfaces::rpc::client::Fault;
+use fs_interfaces::rpc::{Expected, ServerStarter};
 use fs_objects::{ObjectId, StoredObject};
 use fs_people_core::{
     Card, Error, ListFilter, People, Result, Revision, RoleAssignment, RoleBook, RoleDefinition,
@@ -20,43 +22,164 @@ use fs_people_core::{
 use tokio::sync::{mpsc, oneshot};
 
 use super::call::{Call, Reply, Revisions};
+use super::dial::Dial;
+pub use super::limits::Limits;
+use super::limits::{GRACE, SERVER, timed_out};
 use super::worker::worker;
+
+/// The state of the connection: a worker that answers, or why there is none (the window shows it).
+enum Link {
+    Up(mpsc::UnboundedSender<Call>),
+    Down(String),
+}
 
 /// The people server behind a socket, as a provider of [`People`].
 pub struct RemotePeople {
-    calls: mpsc::UnboundedSender<Call>,
+    dial: Dial,
+    limits: Limits,
+    link: Mutex<Link>,
     revisions: Revisions,
 }
 
 impl RemotePeople {
-    /// Connect to the server on `socket`.
+    /// Connect to the server that is on `socket`, with no version check and no start (what the tests need).
     ///
     /// # Errors
     /// The text for the person when nothing answers on the socket.
     pub fn connect(socket: &Path) -> std::result::Result<Self, String> {
-        let (calls, inbox) = mpsc::unbounded_channel();
-        let (ready, started) = std::sync::mpsc::channel();
-        let socket = socket.to_path_buf();
+        Self::connect_with(socket, Limits::default())
+    }
+
+    /// [`RemotePeople::connect`] with other [`Limits`].
+    ///
+    /// # Errors
+    /// The text for the person when nothing answers on the socket.
+    pub fn connect_with(socket: &Path, limits: Limits) -> std::result::Result<Self, String> {
+        let dial = Dial::Plain(socket.to_path_buf());
         let revisions = Revisions::default();
-        let shared = Arc::clone(&revisions);
-        thread::Builder::new()
-            .name("people-rpc".into())
-            .spawn(move || worker(&socket, inbox, &ready, &shared))
-            .map_err(|e| e.to_string())?;
-        started.recv().map_err(|e| e.to_string())??;
-        Ok(Self { calls, revisions })
+        let calls = open(&dial, limits, &revisions)?;
+        Ok(Self {
+            dial,
+            limits,
+            link: Mutex::new(Link::Up(calls)),
+            revisions,
+        })
+    }
+
+    /// Reach the server on `socket` that fits this program: the version handshake of fs-interfaces. One that runs and
+    /// differs is replaced, none running is started by `starter`. This never fails: when no fitting server can be
+    /// reached, the remote keeps the reason and every call answers with it, and the next call asks again
+    /// ([`RemotePeople::reconnect`]). The window opens in any case.
+    pub fn matching(socket: &Path, starter: Arc<dyn ServerStarter + Send + Sync>) -> Self {
+        Self::matching_with(socket, starter, Limits::default())
+    }
+
+    /// [`RemotePeople::matching`] with other [`Limits`]. A server that passes the handshake and then does not answer
+    /// the first questions is reported after [`Limits::start`], not waited for.
+    pub fn matching_with(
+        socket: &Path,
+        starter: Arc<dyn ServerStarter + Send + Sync>,
+        limits: Limits,
+    ) -> Self {
+        let dial = Dial::Matching {
+            socket: socket.to_path_buf(),
+            expected: Expected::new(env!("CARGO_PKG_VERSION")),
+            starter,
+        };
+        let revisions = Revisions::default();
+        let link = match open(&dial, limits, &revisions) {
+            Ok(calls) => Link::Up(calls),
+            Err(reason) => Link::Down(reason),
+        };
+        Self {
+            dial,
+            limits,
+            link: Mutex::new(link),
+            revisions,
+        }
+    }
+
+    /// Connect again (after a failed handshake, or a server that went away) and keep the new connection.
+    ///
+    /// # Errors
+    /// The text for the person.
+    pub fn reconnect(&self) -> std::result::Result<(), String> {
+        let opened = open(&self.dial, self.limits, &self.revisions);
+        let mut link = self.link.lock().unwrap_or_else(PoisonError::into_inner);
+        match opened {
+            Ok(calls) => {
+                *link = Link::Up(calls);
+                Ok(())
+            }
+            Err(reason) => {
+                *link = Link::Down(reason.clone());
+                Err(reason)
+            }
+        }
+    }
+
+    /// The channel of the worker; a connection that is down is tried again first (without the lock held while it
+    /// connects, on a thread that may block).
+    async fn calls(&self) -> Result<mpsc::UnboundedSender<Call>> {
+        let down = match &*self.link.lock().unwrap_or_else(PoisonError::into_inner) {
+            Link::Up(calls) if !calls.is_closed() => return Ok(calls.clone()),
+            Link::Up(_) => String::from("the people server went away"),
+            Link::Down(reason) => reason.clone(),
+        };
+        let (dial, limits, revisions) =
+            (self.dial.clone(), self.limits, Arc::clone(&self.revisions));
+        let opened = tokio::task::spawn_blocking(move || open(&dial, limits, &revisions))
+            .await
+            .map_err(|_| Error::Unreachable(down.clone()))?;
+        let mut link = self.link.lock().unwrap_or_else(PoisonError::into_inner);
+        match opened {
+            Ok(calls) => {
+                *link = Link::Up(calls.clone());
+                Ok(calls)
+            }
+            Err(reason) => {
+                *link = Link::Down(reason.clone());
+                Err(Error::Unreachable(reason))
+            }
+        }
     }
 
     async fn ask<T>(&self, make: impl FnOnce(Reply<T>) -> Call) -> Result<T> {
+        let calls = self.calls().await?;
         let (reply, answer) = oneshot::channel();
-        self.calls.send(make(reply)).map_err(|_| gone())?;
-        answer.await.map_err(|_| gone())?
+        calls.send(make(reply)).map_err(|_| gone())?;
+        // The call ends itself at its limit; this is the belt for a worker that does not run it at all.
+        match tokio::time::timeout(self.limits.call + GRACE, answer).await {
+            Ok(done) => done.map_err(|_| gone())?,
+            Err(_) => Err(timed_out(&Fault::TimedOut {
+                server: SERVER,
+                limit: self.limits.call,
+            })),
+        }
     }
 }
 
-fn gone() -> Error {
-    Error::Stored("the people server went away".into())
+/// Start a worker thread that connects and then answers the calls; wait until it is connected.
+fn open(
+    dial: &Dial,
+    limits: Limits,
+    revisions: &Revisions,
+) -> std::result::Result<mpsc::UnboundedSender<Call>, String> {
+    let (calls, inbox) = mpsc::unbounded_channel();
+    let (ready, started) = std::sync::mpsc::channel();
+    let (dial, shared) = (dial.clone(), Arc::clone(revisions));
+    thread::Builder::new()
+        .name("people-rpc".into())
+        .spawn(move || worker(&dial, limits, inbox, &ready, &shared))
+        .map_err(|e| e.to_string())?;
+    started.recv().map_err(|e| e.to_string())??;
+    Ok(calls)
 }
+
+fn gone() -> Error {
+    Error::Unreachable("the people server went away".into())
+}
+
 #[async_trait]
 impl People for RemotePeople {
     fn capabilities(&self) -> Capabilities {

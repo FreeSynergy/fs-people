@@ -1,0 +1,43 @@
+# The typing test of fs-release (actions/typing-test): the built window runs under a virtual KWin, the keys of the layout
+# are typed into the "Search" field of the people window, and the test checks that each one arrives as that glyph and how
+# long key-to-picture takes. On the GitHub runner (no GPU) the time is only reported, not enforced (`enforce-ms` stays
+# empty). The way to the field is `.github/typing-test/focus.sh`; the window runs over an empty in-memory store.
+name: typing-test
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # The layouts the action types, separated by spaces. Becomes "de us" (every special sign of both layouts) as soon as
+  # the action of fs-release has the list (branch tt-all-chars); the action takes the character lists itself.
+  TT_LAYOUTS: "de"
+
+jobs:
+  typing-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libxkbcommon-dev libwayland-dev libfontconfig1-dev libssl-dev
+      - uses: FreeSynergy/fs-release/actions/setup-rust@main
+        with:
+          cache-key: typing-test
+      - name: Build the window (release)
+        run: cargo build --release --locked -p fs-people
+      - uses: FreeSynergy/fs-release/actions/typing-test@main
+        with:
+          app-binary: target/release/fs-people
+          app-args: "--local --store /tmp/typing-people.db --size 1000x640"
+          scenario: .github/typing-test/focus.sh
+          layout: ${{ env.TT_LAYOUTS }}
+          name: fs-people
+          runs: 3

@@ -21,6 +21,7 @@ mod adoption;
 pub mod card;
 mod clock;
 mod error;
+mod facet;
 pub mod feed;
 pub mod format;
 pub mod index;
@@ -41,6 +42,7 @@ pub use adoption::{Adoption, Offered};
 pub use card::Card;
 pub use clock::now_utc;
 pub use error::{Error, Issue, MAX_CARD_BYTES, Result};
+pub use facet::{FACETS, check_facet};
 pub use feed::{PeopleFeed, PersonChange, PersonListener, Subscription};
 pub use format::{Exporter, ImportItems, ImportedCard, Importer, JsContactFormat, VCardFormat};
 pub use matching::{

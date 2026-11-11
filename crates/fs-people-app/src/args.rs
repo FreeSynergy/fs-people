@@ -4,6 +4,8 @@
 
 use std::path::PathBuf;
 
+use fs_interfaces::rpc::parse_facet;
+
 /// What was asked for on the command line.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Args {
@@ -23,6 +25,8 @@ pub struct Args {
     pub socket: Option<PathBuf>,
     /// Keep the people in this process, not at the server (also implied by `--store`, `--import`, `--export`).
     pub local: bool,
+    /// Show one facet only (`--facet people`); a name this program does not have is refused.
+    pub facet: Option<String>,
     /// `--help` was given.
     pub help: bool,
 }
@@ -38,6 +42,7 @@ impl Default for Args {
             size: (1200, 800),
             socket: None,
             local: false,
+            facet: None,
             help: false,
         }
     }
@@ -65,6 +70,11 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
             "--size" => out.size = fs_components_app::parse_size(&value("--size")?)?,
             "--socket" => out.socket = Some(PathBuf::from(value("--socket")?)),
             "--local" => out.local = true,
+            "--facet" => {
+                let name = parse_facet(&value("--facet")?)?;
+                fs_people_core::check_facet(&name)?;
+                out.facet = Some(name);
+            }
             "-h" | "--help" => out.help = true,
             other => return Err(format!("unknown option {other}")),
         }
@@ -79,7 +89,7 @@ pub fn parse(args: &[String]) -> Result<Args, String> {
 pub const HELP: &str = "fs-people: the people window (without arguments it opens)
 
   --socket <path>    the people server to talk to (default: $XDG_RUNTIME_DIR/freesynergy/people.sock);
-                     start it with `fs-people serve`
+                     a server that is not there, or of another version, is replaced by one of this version
   --local            keep the people in this process instead of at the server (nothing is shared)
   --store <file>     (local) keep the people in this store file (default: the data folder, $XDG_DATA_HOME/freesynergy/people/app.db; a picture or an export uses memory)
   --import <file>    import a vCard file first; people already known are skipped, never replaced
@@ -87,5 +97,6 @@ pub const HELP: &str = "fs-people: the people window (without arguments it opens
                      people marked sensitive are left out and named
   --export-sensitive <uid>
                      release this person marked sensitive for --export; repeat for each person
+  --facet <name>     show one facet only (people)
   --snapshot <png>   draw a picture instead of opening a window
   --size <WxH>       window or picture size (default 1200x800)";

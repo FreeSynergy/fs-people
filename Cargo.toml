@@ -9,7 +9,5 @@ repository = "https://github.com/FreeSynergy/fs-people"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.89"
-
-# Window resize crash (wgpu validation error when the window is enlarged); see fs-store/DESIGN.md.
-[patch.crates-io]
-blinc_app = { git = "https://github.com/FreeSynergy/blinc-app-fix" }
+# Blinc lives in one place only: fs-components (`fs_components::blinc`). See fs-release DESIGN.md, check_blinc.
+blinc = "components-only"

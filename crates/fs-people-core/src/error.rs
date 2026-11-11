@@ -68,6 +68,10 @@ pub enum Error {
     /// Something already stored cannot be read any more; the request is not to blame.
     #[error("stored data: {0}")]
     Stored(String),
+    /// The server behind a socket did not answer, or is gone (only the proxy over the socket makes it); the text
+    /// is for the person.
+    #[error("{0}")]
+    Unreachable(String),
     /// A number that plain JSON handling would change: refused where it comes in.
     #[error("the number {0} cannot be kept exactly; write it as a string")]
     InexactNumber(String),

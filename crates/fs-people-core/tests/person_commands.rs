@@ -114,7 +114,8 @@ async fn check_reports_the_values_that_break_a_rule_of_their_basic_type() {
     let mut c = person("Ada", "ada@example.org");
     c.add_phone("+49 30 123456");
     let id = r.create(c).await.unwrap().envelope.id;
-    assert!(People::check(&r, id).await.unwrap().is_empty());
+    let issues = People::check(&r, id).await.unwrap();
+    assert!(issues.is_empty(), "{issues:?}");
     // The program accepts what is typed; the check says what is wrong with it.
     let p = patch(json!({
         "emails/e1/address": "not an address",
@@ -159,7 +160,8 @@ async fn suggest_completes_an_address_with_the_domains_in_the_book() {
     );
     let some = People::suggest(&r, "emails", "ada@ex").await.unwrap();
     assert_eq!(some, ["ada@example.org", "ada@example.com"]);
-    assert!(People::suggest(&r, "emails", "").await.unwrap().is_empty());
+    let said = People::suggest(&r, "emails", "").await.unwrap();
+    assert!(said.is_empty(), "{said:?}");
 }
 
 #[tokio::test]

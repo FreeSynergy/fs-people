@@ -6,7 +6,9 @@
 use std::ffi::OsString;
 use std::sync::Arc;
 
-use fs_interfaces::rpc::{ServerOptions, prepare_data_dir, run_until_signal};
+use fs_interfaces::rpc::{
+    ServerIdentity, ServerOptions, prepare_data_dir, run_until_signal_as, stop_self,
+};
 use fs_objects::{Store, TursoStore};
 use fs_people_core::PeopleRepo;
 
@@ -40,19 +42,22 @@ pub fn serve(args: impl IntoIterator<Item = OsString>) -> Result<(), ServeError>
         data,
         actor,
         instance,
+        facet,
     } = options;
-    run_until_signal(&socket, || async move {
+    // The server serves everything; the facet is the window's view. A name this program does not have is still refused,
+    // so a wrong link is found at the start.
+    if let Some(facet) = facet {
+        fs_people_core::check_facet(&facet).map_err(ServeError::Usage)?;
+    }
+    // Name and version go to `Control.version`: a window of another version replaces this server (fs-interfaces handshake).
+    let identity = ServerIdentity::new("fs-people", env!("CARGO_PKG_VERSION"));
+    run_until_signal_as(&socket, identity, || async move {
         // The watcher ends this process by SIGTERM, so it starts only here, where the stop signal is already registered
         // (`run_until_signal` registers it before it binds): a look that finds nobody early can no longer kill the
         // process by the signal.
         if let Some(lease) = lease {
             // The window that started this server holds the lease; when none does, end as a signal would.
-            crate::lease::watch(lease, || {
-                let _ = rustix::process::kill_process(
-                    rustix::process::getpid(),
-                    rustix::process::Signal::TERM,
-                );
-            });
+            crate::lease::watch(lease, stop_self);
         }
         prepare_data_dir(&data)?;
         let store = TursoStore::open(data.join("objects.db"))

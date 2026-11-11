@@ -6,6 +6,7 @@
 //! fs-people [--store F] [--size WxH] [--snapshot F.png] [--import F.vcf] [--export F.vcf]
 //! fs-people list | show | add | delete | find | export | import     over the socket
 //! fs-people serve                    the server (Cap'n Proto, people.capnp)
+//! fs-people --version                the version
 //! ```
 
 use std::process::ExitCode;
@@ -15,6 +16,10 @@ use fs_people_server::ServeError;
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
+        Some("--version" | "-V") => {
+            println!("fs-people {}", env!("CARGO_PKG_VERSION"));
+            ExitCode::SUCCESS
+        }
         Some("serve") => serve(&args[1..]),
         None | Some("gui") => window(args.get(1..).unwrap_or_default()),
         // `fs-people --socket PATH serve`: the option may stand before the word.

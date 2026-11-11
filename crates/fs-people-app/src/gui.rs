@@ -7,7 +7,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use fs_components_app::{Status, WindowOptions, launch};
-use fs_interfaces::rpc::{default_data_dir, default_socket, prepare_data_dir};
+use fs_interfaces::rpc::{
+    CommandStarter, companion_path, default_data_dir, default_socket, prepare_data_dir,
+};
 use fs_objects::{Store, TursoStore};
 use fs_people_core::PeopleRepo;
 
@@ -66,7 +68,7 @@ pub fn run(words: &[String]) -> Result<(), String> {
             .clone()
             .or_else(|| default_socket("people"))
             .ok_or("no socket: give --socket or set XDG_RUNTIME_DIR")?;
-        let remote = connect_or_start(&socket, args.socket.is_none())?;
+        let remote = connect_or_start(&socket, args.socket.is_some())?;
         let remote = Arc::new(remote);
         PeopleAdapter::new(remote.clone(), remote, handle)
     };
@@ -114,67 +116,35 @@ fn open_local(runtime: &tokio::runtime::Runtime, args: &Args) -> Result<Arc<Peop
     Ok(Arc::new(PeopleRepo::new(store, ACTOR)))
 }
 
-/// Connect to the server; if none answers on the user's own socket, start `fs-people serve` (detached,
-/// so other windows can use it too and it keeps the people after this window closes) and wait for it.
-/// A socket given with `--socket` is never answered by starting anything: the person chose it.
-fn connect_or_start(socket: &Path, may_start: bool) -> Result<RemotePeople, String> {
-    // This window is a user of the server for as long as it lives: the shared lock on the lease is
-    // let go by the system when the process ends, however it ends. A server this window starts ends
-    // itself when no window holds the lease any more (and a server somebody started by hand has none).
-    let lease = socket.with_extension("lease");
-    if may_start {
-        hold_lease(&lease);
-    }
-    let first = RemotePeople::connect(socket);
-    if first.is_ok() || !may_start {
-        return first;
-    }
+/// Reach the server: the version handshake (a server of another version is replaced, none running is started). This
+/// never fails: without a server that fits, the window still opens and every call says what is wrong ("never a black
+/// window"). A socket given with `--socket` is never answered by starting a server of another place: the server is
+/// started on that very socket.
+fn connect_or_start(socket: &Path, own_socket: bool) -> Result<RemotePeople, String> {
+    // This window is a user of the server for as long as it lives: the shared lock on the lease is let go by the
+    // system when the process ends, however it ends. A server this window starts ends itself when no window holds the
+    // lease any more (and a server somebody started by hand has none).
+    let lease = companion_path(socket, "lease");
+    hold_lease(&lease);
     let me = std::env::current_exe().map_err(|e| e.to_string())?;
-    // What the server says when it cannot start goes to a file next to the socket, so the window can
-    // tell the person instead of only waiting.
-    let log = socket.with_extension("log");
-    let log_file = std::fs::File::create(&log).ok();
-    let mut server = std::process::Command::new(me);
-    server
-        .arg("serve")
-        .arg("--lease")
-        .arg(&lease)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(log_file.map_or_else(std::process::Stdio::null, std::process::Stdio::from));
-    #[cfg(unix)]
-    std::os::unix::process::CommandExt::process_group(&mut server, 0);
-    let mut child = server
-        .spawn()
-        .map_err(|e| format!("could not start the people server: {e}"))?;
-    for _ in 0..50 {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        if let Ok(remote) = RemotePeople::connect(socket) {
-            let _ = std::fs::remove_file(&log);
-            return Ok(remote);
-        }
-        if let Ok(Some(status)) = child.try_wait() {
-            let said = std::fs::read_to_string(&log).unwrap_or_default();
-            let _ = std::fs::remove_file(&log);
-            return Err(format!(
-                "the people server stopped at once ({status}): {}",
-                said.trim()
-            ));
-        }
+    let mut words: Vec<std::ffi::OsString> = vec!["serve".into()];
+    if own_socket {
+        words.extend(["--socket".into(), socket.as_os_str().to_owned()]);
     }
-    // Still waiting: the child lives on (it may just be slow); reap it if it ends later.
-    std::thread::spawn(move || {
-        let _ = child.wait();
-    });
-    first
+    words.extend(["--lease".into(), lease.into_os_string()]);
+    let starter = CommandStarter::new(me, words);
+    Ok(RemotePeople::matching(socket, Arc::new(starter)))
 }
 
 /// Hold the shared lock on `path` until this process ends.
 fn hold_lease(path: &Path) {
     static HELD: std::sync::OnceLock<std::fs::File> = std::sync::OnceLock::new();
+    // Read and write, not append: Windows takes a lock only on a handle that can read or write data.
     let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
         .create(true)
-        .append(true)
+        .truncate(false)
         .open(path);
     if let Ok(file) = file
         && file.lock_shared().is_ok()
