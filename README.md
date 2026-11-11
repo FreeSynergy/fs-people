@@ -10,7 +10,6 @@ People works alone. When the other FreeSynergy programs run next to it, they can
 
 ## What it can do today
 
-Latest tag: `v0.0.2`.
 
 - Keep contacts as JSContact cards; unknown or vendor properties survive unchanged.
 - Create, edit, delete, list and search (name, nickname, e-mail, phone, organisation).
