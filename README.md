@@ -10,7 +10,6 @@ People works alone. When the other FreeSynergy programs run next to it, they can
 
 ## What it can do today
 
-
 - Keep contacts as JSContact cards; unknown or vendor properties survive unchanged.
 - Create, edit, delete, list and search (name, nickname, e-mail, phone, organisation).
 - Import and export vCard (also reads versions 2.1 and 3.0). The original text is kept per card.
@@ -34,7 +33,6 @@ People works alone. When the other FreeSynergy programs run next to it, they can
 ## Part of FreeSynergy
 
 People is the program that answers "who is this?" for all the others. FreeSynergy is a family of programs that are free for everyone, forever, and that keep your data yours. The documentation, the manifesto and the overall plan live in [fs-documentation](https://github.com/FreeSynergy/fs-documentation); the reading version is at <https://freesynergy.github.io/fs-documentation/>. Start with the [manifesto](https://freesynergy.github.io/fs-documentation/manifesto/) if you want to know why we do this.
-
 
 ## For developers
 
