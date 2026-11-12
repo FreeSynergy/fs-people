@@ -24,7 +24,7 @@ use tokio::sync::{mpsc, oneshot};
 use super::call::{Call, Reply, Revisions};
 use super::dial::Dial;
 pub use super::limits::Limits;
-use super::limits::{GRACE, SERVER, timed_out};
+use super::limits::{GRACE, LOST, SERVER, timed_out};
 use super::worker::worker;
 
 /// The state of the connection: a worker that answers, or why there is none (the window shows it).
@@ -83,7 +83,8 @@ impl RemotePeople {
     ) -> Self {
         let dial = Dial::Matching {
             socket: socket.to_path_buf(),
-            expected: Expected::new(env!("CARGO_PKG_VERSION")),
+            // The program's name too: a wrong `--socket` (the server of another program) is left alone, never replaced.
+            expected: Expected::new(env!("CARGO_PKG_VERSION")).with_program("fs-people"),
             starter,
         };
         let revisions = Revisions::default();
@@ -149,13 +150,20 @@ impl RemotePeople {
         let (reply, answer) = oneshot::channel();
         calls.send(make(reply)).map_err(|_| gone())?;
         // The call ends itself at its limit; this is the belt for a worker that does not run it at all.
-        match tokio::time::timeout(self.limits.call + GRACE, answer).await {
+        let done = match tokio::time::timeout(self.limits.call + GRACE, answer).await {
             Ok(done) => done.map_err(|_| gone())?,
             Err(_) => Err(timed_out(&Fault::TimedOut {
                 server: SERVER,
                 limit: self.limits.call,
             })),
+        };
+        // The connection ended under the call: the next call connects again (a server another window started).
+        if let Err(Error::Unreachable(text)) = &done
+            && text == LOST
+        {
+            *self.link.lock().unwrap_or_else(PoisonError::into_inner) = Link::Down(LOST.into());
         }
+        done
     }
 }
 

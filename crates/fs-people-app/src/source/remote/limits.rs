@@ -11,6 +11,9 @@ use fs_people_core::{Error, Result};
 /// The name of the server in the words of a timeout.
 pub(super) const SERVER: &str = "people";
 
+/// The words of a connection that ended under a call; the proxy connects again at the next call.
+pub(super) const LOST: &str = "the people server went away; asking again";
+
 /// What the caller waits on top of a limit for a worker that cannot run the job.
 pub(super) const GRACE: Duration = Duration::from_secs(2);
 

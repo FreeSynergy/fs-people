@@ -17,6 +17,9 @@ default = ["gui"]
 # The window (Blinc). Without it the binary has the commands and the server only:
 # `cargo build --no-default-features`.
 gui = ["dep:fs-people-app"]
+# Only for the typing test, in a debug build (see fs-people-app): the window writes the text of its fields to
+# FS_TEST_ACCESS_FILE. Never in a release.
+test-access = ["gui", "fs-people-app/test-access"]
 
 [dependencies]
 fs-people-cli = { path = "../fs-people-cli" }
@@ -24,7 +27,7 @@ fs-people-server = { path = "../fs-people-server" }
 fs-people-app = { path = "../fs-people-app", optional = true }
 
 [dev-dependencies]
-fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.18", features = ["rpc"] }
+fs-interfaces = { git = "https://github.com/FreeSynergy/fs-interfaces", tag = "v0.0.19", features = ["rpc"] }
 fs-objects = { git = "https://github.com/FreeSynergy/fs-objects", tag = "v0.0.1" }
 fs-people-core = { path = "../fs-people-core" }
 capnp = "0.27"

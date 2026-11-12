@@ -6,14 +6,20 @@ use std::sync::PoisonError;
 
 use fs_interfaces::Unsupported;
 use fs_interfaces::people_capnp::person;
+use fs_interfaces::rpc::client::connection_lost;
 use fs_interfaces::rpc::{Problem, read_envelope};
 use fs_objects::{ObjectId, StoredObject};
 use fs_people_core::Error;
 
 use super::call::Revisions;
+use super::limits::LOST;
 
 /// What the server said, in the core's terms. The server's own words are kept.
 pub(super) fn problem(error: &capnp::Error, id: Option<ObjectId>) -> Error {
+    // The connection ended under the call (the server went away, e.g. replaced by another window): not stored data.
+    if connection_lost(error) {
+        return Error::Unreachable(LOST.into());
+    }
     match Problem::from_error(error) {
         Some(p) if p.is_unsupported() => Error::Unsupported(Unsupported::new("people", p.detail)),
         Some(p) if p.status == 404 => id.map_or(Error::Conflict(p.detail), Error::NotFound),

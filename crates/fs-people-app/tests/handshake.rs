@@ -74,3 +74,30 @@ fn no_server_and_no_start_is_a_visible_reason_that_the_next_call_can_end() {
         .unwrap();
     assert!(found.is_empty(), "{found:?}");
 }
+
+#[test]
+fn a_server_of_another_program_is_left_alone_and_named() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("people.sock");
+    // Another program answers on the socket (a wrong `--socket`): it must not be replaced by a start.
+    let (socket_for_server, up) = (socket.clone(), std::sync::mpsc::channel());
+    std::thread::spawn(move || {
+        let identity = ServerIdentity::new("fs-other", VERSION);
+        let _ = run_until_signal_as(&socket_for_server, identity, || async move {
+            let store: Arc<dyn Store> = Arc::new(TursoStore::open_in_memory().await.unwrap());
+            let repo = Arc::new(PeopleRepo::new(store, "https://local.invalid/users/owner"));
+            let root: people::Client =
+                PeopleServer::new(repo.clone(), repo.clone(), repo).into_client();
+            up.0.send(()).ok();
+            Ok(root.client)
+        });
+    });
+    up.1.recv().unwrap();
+    let refuse = || -> io::Result<()> { Err(io::Error::other("must not be started")) };
+    let remote = RemotePeople::matching(&socket, Arc::new(refuse));
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    match runtime.block_on(remote.list(&ListFilter::default())) {
+        Err(Error::Unreachable(text)) => assert!(text.contains("fs-other"), "{text}"),
+        other => panic!("expected the name of the other program, got {other:?}"),
+    }
+}
